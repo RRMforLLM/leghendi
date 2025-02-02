@@ -1,0 +1,83 @@
+public schema:
+
+"Agenda"
+- id // int8
+- name // varchar
+- key // varchar
+- key_visible // bool
+- creator_id // Foreign Key: auth.users.id
+- created_at // timestamptz
+
+"Agenda Section"
+- id // int8
+- name // varchar
+- agenda_id // Foreign Key: public.Agenda.id
+- created_at // timestamptz
+
+"Agenda Element"
+- id // int8
+- subject // varchar
+- details // text
+- emission // date
+- deadline // date
+- status // varchar
+- section_id // Foreign Key: public.Agenda Section.id
+- created_at // timestamptz
+
+"Agenda Editor"
+- id // int8
+- user_id // Foreign Key: auth.users.id
+- agenda_id // Foreign Key: public.Agenda.id
+- created_at // timestamptz
+
+"Agenda Member"
+- id // int8
+- user_id // Foreign Key: auth.users.id
+- agenda_id // Foreign Key: public.Agenda.id
+- created_at // timestamptz
+
+"Element Comment"
+- id // int8
+- text // text
+- user_id // Foreign Key: auth.users.id
+- element_id // public.Agenda Elemet.id
+- created_at // timestamptz
+
+"Completed Element"
+- id // int8
+- user_id // auth.users.id
+- element_id // public.Agenda Element.id
+- created_at // timestamptz
+
+"Neutral Element"
+- id // int8
+- user_id // auth.users.id
+- element_id // public.Agenda Element.id
+- created_at // timestamptz
+
+"Urgent Element"
+- id // int8
+- user_id // auth.users.id
+- element_id // public.Agenda Element.id
+- created_at // timestamptz
+
+"Profile"
+- id // Foreign Key: auth.users.id
+- username // text
+- avatar_url // text
+- updated_at // timestamptz
+
+"Reaction"
+- id // int8
+- type // varchar
+- sender_id // Foreign Key: auth.users.id
+- recipient_id // Foreign Key: auth.users.id
+- paid // bool
+- payment_id // varchar
+- created_at // timestamptz
+
+"User Credit"
+- id // int8
+- amount // numeric
+- user_id // Foreign Key: auth.users.id
+- updated_at // timestamptz

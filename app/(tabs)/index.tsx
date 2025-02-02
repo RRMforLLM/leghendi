@@ -1,31 +1,650 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, FlatList, RefreshControl, Alert, Switch } from "react-native"
+import { View, Text } from "@/components/Themed"
+import { useEffect, useState, useCallback } from "react"
+import { supabase } from "@/lib/supabase"
+import type { Agenda, AgendaElement } from "@/types"
+import { Button, Input, Dialog } from "@rneui/themed"
+import { router } from "expo-router"
+import type { Session } from "@supabase/supabase-js"
+import Colors from "@/constants/Colors"
+import { typography, spacing } from "@/constants/Typography"
+import { useColorScheme } from "@/components/useColorScheme"
 
-import EditScreenInfo from '@/components/EditScreenInfo';
-import { Text, View } from '@/components/Themed';
+const DialogButton = ({ onPress, disabled = false, children }: {
+  onPress: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) => (
+  <Button
+    onPress={onPress}
+    disabled={disabled}
+    title={children as string}
+    type="clear"
+    containerStyle={{ marginHorizontal: 5 }}
+  />
+);
 
-export default function TabOneScreen() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Tab One</Text>
-      <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-      <EditScreenInfo path="app/(tabs)/index.tsx" />
+export default function HomeScreen() {
+  const colorScheme = useColorScheme()
+  const colors = Colors[colorScheme]
+  const [agendas, setAgendas] = useState<Agenda[]>([])
+  const [session, setSession] = useState<Session | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const [key, setKey] = useState("")
+  const [agendaElements, setAgendaElements] = useState<AgendaElement[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [newAgendaData, setNewAgendaData] = useState({
+    name: '',
+    key: '',
+    key_visible: true
+  })
+  const [showJoinDialog, setShowJoinDialog] = useState(false)
+  const [joinAgendaData, setJoinAgendaData] = useState({
+    name: '',
+    key: ''
+  })
+
+  const resetState = useCallback(() => {
+    setAgendas([])
+    setAgendaElements([])
+    setKey("")
+    setShowCreateDialog(false)
+    setShowJoinDialog(false)
+    setNewAgendaData({ name: '', key: '', key_visible: true })
+    setJoinAgendaData({ name: '', key: '' })
+  }, [])
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event, session?.user?.email)
+      
+      if (event === 'SIGNED_OUT') {
+        resetState()
+        router.replace('/three')
+        return
+      }
+
+      if (event === 'SIGNED_IN') {
+        resetState()
+        setSession(session)
+        if (session?.user) {
+          Promise.all([
+            fetchAgendas(session),
+            fetchAgendaElements(session)
+          ]).finally(() => setLoading(false))
+        }
+      }
+    })
+
+    return () => {
+      subscription?.unsubscribe()
+    }
+  }, [resetState, fetchAgendas, fetchAgendaElements])
+
+  useEffect(() => {
+    let mounted = true
+
+    async function initialize() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!mounted) return
+        
+        if (!session?.user) {
+          router.replace('/three')
+          return
+        }
+
+        setSession(session)
+        await Promise.all([
+          fetchAgendas(session),
+          fetchAgendaElements(session)
+        ])
+      } catch (error) {
+        console.error('Init error:', error)
+        if (mounted) {
+          Alert.alert('Error', 'Failed to initialize')
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    resetState()
+    initialize()
+    return () => { mounted = false }
+  }, [resetState])
+
+  const fetchAgendas = useCallback(async (currentSession?: Session | null) => {
+    const userSession = currentSession || session;
+    if (!userSession?.user?.id) return;
+    
+    try {
+      setLoading(true)
+      console.log('Fetching agendas for user:', userSession.user.id)
+      
+      // First get all directly created agendas
+      const { data: createdAgendas, error: creatorError } = await supabase
+        .from("Agenda")
+        .select("*")
+        .eq("creator_id", userSession.user.id)
+
+      if (creatorError) throw creatorError
+
+      // Get agendas where user is editor
+      const { data: editorAgendas, error: editorError } = await supabase
+        .from("Agenda Editor")
+        .select(`
+          agenda:Agenda (
+            *
+          )
+        `)
+        .eq("user_id", userSession.user.id)
+
+      if (editorError) throw editorError
+
+      // Get agendas where user is member
+      const { data: memberAgendas, error: memberError } = await supabase
+        .from("Agenda Member")
+        .select(`
+          agenda:Agenda (
+            *
+          )
+        `)
+        .eq("user_id", userSession.user.id)
+
+      if (memberError) throw memberError
+
+      // Combine all agendas, unwrapping the nested agenda objects
+      const allAgendas = [
+        ...(createdAgendas || []),
+        ...(editorAgendas?.map(ea => ea.agenda) || []),
+        ...(memberAgendas?.map(ma => ma.agenda) || [])
+      ].filter((agenda): agenda is Agenda => !!agenda)
+
+      // Remove duplicates by ID
+      const uniqueAgendas = Array.from(
+        new Map(allAgendas.map(item => [item.id, item])).values()
+      )
+
+      console.log('Found agendas:', {
+        created: createdAgendas?.length || 0,
+        edited: editorAgendas?.length || 0,
+        member: memberAgendas?.length || 0,
+        total: uniqueAgendas.length
+      })
+
+      setAgendas(uniqueAgendas)
+    } catch (error) {
+      console.error('Fetch agendas error:', error)
+      Alert.alert('Error', 'Failed to load agendas')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const fetchAgendaElements = useCallback(async (currentSession?: Session | null) => {
+    const userSession = currentSession || session;
+    if (!userSession?.user?.id) return;
+
+    try {
+      setLoading(true)
+      // First get urgent elements for this user
+      const { data: urgentElements, error: urgentError } = await supabase
+        .from("Urgent Element")
+        .select(`
+          element_id,
+          created_at,
+          element:element_id (
+            id,
+            subject,
+            details,
+            emission,
+            deadline,
+            status,
+            section:section_id (
+              id,
+              name,
+              agenda:agenda_id (
+                id,
+                creator_id
+              )
+            )
+          )
+        `)
+        .eq("user_id", userSession.user.id)
+        .order('created_at', { ascending: false })
+        .limit(5)
+
+      if (urgentError) throw urgentError
+
+      // Filter out any null elements and map to the element structure
+      const elements = urgentElements
+        ?.map(ue => ue.element)
+        .filter(Boolean)
+
+      setAgendaElements(elements || [])
+    } catch (error) {
+      console.error('Error fetching urgent elements:', error)
+      Alert.alert("Error", "Failed to load urgent items")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true)
+    Promise.all([
+      fetchAgendas(),
+      fetchAgendaElements()
+    ]).finally(() => setRefreshing(false))
+  }, [fetchAgendas, fetchAgendaElements])
+
+  const handleJoinAgenda = async () => {
+    if (!session?.user?.id || !joinAgendaData.name || !joinAgendaData.key) return
+    
+    try {
+      const trimmedName = joinAgendaData.name.trim()
+      const trimmedKey = joinAgendaData.key.trim()
+  
+      console.log('Debug - Exact values being searched:', {
+        name: trimmedName,
+        key: trimmedKey,
+        length: {
+          name: trimmedName.length,
+          key: trimmedKey.length
+        }
+      })
+  
+      // Search for ANY agenda matching these credentials
+      const { data: foundAgendas, error: searchError } = await supabase
+        .from("Agenda")
+        .select("*")
+        .eq("key", trimmedKey)
+        .ilike("name", trimmedName)
+  
+      console.log('Debug - Raw Supabase response:', {
+        data: foundAgendas,
+        error: searchError,
+        query: supabase
+          .from("Agenda")
+          .select("*")
+          .eq("key", trimmedKey)
+          .ilike("name", trimmedName)
+      })
+  
+      if (searchError) {
+        console.error('Search error:', searchError)
+        throw searchError
+      }
+
+      const agenda = foundAgendas[0]
+
+      // Check if it's own agenda
+      if (agenda.creator_id === session.user.id) {
+        Alert.alert("Error", "You're already the owner of this agenda")
+        return
+      }
+
+      // If the key is not visible and user is not the creator, reject
+      if (!agenda.key_visible) {
+        Alert.alert("Error", "This agenda's key is private")
+        return
+      }
+
+      // Check if already a member using the correct table name
+      const { data: existingMember } = await supabase
+        .from("Agenda Member")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .eq("agenda_id", agenda.id)
+        .maybeSingle()
+
+      if (existingMember) {
+        Alert.alert("Error", "You're already a member of this agenda")
+        return
+      }
+
+      // Join the agenda using the correct table name
+      const { error: joinError } = await supabase
+        .from("Agenda Member")
+        .insert({
+          user_id: session.user.id,
+          agenda_id: agenda.id
+        })
+
+      if (joinError) throw joinError
+
+      await fetchAgendas()
+      setShowJoinDialog(false)
+      setJoinAgendaData({ name: '', key: '' })
+      Alert.alert("Success", `Joined agenda "${agenda.name}"!`)
+
+    } catch (error) {
+      console.error('Join error:', error)
+      Alert.alert(
+        "Error", 
+        "Failed to join agenda. Please verify the credentials."
+      )
+    }
+  }
+
+  // Add this function for testing - create a test agenda
+  const createTestAgenda = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("Agenda")
+        .insert([{
+          name: "Test Agenda",
+          key: "test123",
+          key_visible: true,
+          creator_id: session?.user?.id
+        }])
+        .select()
+        .single()
+
+      if (error) throw error
+      console.log('Created test agenda:', data)
+      await fetchAgendas()
+    } catch (error) {
+      console.error('Test agenda creation error:', error)
+    }
+  }
+
+  const handleCreateAgenda = async () => {
+    if (!session?.user?.id || !newAgendaData.name) return
+    
+    try {
+      const { data, error } = await supabase
+        .from("Agenda")
+        .insert([{
+          name: newAgendaData.name,
+          key: newAgendaData.key || Math.random().toString(36).substring(2, 8),
+          key_visible: newAgendaData.key_visible,
+          creator_id: session.user.id
+        }])
+        .select()
+        .single()
+
+      if (error) throw error
+
+      setShowCreateDialog(false)
+      setNewAgendaData({ name: '', key: '', key_visible: true })
+      fetchAgendas()
+      Alert.alert("Success", "Agenda created successfully!")
+    } catch (error) {
+      console.error('Create agenda error:', error)
+      Alert.alert("Error", "Failed to create agenda")
+    }
+  }
+
+  const renderAgendaItem = ({ item }: { item: Agenda }) => (
+    <View style={[styles.card, { backgroundColor: colors.card }]}>
+      <Text style={[typography.h3, { color: colors.text }]}>{item.name || "Untitled"}</Text>
+      {item.key_visible && (
+        <Text style={[typography.caption, { color: colors.text }]}>Key: {item.key}</Text>
+      )}
+      <Button
+        title="View"
+        type="clear"
+        titleStyle={{ color: colors.tint }}
+        onPress={() => router.push(`/agenda/${item.id}`)}
+      />
     </View>
-  );
+  )
+
+  const renderUrgentItem = ({ item }: { item: AgendaElement }) => (
+    <View style={[styles.urgentCard, { backgroundColor: colors.card }]}>
+      <Text style={[typography.h3, { color: colors.text }]}>{item.subject}</Text>
+      <Text style={[typography.caption, { color: colors.text }]}>
+        Due: {new Date(item.deadline).toLocaleDateString()}
+      </Text>
+    </View>
+  )
+
+  if (!session || !session.user) {
+    return null // Will redirect via useEffect
+  }
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Only show Urgent section if there are urgent elements */}
+      {!loading && agendaElements.length > 0 && (
+        <View style={styles.section}>
+          <Text style={[typography.h2, { color: colors.text }]}>Urgent</Text>
+          <FlatList
+            data={agendaElements}
+            renderItem={renderUrgentItem}
+            keyExtractor={(item) => item.id.toString()}
+            contentContainerStyle={styles.listContent}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          />
+        </View>
+      )}
+
+      {/* Your Agendas section */}
+      <View style={styles.section}>
+        {loading ? (
+          <Text style={{ color: colors.text }}>Loading agendas...</Text>
+        ) : agendas.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={{ color: colors.text }}>No agendas found</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={agendas}
+            renderItem={renderAgendaItem}
+            keyExtractor={(item) => item.id}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.listContainer}
+          />
+        )}
+      </View>
+      <View style={styles.section}>
+        <View style={styles.buttonGroup}>
+          <Button
+            title="Create Agenda"
+            onPress={() => setShowCreateDialog(true)}
+            containerStyle={styles.button}
+            buttonStyle={{ backgroundColor: colors.button }}
+            titleStyle={{ color: colors.buttonText }}
+          />
+          <Button
+            title="Join Agenda"
+            type="outline"
+            onPress={() => setShowJoinDialog(true)}
+            containerStyle={styles.button}
+            buttonStyle={{ borderColor: colors.button }}
+            titleStyle={{ color: colors.button }}
+          />
+        </View>
+      </View>
+
+      <Dialog
+        isVisible={showCreateDialog}
+        onBackdropPress={() => setShowCreateDialog(false)}
+        overlayStyle={[styles.dialog, { backgroundColor: colors.card }]}
+      >
+        <View style={[styles.dialogContent, , { backgroundColor: colors.card }]}>
+          <Text style={[typography.h3, { color: colors.text }]}>Create New Agenda</Text>
+          <Input
+            placeholder="Agenda Name"
+            value={newAgendaData.name}
+            onChangeText={(text) => setNewAgendaData(prev => ({ ...prev, name: text }))}
+            inputStyle={{ color: colors.text }}
+          />
+          <Input
+            placeholder="Custom Key (optional)"
+            value={newAgendaData.key}
+            onChangeText={(text) => setNewAgendaData(prev => ({ ...prev, key: text }))}
+            inputStyle={{ color: colors.text }}
+          />
+          <View style={[styles.switchContainer, { backgroundColor: colors.card }]}>
+            <Text style={{ color: colors.text }}>Make key visible</Text>
+            <Switch
+              value={newAgendaData.key_visible}
+              onValueChange={(value) => setNewAgendaData(prev => ({ ...prev, key_visible: value }))}
+              trackColor={{ false: colors.placeholder, true: colors.button }}
+              thumbColor={colors.buttonText}
+            />
+          </View>
+          <View style={[{ flexDirection: 'row', justifyContent: 'flex-end' }, { backgroundColor: colors.card }]}>
+            <DialogButton onPress={() => setShowCreateDialog(false)}>
+              Cancel
+            </DialogButton>
+            <DialogButton 
+              onPress={handleCreateAgenda}
+              disabled={!newAgendaData.name.trim()}
+            >
+              Create
+            </DialogButton>
+          </View>
+        </View>
+      </Dialog>
+
+      <Dialog
+        isVisible={showJoinDialog}
+        onBackdropPress={() => setShowJoinDialog(false)}
+        overlayStyle={[styles.dialog, { backgroundColor: colors.card }]}
+      >
+        <View style={[styles.dialogContent, { backgroundColor: colors.card }]}>
+          <Text style={[typography.h3, { color: colors.text }]}>Join New Agenda</Text>
+          <Input
+            placeholder="Agenda Name"
+            value={joinAgendaData.name}
+            onChangeText={(text) => setJoinAgendaData(prev => ({ ...prev, name: text }))}
+            inputStyle={{ color: colors.text }}
+          />
+          <Input
+            placeholder="Agenda Key"
+            value={joinAgendaData.key}
+            onChangeText={(text) => setJoinAgendaData(prev => ({ ...prev, key: text }))}
+            inputStyle={{ color: colors.text }}
+          />
+          <View style={[{ flexDirection: 'row', justifyContent: 'flex-end' }, { backgroundColor: colors.card }]}>
+            <DialogButton onPress={() => setShowJoinDialog(false)}>
+              Cancel
+            </DialogButton>
+            <DialogButton 
+              onPress={handleJoinAgenda}
+              disabled={!joinAgendaData.name.trim() || !joinAgendaData.key.trim()}
+            >
+              Join
+            </DialogButton>
+          </View>
+        </View>
+      </Dialog>
+    </View>
+  )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    padding: spacing.lg,
+  },
+  section: {
+    marginBottom: spacing.lg,
+  },
+  listContainer: {
+    minHeight: 180,
+  },
+  listContent: {
+    paddingHorizontal: spacing.sm,
+  },
+  card: {
+    padding: spacing.md,
+    borderRadius: 12,
+    marginRight: spacing.md,
+    marginVertical: spacing.sm,
+    minWidth: 250,
+    maxWidth: 300,
+    flex: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  urgentCard: {
+    padding: spacing.md,
+    borderRadius: 12,
+    marginBottom: spacing.sm,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.light.error,
+  },
+  actionButtons: {
+    width: "100%",
+    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+  },
+  actionButton: {
+    marginHorizontal: spacing.xs,
+  },
+  joinContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: spacing.md,
+  },
+  input: {
+    flex: 1,
+    marginRight: spacing.sm,
+    marginVertical: 0,
+  },
+  button: {
+    minWidth: 100,
+    flex: 1,
+  },
+  emptyContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
+    padding: spacing.md,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  bottomActions: {
+    marginTop: 'auto',
+    paddingTop: spacing.lg,
+    gap: spacing.md,
   },
-  separator: {
-    marginVertical: 30,
-    height: 1,
-    width: '80%',
+  joinSection: {
+    gap: spacing.sm,
   },
-});
+  keyInputContainer: {
+    flex: 1,
+    marginVertical: 0,
+    paddingHorizontal: 0,
+  },
+  keyInputInner: {
+    borderBottomWidth: 1,
+    height: 40,
+  },
+  joinButton: {
+    minWidth: 80,
+    height: 40,
+  },
+  createButton: {
+    marginTop: spacing.sm,
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.sm,
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  dialog: {
+    width: '90%',
+    borderRadius: 12,
+    padding: spacing.md,
+  },
+  dialogContent: {
+    paddingHorizontal: spacing.sm,
+    paddingBottom: spacing.sm,
+  },
+})
