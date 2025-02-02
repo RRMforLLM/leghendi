@@ -5,6 +5,7 @@ export interface Agenda {
   key_visible: boolean;
   creator_id: string;
   created_at: string;
+  isCreator?: boolean; // Add this property
 }
 
 export interface AgendaElement {

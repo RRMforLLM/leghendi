@@ -11,7 +11,7 @@ public schema:
 "Agenda Section"
 - id // int8
 - name // varchar
-- agenda_id // Foreign Key: public.Agenda.id
+- agenda_id // Foreign Key: public.Agenda.id ON DELETE CASCADE
 - created_at // timestamptz
 
 "Agenda Element"
@@ -21,44 +21,44 @@ public schema:
 - emission // date
 - deadline // date
 - status // varchar
-- section_id // Foreign Key: public.Agenda Section.id
+- section_id // Foreign Key: public.Agenda Section.id ON DELETE CASCADE
 - created_at // timestamptz
 
 "Agenda Editor"
 - id // int8
 - user_id // Foreign Key: auth.users.id
-- agenda_id // Foreign Key: public.Agenda.id
+- agenda_id // Foreign Key: public.Agenda.id ON DELETE CASCADE
 - created_at // timestamptz
 
 "Agenda Member"
 - id // int8
 - user_id // Foreign Key: auth.users.id
-- agenda_id // Foreign Key: public.Agenda.id
+- agenda_id // Foreign Key: public.Agenda.id ON DELETE CASCADE
 - created_at // timestamptz
 
 "Element Comment"
 - id // int8
 - text // text
 - user_id // Foreign Key: auth.users.id
-- element_id // public.Agenda Elemet.id
+- element_id // public.Agenda Element.id ON DELETE CASCADE
 - created_at // timestamptz
 
 "Completed Element"
 - id // int8
 - user_id // auth.users.id
-- element_id // public.Agenda Element.id
+- element_id // public.Agenda Element.id ON DELETE CASCADE
 - created_at // timestamptz
 
 "Neutral Element"
 - id // int8
 - user_id // auth.users.id
-- element_id // public.Agenda Element.id
+- element_id // public.Agenda Element.id ON DELETE CASCADE
 - created_at // timestamptz
 
 "Urgent Element"
 - id // int8
 - user_id // auth.users.id
-- element_id // public.Agenda Element.id
+- element_id // public.Agenda Element.id ON DELETE CASCADE
 - created_at // timestamptz
 
 "Profile"

@@ -122,68 +122,43 @@ export default function HomeScreen() {
     if (!userSession?.user?.id) return;
     
     try {
-      setLoading(true)
-      console.log('Fetching agendas for user:', userSession.user.id)
+      setLoading(true);
       
-      // First get all directly created agendas
-      const { data: createdAgendas, error: creatorError } = await supabase
+      // First get member and editor IDs
+      const [{ data: memberData }, { data: editorData }] = await Promise.all([
+        supabase
+          .from('Agenda Member')
+          .select('agenda_id')
+          .eq('user_id', userSession.user.id),
+        supabase
+          .from('Agenda Editor')
+          .select('agenda_id')
+          .eq('user_id', userSession.user.id)
+      ]);
+
+      const memberIds = memberData?.map(m => m.agenda_id) || [];
+      const editorIds = editorData?.map(e => e.agenda_id) || [];
+      
+      // Then fetch agendas with the collected IDs
+      const { data: accessibleAgendas, error } = await supabase
         .from("Agenda")
-        .select("*")
-        .eq("creator_id", userSession.user.id)
+        .select('*')
+        .or(
+          `creator_id.eq.${userSession.user.id},` +
+          `and(key_visible.eq.true,id.in.(${memberIds.join(',')})),` +
+          `id.in.(${editorIds.join(',')})`
+        );
 
-      if (creatorError) throw creatorError
-
-      // Get agendas where user is editor
-      const { data: editorAgendas, error: editorError } = await supabase
-        .from("Agenda Editor")
-        .select(`
-          agenda:Agenda (
-            *
-          )
-        `)
-        .eq("user_id", userSession.user.id)
-
-      if (editorError) throw editorError
-
-      // Get agendas where user is member
-      const { data: memberAgendas, error: memberError } = await supabase
-        .from("Agenda Member")
-        .select(`
-          agenda:Agenda (
-            *
-          )
-        `)
-        .eq("user_id", userSession.user.id)
-
-      if (memberError) throw memberError
-
-      // Combine all agendas, unwrapping the nested agenda objects
-      const allAgendas = [
-        ...(createdAgendas || []),
-        ...(editorAgendas?.map(ea => ea.agenda) || []),
-        ...(memberAgendas?.map(ma => ma.agenda) || [])
-      ].filter((agenda): agenda is Agenda => !!agenda)
-
-      // Remove duplicates by ID
-      const uniqueAgendas = Array.from(
-        new Map(allAgendas.map(item => [item.id, item])).values()
-      )
-
-      console.log('Found agendas:', {
-        created: createdAgendas?.length || 0,
-        edited: editorAgendas?.length || 0,
-        member: memberAgendas?.length || 0,
-        total: uniqueAgendas.length
-      })
-
-      setAgendas(uniqueAgendas)
+      if (error) throw error;
+      
+      setAgendas(accessibleAgendas || []);
     } catch (error) {
-      console.error('Fetch agendas error:', error)
-      Alert.alert('Error', 'Failed to load agendas')
+      console.error('Fetch agendas error:', error);
+      Alert.alert('Error', 'Failed to load agendas');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [])
+  }, [session]);
 
   const fetchAgendaElements = useCallback(async (currentSession?: Session | null) => {
     const userSession = currentSession || session;
@@ -317,6 +292,7 @@ export default function HomeScreen() {
 
       if (joinError) throw joinError
 
+      // Wait for fetchAgendas to complete before closing dialog
       await fetchAgendas()
       setShowJoinDialog(false)
       setJoinAgendaData({ name: '', key: '' })

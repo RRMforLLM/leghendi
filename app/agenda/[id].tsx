@@ -3,9 +3,10 @@ import { StyleSheet, FlatList, Alert } from 'react-native';
 import { View, Text } from '@/components/Themed';
 import { Button, Input, Dialog } from '@rneui/themed';
 import { supabase } from '@/lib/supabase';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, router } from 'expo-router';
 import { AgendaWithSections, AgendaElement } from '@/types';
 import Colors from '@/constants/Colors';
+import { spacing } from '@/constants/Typography';
 import { useColorScheme } from '@/components/useColorScheme';
 
 // Custom dialog button without defaultProps warning
@@ -201,6 +202,42 @@ export default function AgendaScreen() {
     </View>
   );
 
+  const deleteAgenda = async (agendaId: string, creatorId: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user || session.user.id !== creatorId) {
+      Alert.alert("Error", "Only the creator can delete an agenda");
+      return;
+    }
+  
+    Alert.alert(
+      "Delete Agenda",
+      "This will permanently delete this agenda and all its contents. This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // With CASCADE, we only need to delete the agenda
+              const { error } = await supabase
+                .from("Agenda")
+                .delete()
+                .eq('id', agendaId);
+  
+              if (error) throw error;
+              router.replace("/");
+            } catch (error) {
+              console.error("Delete error:", error);
+              Alert.alert("Error", "Failed to delete agenda");
+            }
+          }
+        }
+      ]
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -226,6 +263,16 @@ export default function AgendaScreen() {
             title="+ Add Section"
             type="outline"
             onPress={() => setShowSectionDialog(true)}
+          />
+        )}
+        {isCreator && (
+          <Button
+            title="Delete Agenda"
+            onPress={() => deleteAgenda(agenda.id, agenda.creator_id)}
+            type="outline"
+            buttonStyle={{ borderColor: Colors[colorScheme].error }}
+            titleStyle={{ color: Colors[colorScheme].error }}
+            containerStyle={styles.deleteButton}
           />
         )}
       </View>
@@ -376,4 +423,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 20,
   },
+  deleteButton: {
+    marginTop: spacing.md,
+  }
 });
