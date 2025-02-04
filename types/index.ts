@@ -12,7 +12,6 @@ export interface AgendaElement {
   id: string;
   subject: string;
   details?: string;
-  emission: string;
   deadline: string;
   status: string;
   section_id: string;

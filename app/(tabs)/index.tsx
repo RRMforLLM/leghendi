@@ -9,6 +9,7 @@ import type { Session } from "@supabase/supabase-js"
 import Colors from "@/constants/Colors"
 import { typography, spacing } from "@/constants/Typography"
 import { useColorScheme } from "@/components/useColorScheme"
+import { useFocusEffect } from '@react-navigation/native';
 
 const DialogButton = ({ onPress, disabled = false, children }: {
   onPress: () => void;
@@ -165,49 +166,55 @@ export default function HomeScreen() {
     if (!userSession?.user?.id) return;
 
     try {
-      setLoading(true)
-      // First get urgent elements for this user
+      // Fetch urgent elements for this user
       const { data: urgentElements, error: urgentError } = await supabase
-        .from("Urgent Element")
+        .from('Urgent Element')
         .select(`
           element_id,
-          created_at,
-          element:element_id (
+          element:"Agenda Element" (
             id,
             subject,
             details,
-            emission,
             deadline,
             status,
-            section:section_id (
+            section:"Agenda Section" (
               id,
               name,
-              agenda:agenda_id (
+              agenda:Agenda (
                 id,
-                creator_id
+                name
               )
             )
           )
         `)
-        .eq("user_id", userSession.user.id)
-        .order('created_at', { ascending: false })
-        .limit(5)
+        .eq('user_id', userSession.user.id)
+        .order('created_at', { ascending: false });
 
-      if (urgentError) throw urgentError
+      if (urgentError) throw urgentError;
 
       // Filter out any null elements and map to the element structure
       const elements = urgentElements
-        ?.map(ue => ue.element)
-        .filter(Boolean)
+        ?.filter(ue => ue.element) // Filter out null elements
+        .map(ue => ({
+          ...ue.element,
+          agendaName: ue.element.section.agenda.name // Add agenda name for display
+        }));
 
-      setAgendaElements(elements || [])
+      setAgendaElements(elements || []);
     } catch (error) {
-      console.error('Error fetching urgent elements:', error)
-      Alert.alert("Error", "Failed to load urgent items")
-    } finally {
-      setLoading(false)
+      console.error('Error fetching urgent elements:', error);
+      Alert.alert('Error', 'Failed to load urgent items');
     }
-  }, [])
+  }, [session]);
+
+  // Focus listener to refresh data when returning to this screen
+  useFocusEffect(
+    useCallback(() => {
+      if (session?.user) {
+        fetchAgendaElements();
+      }
+    }, [session, fetchAgendaElements])
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true)
@@ -374,11 +381,17 @@ export default function HomeScreen() {
   const renderUrgentItem = ({ item }: { item: AgendaElement }) => (
     <View style={[styles.urgentCard, { backgroundColor: colors.card }]}>
       <Text style={[typography.h3, { color: colors.text }]}>{item.subject}</Text>
-      <Text style={[typography.caption, { color: colors.text }]}>
-        Due: {new Date(item.deadline).toLocaleDateString()}
+      <Text style={[typography.caption, { color: colors.placeholder }]}>
+        {item.agendaName} • Due: {new Date(item.deadline).toLocaleDateString()}
       </Text>
+      <Button
+        title="View Agenda"
+        type="clear"
+        titleStyle={{ color: colors.tint }}
+        onPress={() => router.push(`/agenda/${item.section.agenda.id}`)}
+      />
     </View>
-  )
+  );
 
   if (!session || !session.user) {
     return null // Will redirect via useEffect
@@ -386,16 +399,17 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Only show Urgent section if there are urgent elements */}
+      {/* Urgent section */}
       {!loading && agendaElements.length > 0 && (
         <View style={styles.section}>
-          <Text style={[typography.h2, { color: colors.text }]}>Urgent</Text>
+          <Text style={[typography.h2, { color: colors.text }]}>Urgent Items</Text>
           <FlatList
             data={agendaElements}
             renderItem={renderUrgentItem}
-            keyExtractor={(item) => item.id.toString()}
-            contentContainerStyle={styles.listContent}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            keyExtractor={item => item.id.toString()}
+            horizontal={false}
+            scrollEnabled={false}
+            contentContainerStyle={styles.urgentListContent}
           />
         </View>
       )}
@@ -622,5 +636,8 @@ const styles = StyleSheet.create({
   dialogContent: {
     paddingHorizontal: spacing.sm,
     paddingBottom: spacing.sm,
+  },
+  urgentListContent: {
+    marginTop: spacing.sm,
   },
 })

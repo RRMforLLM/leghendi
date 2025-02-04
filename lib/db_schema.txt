@@ -18,7 +18,6 @@ public schema:
 - id // int8
 - subject // varchar
 - details // text
-- emission // date
 - deadline // date
 - status // varchar
 - section_id // Foreign Key: public.Agenda Section.id ON DELETE CASCADE
@@ -34,13 +33,6 @@ public schema:
 - id // int8
 - user_id // Foreign Key: auth.users.id
 - agenda_id // Foreign Key: public.Agenda.id ON DELETE CASCADE
-- created_at // timestamptz
-
-"Element Comment"
-- id // int8
-- text // text
-- user_id // Foreign Key: auth.users.id
-- element_id // public.Agenda Element.id ON DELETE CASCADE
 - created_at // timestamptz
 
 "Completed Element"
@@ -65,7 +57,15 @@ public schema:
 - id // Foreign Key: auth.users.id
 - username // text
 - avatar_url // text
+- description // text
 - updated_at // timestamptz
+
+"Profile Comment"
+- id // int8
+- text // text
+- author_id // Foreign Key: auth.users.id
+- profile_id // Foreign Key: public.Profile.id ON DELETE CASCADE
+- created_at // timestamptz
 
 "Reaction"
 - id // int8
@@ -81,3 +81,10 @@ public schema:
 - amount // numeric
 - user_id // Foreign Key: auth.users.id
 - updated_at // timestamptz
+
+"Agenda Comment"
+- id // int8
+- text // text
+- author_id // Foreign Key: auth.users.id
+- agenda_id // Foreign Key: public.Agenda.id ON DELETE CASCADE
+- created_at // timestamptz
