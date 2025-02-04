@@ -1,10 +1,10 @@
-import { StyleSheet, FlatList, RefreshControl, Alert, Switch } from "react-native"
+import { StyleSheet, FlatList, RefreshControl, Alert, Switch, Pressable } from "react-native"
 import { View, Text } from "@/components/Themed"
 import { useEffect, useState, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
 import type { Agenda, AgendaElement } from "@/types"
 import { Button, Input, Dialog } from "@rneui/themed"
-import { router } from "expo-router"
+import { router, Link } from "expo-router"
 import type { Session } from "@supabase/supabase-js"
 import Colors from "@/constants/Colors"
 import { typography, spacing } from "@/constants/Typography"
@@ -402,15 +402,49 @@ export default function HomeScreen() {
       {/* Urgent section */}
       {!loading && agendaElements.length > 0 && (
         <View style={styles.section}>
-          <Text style={[typography.h2, { color: colors.text }]}>Urgent Items</Text>
-          <FlatList
-            data={agendaElements}
-            renderItem={renderUrgentItem}
-            keyExtractor={item => item.id.toString()}
-            horizontal={false}
-            scrollEnabled={false}
-            contentContainerStyle={styles.urgentListContent}
-          />
+          <View>
+            {agendaElements.slice(0, 2).map((item) => (
+              <View key={item.id}>
+                {renderUrgentItem({ item })}
+              </View>
+            ))}
+            {agendaElements.length > 2 && (
+              <Link 
+                href={{
+                  pathname: "/urgent",
+                  params: {
+                    items: encodeURIComponent(JSON.stringify(agendaElements.map(item => ({
+                      id: item.id,
+                      subject: item.subject,
+                      deadline: item.deadline,
+                      agendaName: item.agendaName,
+                      agendaId: item.section.agenda.id
+                    }))))
+                  }
+                }} 
+                asChild
+              >
+                <Pressable>
+                  {({ pressed }) => (
+                    <Text
+                      style={[
+                        typography.body,
+                        { 
+                          color: colors.text,
+                          opacity: pressed ? 0.5 : 1,
+                          textAlign: 'center',
+                          padding: spacing.sm,
+                          fontSize: 20 
+                        }
+                      ]}
+                    >
+                      •••
+                    </Text>
+                  )}
+                </Pressable>
+              </Link>
+            )}
+          </View>
         </View>
       )}
 
@@ -639,5 +673,56 @@ const styles = StyleSheet.create({
   },
   urgentListContent: {
     marginTop: spacing.sm,
+  },
+  modal: {
+    margin: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '90%',
+    padding: spacing.lg,
+    borderRadius: 12,
+    maxHeight: '90%',
+  },
+  bottomSheet: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    margin: 0,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    paddingTop: spacing.sm,
+    maxHeight: '80%',
+  },
+  bottomSheetContent: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+  },
+  bottomSheetHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#999',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: spacing.md,
+  },
+  modalContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.lg,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  separator: {
+    marginVertical: 30,
+    height: 1,
+    width: '80%',
   },
 })

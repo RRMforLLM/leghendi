@@ -22,6 +22,12 @@ interface AgendaComment {
   };
 }
 
+interface Member {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+}
+
 // Custom dialog button without defaultProps warning
 const DialogButton = ({ onPress, disabled = false, children }: {
   onPress: () => void;
@@ -63,10 +69,15 @@ export default function AgendaScreen() {
   const [collapsedSections, setCollapsedSections] = useState<{ [key: string]: boolean }>({});
   const [completedElements, setCompletedElements] = useState<{ [key: string]: boolean }>({});
   const [urgentElements, setUrgentElements] = useState<{ [key: string]: boolean }>({});
+  const [members, setMembers] = useState<Member[]>([]);
 
   const fetchAgenda = useCallback(async () => {
     try {
-      const [{ data: agenda, error }, { data: comments, error: commentsError }] = await Promise.all([
+      const [
+        { data: agenda, error }, 
+        { data: comments, error: commentsError },
+        { data: members, error: membersError }
+      ] = await Promise.all([
         supabase
           .from("Agenda")
           .select("*")
@@ -81,11 +92,40 @@ export default function AgendaScreen() {
             author:Profile!author_id(username, avatar_url)
           `)
           .eq('agenda_id', id)
-          .order('created_at', { ascending: false })
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('Agenda Member')
+          .select(`
+            user:Profile!user_id(
+              id,
+              username,
+              avatar_url
+            )
+          `)
+          .eq('agenda_id', id)
       ]);
 
       if (error) throw error;
       if (commentsError) throw commentsError;
+      if (membersError) throw membersError;
+
+      // Transform members data
+      const membersList = members?.map(m => ({
+        id: m.user.id,
+        username: m.user.username,
+        avatar_url: m.user.avatar_url
+      })) || [];
+
+      // Also fetch creator's profile
+      const { data: creator } = await supabase
+        .from('Profile')
+        .select('id, username, avatar_url')
+        .eq('id', agenda.creator_id)
+        .single();
+
+      if (creator) {
+        membersList.unshift(creator); // Add creator at the beginning
+      }
 
       // Check if current user is creator
       const { data: { session } } = await supabase.auth.getSession();
@@ -119,6 +159,7 @@ export default function AgendaScreen() {
         }))
       };
 
+      setMembers(membersList);
       setAgenda(agendaWithSections);
       setComments(comments || []);
     } catch (error) {
@@ -600,11 +641,13 @@ export default function AgendaScreen() {
                 type="clear"
                 onPress={() => setShowSectionDialog(true)}
               />
-              <Button
-                title="Delete Agenda"
-                type="clear"
-                titleStyle={{ color: theme.error }} // Add this to match the trash icon color
+              <Icon
+                name="trash"
+                type="font-awesome-5"
+                size={16}
+                color={theme.error}
                 onPress={() => deleteAgenda(agenda.id, agenda.creator_id)}
+                containerStyle={styles.deleteIcon}
               />
             </RNView>
           )}
@@ -620,6 +663,35 @@ export default function AgendaScreen() {
               <Text style={styles.emptyText}>No sections yet</Text>
             )}
           />
+        </View>
+
+        {/* Add Members List */}
+        <View style={[styles.membersSection, { marginTop: spacing.xl }]}>
+          <Text style={[typography.h3, { color: theme.text, marginBottom: spacing.sm }]}>
+            Members
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.membersList}
+          >
+            {members.map((member) => (
+              <View key={member.id} style={styles.memberCard}>
+                <Avatar
+                  size={60}
+                  rounded
+                  source={{ uri: member.avatar_url || DEFAULT_AVATAR }}
+                  containerStyle={styles.memberAvatar}
+                />
+                <Text 
+                  style={[typography.caption, { color: theme.text }]}
+                  numberOfLines={1}
+                >
+                  {member.username}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
         </View>
 
         <View style={styles.commentsSection}>
@@ -929,5 +1001,23 @@ const styles = StyleSheet.create({
   collapseIcon: {
     marginRight: spacing.sm,
     padding: spacing.xs,
+  },
+  membersSection: {
+    width: '100%',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
+  },
+  membersList: {
+    paddingHorizontal: spacing.sm,
+  },
+  memberCard: {
+    alignItems: 'center',
+    marginHorizontal: spacing.xs,
+    width: 70,
+  },
+  memberAvatar: {
+    marginBottom: spacing.xs,
   },
 });

@@ -57,6 +57,11 @@ function RootLayoutNav() {
           title: 'Settings',
           presentation: 'modal'
         }} />
+        <Stack.Screen name="urgent" options={{ 
+            title: 'Urgent Items',
+            presentation: 'modal'
+          }}
+        />
       </Stack>
     </ThemeProvider>
   );
