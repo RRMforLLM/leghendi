@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { StyleSheet, FlatList, Alert, View as RNView, ScrollView } from 'react-native';
+import { StyleSheet, FlatList, Alert, View as RNView, ScrollView, Pressable } from 'react-native';
 import { View, Text } from '@/components/Themed';
 import { Button, Input, Dialog, Icon, Avatar } from '@rneui/themed';
 import { supabase } from '@/lib/supabase';
@@ -678,20 +678,33 @@ export default function AgendaScreen() {
             contentContainerStyle={styles.membersList}
           >
             {members.map((member) => (
-              <View key={member.id} style={styles.memberCard}>
-                <Avatar
-                  size={60}
-                  rounded
-                  source={{ uri: member.avatar_url || DEFAULT_AVATAR }}
-                  containerStyle={styles.memberAvatar}
-                />
-                <Text 
-                  style={[typography.caption, { color: theme.text }]}
-                  numberOfLines={1}
-                >
-                  {member.username}
-                </Text>
-              </View>
+              <Pressable 
+                key={member.id} 
+                onPress={() => {
+                  // If clicking own profile, go to profile tab
+                  if (session?.user?.id === member.id) {
+                    router.push('/three');
+                    return;
+                  }
+                  // Otherwise open modal
+                  router.push(`/user-profile?id=${member.id}`);
+                }}
+              >
+                <View style={styles.memberCard}>
+                  <Avatar
+                    size={60}
+                    rounded
+                    source={{ uri: member.avatar_url || DEFAULT_AVATAR }}
+                    containerStyle={styles.memberAvatar}
+                  />
+                  <Text 
+                    style={[typography.caption, { color: theme.text }]}
+                    numberOfLines={1}
+                  >
+                    {member.username}
+                  </Text>
+                </View>
+              </Pressable>
             ))}
           </ScrollView>
         </View>
