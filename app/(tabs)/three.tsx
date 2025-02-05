@@ -341,6 +341,39 @@ export default function ProfileScreen() {
     }
   }
 
+  // Add this function to update reaction stats
+  const updateReactionStats = async () => {
+    if (!session?.user?.id) return;
+    
+    try {
+      const { data: reactionData } = await supabase
+        .from("Reaction")
+        .select('type')
+        .eq('recipient_id', session.user.id);
+
+      if (reactionData) {
+        const newStats = {
+          hugs: 0,
+          hearts: 0,
+          kisses: 0
+        };
+        
+        reactionData.forEach((reaction: { type: string }) => {
+          const type = reaction.type.toLowerCase().trim();
+          switch (type) {
+            case 'hug': newStats.hugs++; break;
+            case 'heart': newStats.hearts++; break;
+            case 'kiss': newStats.kisses++; break;
+          }
+        });
+
+        setReactionStats(newStats);
+      }
+    } catch (error) {
+      console.error('Error fetching reactions:', error);
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -415,6 +448,7 @@ export default function ProfileScreen() {
     isPostingComment={isPostingComment}
     commentText={commentText}  // Add these props
     setCommentText={setCommentText}
+    updateReactionStats={updateReactionStats}
   />
 }
 
@@ -434,6 +468,7 @@ function Account({
   isPostingComment,
   commentText,
   setCommentText,
+  updateReactionStats,
 }: { 
   session: Session
   signOut: () => Promise<void>
@@ -450,6 +485,7 @@ function Account({
   isPostingComment: boolean
   commentText: string
   setCommentText: (text: string) => void
+  updateReactionStats: () => Promise<void>;
 }) {
   const colorScheme = useColorScheme()
   const colors = Colors[colorScheme]
@@ -521,6 +557,20 @@ function Account({
       </Text>
     </RNView>
   )
+
+  // Add polling effect
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    // Poll every 5 seconds
+    const pollInterval = setInterval(updateReactionStats, 5000);
+
+    // Initial fetch
+    updateReactionStats();
+
+    // Cleanup interval on unmount
+    return () => clearInterval(pollInterval);
+  }, [session?.user?.id]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -630,15 +680,33 @@ function Account({
 
           <RNView style={styles.reactionStats}>
             <RNView style={styles.reactionItem}>
-              <Icon name="like1" type="ant-design" color={colors.error} size={20} />
+              <Icon 
+                name="like1" 
+                type="ant-design" 
+                color="#1877F2" // Facebook blue
+                size={30}
+                style={styles.iconStyle}
+              />
               <Text style={[typography.body, { color: colors.text }]}>{reactionStats.hugs}</Text>
             </RNView>
             <RNView style={styles.reactionItem}>
-              <Icon name="heart" type="font-awesome" color={colors.error} size={20} />
+              <Icon 
+                name="heart" 
+                type="font-awesome" 
+                color="#FF3B30" // iOS red
+                size={30}
+                style={styles.iconStyle}
+              />
               <Text style={[typography.body, { color: colors.text }]}>{reactionStats.hearts}</Text>
             </RNView>
             <RNView style={styles.reactionItem}>
-              <Icon name="kiss-wink-heart" type="font-awesome-5" color={colors.error} size={20} />
+              <Icon 
+                name="kiss-wink-heart" 
+                type="font-awesome-5" 
+                color="#FF2D55" // Vibrant pink
+                size={30}
+                style={styles.iconStyle}
+              />
               <Text style={[typography.body, { color: colors.text }]}>{reactionStats.kisses}</Text>
             </RNView>
           </RNView>
@@ -820,5 +888,9 @@ const styles = StyleSheet.create({
   },
   settingsIconWrapper: {
     padding: spacing.xs,
+  },
+  iconStyle: {
+    backgroundColor: 'transparent',
+    overflow: 'hidden',
   },
 })

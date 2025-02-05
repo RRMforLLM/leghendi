@@ -403,6 +403,7 @@ export default function AgendaScreen() {
               color={urgentElements[item.id] ? theme.error : theme.placeholder}
               onPress={() => toggleElementState(item.id, 'urgent')}
               containerStyle={styles.actionIcon}
+              hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
             />
             <Icon
               name="check-circle"
@@ -411,6 +412,7 @@ export default function AgendaScreen() {
               color={completedElements[item.id] ? theme.tint : theme.placeholder}
               onPress={() => toggleElementState(item.id, 'completed')}
               containerStyle={styles.actionIcon}
+              hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
             />
           </View>
         </View>

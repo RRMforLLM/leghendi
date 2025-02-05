@@ -58,10 +58,13 @@ function RootLayoutNav() {
           presentation: 'modal'
         }} />
         <Stack.Screen name="urgent" options={{ 
-            title: 'Urgent Items',
-            presentation: 'modal'
-          }}
-        />
+          title: 'Urgent Items',
+          presentation: 'modal'
+        }} />
+        <Stack.Screen name="user-profile" options={{ 
+          title: 'Profile',
+          presentation: 'modal'
+        }} />
       </Stack>
     </ThemeProvider>
   );

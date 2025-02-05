@@ -41,12 +41,6 @@ public schema:
 - element_id // public.Agenda Element.id ON DELETE CASCADE
 - created_at // timestamptz
 
-"Neutral Element"
-- id // int8
-- user_id // auth.users.id
-- element_id // public.Agenda Element.id ON DELETE CASCADE
-- created_at // timestamptz
-
 "Urgent Element"
 - id // int8
 - user_id // auth.users.id
