@@ -1,4 +1,4 @@
-import { StyleSheet, ScrollView, Platform, Alert, Animated, TouchableWithoutFeedback } from 'react-native';
+import { StyleSheet, ScrollView, Platform, Alert, Animated, TouchableWithoutFeedback, View as RNView } from 'react-native';
 import { View, Text } from '@/components/Themed';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useState, useEffect } from 'react';
@@ -133,7 +133,7 @@ const UserProfileScreen = () => {
     if (!id) return;
     
     try {
-      const [profileData, reactionsData, userReactionsData] = await Promise.all([
+      const [profileData, reactionsData, userReactionsData, commentsData] = await Promise.all([
         supabase
           .from("Profile")
           .select("*")
@@ -148,7 +148,18 @@ const UserProfileScreen = () => {
           .from('Reaction')
           .select('id, type')
           .eq('sender_id', userId)
-          .eq('recipient_id', id) : Promise.resolve({ data: [] })
+          .eq('recipient_id', id) : Promise.resolve({ data: [] }),
+        // Add this to fetch comments
+        supabase
+          .from('Profile Comment')
+          .select(`
+            id,
+            text,
+            created_at,
+            author:Profile!author_id(username, avatar_url)
+          `)
+          .eq('profile_id', id)
+          .order('created_at', { ascending: false })
       ]);
 
       if (profileData.error) throw profileData.error;
@@ -178,6 +189,7 @@ const UserProfileScreen = () => {
 
       setProfile(profileData.data);
       setUserReactions(userReactionsData.data || []);
+      setComments(commentsData.data || []); // Add this line to set comments
       // Update statistics all at once
       setStatistics(prev => ({
         ...prev,
@@ -328,16 +340,18 @@ const UserProfileScreen = () => {
             source={{ uri: profile.avatar_url || DEFAULT_AVATAR }}
             containerStyle={[styles.avatar, styles.avatarContainer]}
           />
-          <Text style={[typography.h2, { color: colors.text }]}>
-            {profile.username}
-          </Text>
+          <View style={styles.usernameContainer}>
+            <Text style={[typography.h2, { color: colors.text }]}>
+              {profile.username}
+            </Text>
+          </View>
           
           <View style={styles.descriptionContainer}>
             <Text style={[typography.body, { color: colors.text, textAlign: 'center' }]}>
               {profile.description || "No description"}
             </Text>
           </View>
-
+          
           <View style={styles.reactionStats}>
             <View style={styles.reactionItem}>
               <TouchableWithoutFeedback 
@@ -395,55 +409,66 @@ const UserProfileScreen = () => {
 
         <View style={styles.commentsSection}>
           <Text style={[typography.h3, { color: colors.text }]}>Comments</Text>
-          {currentUserId && (
-            <Input
-              placeholder="Add a comment..."
-              value={commentText}
-              onChangeText={setCommentText}
-              multiline
-              containerStyle={styles.commentInput}
-              inputStyle={{ color: colors.text }}
-              rightIcon={
-                <Icon
-                  name="send"
-                  type="font-awesome"
-                  color={commentText.trim() ? colors.text : colors.placeholder}
-                  size={20}
-                  onPress={postComment}
-                  style={{ opacity: commentText.trim() ? 1 : 0.5 }}
-                  pressableProps={{
-                    android_ripple: null,
-                    style: styles.pressableIcon,
-                    hitSlop: { top: 10, bottom: 10, left: 10, right: 10 }
-                  }}
-                />
-              }
-            />
-          )}
-
-          {comments.map((comment) => (
-            <View key={comment.id} style={[styles.commentCard, { backgroundColor: colors.card }]}>
-              <View style={styles.commentHeader}>
-                <View style={styles.commentAuthor}>
-                  <Avatar
-                    size={24}
-                    rounded
-                    source={{ uri: comment.author.avatar_url || DEFAULT_AVATAR }}
-                    containerStyle={styles.commentAvatar}
+          
+          <RNView style={styles.commentInputContainer}>
+            {currentUserId && (
+              <Input
+                placeholder="Add a comment..."
+                value={commentText}
+                onChangeText={setCommentText}
+                multiline
+                containerStyle={styles.commentInput}
+                inputStyle={{ color: colors.text }}
+                rightIcon={
+                  <Icon
+                    name="send"
+                    type="font-awesome"
+                    color={commentText.trim() ? colors.text : colors.placeholder}
+                    size={20}
+                    onPress={postComment}
+                    style={{ opacity: commentText.trim() ? 1 : 0.5 }}
+                    pressableProps={{
+                      android_ripple: null,
+                      style: styles.pressableIcon,
+                      hitSlop: { top: 10, bottom: 10, left: 10, right: 10 }
+                    }}
                   />
-                  <Text style={[typography.caption, { color: colors.text }]}>
-                    {comment.author.username}
-                  </Text>
-                </View>
-                <Text style={[typography.caption, { color: colors.placeholder }]}>
-                  {getRelativeTime(comment.created_at)}
-                </Text>
-              </View>
-              <Text style={[typography.body, { color: colors.text }]}>
-                {comment.text}
+                }
+              />
+            )}
+          </RNView>
+
+          <View style={styles.commentsList}>
+            {comments.length === 0 ? (
+              <Text style={[typography.body, { color: colors.placeholder }]}>
+                No comments yet. Be the first to comment!
               </Text>
-            </View>
-          ))}
+            ) : (
+              comments.map((comment) => (
+                <RNView key={comment.id} style={[styles.commentCard, { backgroundColor: colors.card }]}>
+                  <RNView style={styles.commentHeader}>
+                    <RNView style={styles.commentAuthor}>
+                      <Avatar
+                        size={24}
+                        rounded
+                        source={{ uri: comment.author.avatar_url || DEFAULT_AVATAR }}
+                        containerStyle={styles.commentAvatar}
+                      />
+                      <Text style={[typography.caption, { color: colors.text }]}>
+                        {comment.author.username}
+                      </Text>
+                    </RNView>
+                    <Text style={[typography.caption, { color: colors.placeholder }]}>
+                      {getRelativeTime(comment.created_at)}
+                    </Text>
+                  </RNView>
+                  <Text style={[typography.body, { color: colors.text }]}>
+                    {comment.text}
+                  </Text>
+                </RNView>
+              ))
+            )}
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -480,7 +505,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     gap: spacing.lg,
-    marginVertical: spacing.md,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
     paddingVertical: spacing.sm,
     width: '100%',
   },
@@ -488,6 +514,9 @@ const styles = StyleSheet.create({
     width: '100%',
     marginTop: spacing.lg,
     marginBottom: spacing.md,
+  },
+  commentsList: {
+    width: '100%',
   },
   commentCard: {
     padding: spacing.sm,
@@ -508,6 +537,9 @@ const styles = StyleSheet.create({
   commentAvatar: {
     marginRight: spacing.xs,
   },
+  commentInputContainer: {
+    marginBottom: spacing.md,
+  },
   commentInput: {
     marginBottom: -spacing.lg,
   },
@@ -518,9 +550,8 @@ const styles = StyleSheet.create({
   descriptionContainer: {
     width: '100%',
     alignItems: 'center',
-    marginTop: spacing.sm,
-    marginBottom: spacing.md,
-    minHeight: 40,
+    marginBottom: spacing.sm,
+    minHeight: 25,
     justifyContent: 'center',
     paddingHorizontal: spacing.md,
   },
@@ -548,5 +579,9 @@ const styles = StyleSheet.create({
   iconStyle: {
     backgroundColor: 'transparent',
     overflow: 'hidden',
+  },
+  usernameContainer: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
   },
 });

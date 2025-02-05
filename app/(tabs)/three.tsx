@@ -374,6 +374,30 @@ export default function ProfileScreen() {
     }
   };
 
+  // Move fetchComments here
+  const fetchComments = async () => {
+    if (!session?.user?.id) return;
+    
+    try {
+      const { data: commentsData, error } = await supabase
+        .from('Profile Comment')
+        .select(`
+          id,
+          text,
+          created_at,
+          author:Profile!author_id(username, avatar_url)
+        `)
+        .eq('profile_id', session.user.id)
+        .order('created_at', { ascending: false });
+
+      if (!error && commentsData) {
+        setComments(commentsData);
+      }
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -449,6 +473,7 @@ export default function ProfileScreen() {
     commentText={commentText}  // Add these props
     setCommentText={setCommentText}
     updateReactionStats={updateReactionStats}
+    fetchComments={fetchComments}  // Add this prop
   />
 }
 
@@ -469,6 +494,7 @@ function Account({
   commentText,
   setCommentText,
   updateReactionStats,
+  fetchComments,  // Add this to props
 }: { 
   session: Session
   signOut: () => Promise<void>
@@ -486,6 +512,7 @@ function Account({
   commentText: string
   setCommentText: (text: string) => void
   updateReactionStats: () => Promise<void>;
+  fetchComments: () => Promise<void>;  // Add this type
 }) {
   const colorScheme = useColorScheme()
   const colors = Colors[colorScheme]
@@ -567,6 +594,24 @@ function Account({
 
     // Initial fetch
     updateReactionStats();
+
+    // Cleanup interval on unmount
+    return () => clearInterval(pollInterval);
+  }, [session?.user?.id]);
+
+  // Update the polling effect to include comments
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    // Poll every 5 seconds for both reactions and comments
+    const pollInterval = setInterval(() => {
+      updateReactionStats();
+      fetchComments();
+    }, 5000);
+
+    // Initial fetch
+    updateReactionStats();
+    fetchComments();
 
     // Cleanup interval on unmount
     return () => clearInterval(pollInterval);

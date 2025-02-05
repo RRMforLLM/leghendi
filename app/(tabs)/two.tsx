@@ -23,16 +23,29 @@ export default function TabTwoScreen() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const fetchUsers = useCallback(async () => {
     try {
+      // First get the current user's ID
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+
       const { data, error } = await supabase
         .from('Profile')
         .select('id, username, avatar_url, description')
         .order('username');
 
       if (error) throw error;
-      setUsers(data || []);
+
+      // Sort the data to put current user's profile first
+      const sortedData = (data || []).sort((a, b) => {
+        if (a.id === user?.id) return -1;
+        if (b.id === user?.id) return 1;
+        return a.username.localeCompare(b.username);
+      });
+
+      setUsers(sortedData);
     } catch (error) {
       console.error('Error fetching users:', error);
     } finally {
@@ -51,12 +64,26 @@ export default function TabTwoScreen() {
   }, [fetchUsers]);
 
   const handleUserPress = (userId: string) => {
+    // If it's the current user's profile, redirect to profile tab
+    if (userId === currentUserId) {
+      router.push('/three');
+      return;
+    }
+    // Otherwise, open the modal
     router.push(`/user-profile?id=${userId}`);
   };
 
   const renderUser = ({ item }: { item: User }) => (
     <Pressable onPress={() => handleUserPress(item.id)}>
-      <View style={[styles.userCard, { backgroundColor: theme.card }]}>
+      <View style={[
+        styles.userCard,
+        { 
+          backgroundColor: theme.card,
+          // Optional: Add visual indication for user's own profile
+          borderWidth: item.id === currentUserId ? 1 : 0,
+          borderColor: theme.text
+        }
+      ]}>
         <View style={[styles.userInfo, { backgroundColor: theme.card }]}>
           <Avatar
             size={50}
