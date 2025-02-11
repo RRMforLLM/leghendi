@@ -74,24 +74,62 @@ const UserProfileScreen = () => {
 
   const animatePress = (type: 'hug' | 'heart' | 'kiss') => {
     Animated.sequence([
-      Animated.spring(scaleAnims[type], {
-        toValue: 0.6, // More dramatic scale down
+      // Initial quick shrink
+      Animated.timing(scaleAnims[type], {
+        toValue: 0.4,
+        duration: 150,
         useNativeDriver: true,
-        speed: 30, // Slower speed
-        bounciness: 20 // More bounce
       }),
-      Animated.spring(scaleAnims[type], {
-        toValue: 1.2, // Scale up beyond normal
-        useNativeDriver: true,
-        speed: 20,
-        bounciness: 20
-      }),
-      Animated.spring(scaleAnims[type], {
-        toValue: 1, // Back to normal
-        useNativeDriver: true,
-        speed: 20,
-        bounciness: 8
-      })
+      // Dramatic expansion with rotation and bounce
+      Animated.parallel([
+        Animated.spring(scaleAnims[type], {
+          toValue: 1.5,
+          useNativeDriver: true,
+          speed: 40,
+          bounciness: 25
+        }),
+        // Add rotation animation
+        Animated.sequence([
+          Animated.timing(new Animated.Value(0), {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.spring(new Animated.Value(0), {
+            toValue: 0,
+            useNativeDriver: true,
+            speed: 30,
+            bounciness: 8
+          })
+        ])
+      ]),
+      // Wobble effect
+      Animated.sequence([
+        Animated.timing(scaleAnims[type], {
+          toValue: 0.8,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnims[type], {
+          toValue: 1.2,
+          useNativeDriver: true,
+          speed: 35,
+          bounciness: 15
+        }),
+        Animated.spring(scaleAnims[type], {
+          toValue: 0.9,
+          useNativeDriver: true,
+          speed: 35,
+          bounciness: 15
+        }),
+        // Final settle to normal size
+        Animated.spring(scaleAnims[type], {
+          toValue: 1,
+          useNativeDriver: true,
+          speed: 25,
+          bounciness: 8
+        })
+      ])
     ]).start();
   };
 

@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
-import { StyleSheet, FlatList, Alert, View as RNView, ScrollView, Pressable } from 'react-native';
+import { useEffect, useState, useCallback, Alert, Modal } from 'react';
+import { StyleSheet, FlatList, View as RNView, ScrollView, Pressable } from 'react-native';
 import { View, Text } from '@/components/Themed';
 import { Button, Input, Dialog, Icon, Avatar } from '@rneui/themed';
 import { supabase } from '@/lib/supabase';
@@ -70,13 +70,18 @@ export default function AgendaScreen() {
   const [completedElements, setCompletedElements] = useState<{ [key: string]: boolean }>({});
   const [urgentElements, setUrgentElements] = useState<{ [key: string]: boolean }>({});
   const [members, setMembers] = useState<Member[]>([]);
+  const [showMemberDialog, setShowMemberDialog] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [editors, setEditors] = useState<string[]>([]); // Store editor IDs
+  const [isEditingMembers, setIsEditingMembers] = useState(false);
 
   const fetchAgenda = useCallback(async () => {
     try {
       const [
         { data: agenda, error }, 
         { data: comments, error: commentsError },
-        { data: members, error: membersError }
+        { data: members, error: membersError },
+        { data: editors, error: editorsError }  // Add editors fetch
       ] = await Promise.all([
         supabase
           .from("Agenda")
@@ -102,12 +107,17 @@ export default function AgendaScreen() {
               avatar_url
             )
           `)
+          .eq('agenda_id', id),
+        supabase
+          .from('Agenda Editor')
+          .select('user_id')
           .eq('agenda_id', id)
       ]);
 
       if (error) throw error;
       if (commentsError) throw commentsError;
       if (membersError) throw membersError;
+      if (editorsError) throw editorsError;
 
       // Transform members data
       const membersList = members?.map(m => ({
@@ -162,6 +172,10 @@ export default function AgendaScreen() {
       setMembers(membersList);
       setAgenda(agendaWithSections);
       setComments(comments || []);
+
+      // Store editor IDs
+      const editorIds = editors?.map(e => e.user_id) || [];
+      setEditors(editorIds);
     } catch (error) {
       console.error('Error fetching agenda:', error);
       Alert.alert('Error', 'Could not load agenda');
@@ -612,6 +626,53 @@ export default function AgendaScreen() {
     </RNView>
   )
 
+  const handleMemberAction = async (memberId: string, action: 'remove' | 'promote' | 'demote') => {
+    if (!isCreator) return;
+
+    try {
+      switch (action) {
+        case 'remove':
+          // Remove from both tables
+          await Promise.all([
+            supabase
+              .from('Agenda Member')
+              .delete()
+              .eq('user_id', memberId)
+              .eq('agenda_id', id),
+            supabase
+              .from('Agenda Editor')
+              .delete()
+              .eq('user_id', memberId)
+              .eq('agenda_id', id)
+          ]);
+          break;
+
+        case 'promote':
+          // Add to editors
+          await supabase
+            .from('Agenda Editor')
+            .insert({ user_id: memberId, agenda_id: id });
+          break;
+
+        case 'demote':
+          // Remove from editors
+          await supabase
+            .from('Agenda Editor')
+            .delete()
+            .eq('user_id', memberId)
+            .eq('agenda_id', id);
+          break;
+      }
+
+      setShowMemberDialog(false);
+      setSelectedMember(null);
+      await fetchAgenda();
+    } catch (error) {
+      console.error('Member action error:', error);
+      Alert.alert('Error', 'Failed to update member status');
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -669,9 +730,21 @@ export default function AgendaScreen() {
 
         {/* Add Members List */}
         <View style={[styles.membersSection, { marginTop: spacing.xl }]}>
-          <Text style={[typography.h3, { color: theme.text, marginBottom: spacing.sm }]}>
-            Members
-          </Text>
+          <RNView style={styles.sectionHeader}>
+            <Text style={[typography.h3, { color: theme.text }]}>
+              Members
+            </Text>
+            {isCreator && (
+              <Icon
+                name={isEditingMembers ? "check" : "edit"}
+                type="font-awesome"
+                size={16}
+                color={isEditingMembers ? theme.tint : theme.text}
+                onPress={() => setIsEditingMembers(!isEditingMembers)}
+                containerStyle={styles.editIcon}
+              />
+            )}
+          </RNView>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -679,18 +752,24 @@ export default function AgendaScreen() {
           >
             {members.map((member) => (
               <Pressable 
-                key={member.id} 
+                key={member.id}
                 onPress={() => {
-                  // If clicking own profile, go to profile tab
-                  if (session?.user?.id === member.id) {
+                  // Don't allow managing the creator
+                  if (isEditingMembers && isCreator && member.id !== agenda?.creator_id) {
+                    setSelectedMember(member);
+                    setShowMemberDialog(true);
+                  } else if (session?.user?.id === member.id) {
                     router.push('/three');
-                    return;
+                  } else {
+                    router.push(`/user-profile?id=${member.id}`);
                   }
-                  // Otherwise open modal
-                  router.push(`/user-profile?id=${member.id}`);
                 }}
               >
-                <View style={styles.memberCard}>
+                <View style={[
+                  styles.memberCard,
+                  isEditingMembers && isCreator && member.id !== agenda?.creator_id && 
+                    styles.memberCardEditing
+                ]}>
                   <Avatar
                     size={60}
                     rounded
@@ -702,11 +781,25 @@ export default function AgendaScreen() {
                     numberOfLines={1}
                   >
                     {member.username}
+                    {editors.includes(member.id) && ' (Editor)'}
+                    {member.id === agenda?.creator_id && ' (Creator)'}
                   </Text>
                 </View>
               </Pressable>
             ))}
           </ScrollView>
+
+          {/* Member Management Dialog */}
+          <Dialog
+            isVisible={showMemberDialog && !!selectedMember && selectedMember.id !== agenda?.creator_id}
+            onBackdropPress={() => {
+              setShowMemberDialog(false);
+              setSelectedMember(null);
+            }}
+            overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
+          >
+            {/* ...existing dialog content... */}
+          </Dialog>
         </View>
 
         <View style={styles.commentsSection}>
@@ -1034,5 +1127,25 @@ const styles = StyleSheet.create({
   },
   memberAvatar: {
     marginBottom: spacing.xs,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.sm,
+  },
+  dialogActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  memberCardEditing: {
+    opacity: 0.8,
+    borderWidth: 2,
+    borderColor: Colors.light.tint,
+    borderRadius: 8,
+    padding: spacing.xs,
   },
 });

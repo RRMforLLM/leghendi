@@ -1,10 +1,10 @@
 import { StatusBar } from 'expo-status-bar';
-import { Platform, StyleSheet, FlatList } from 'react-native';
+import { Platform, StyleSheet, FlatList, Pressable } from 'react-native';
 import { View, Text } from '@/components/Themed';
 import Colors from '@/constants/Colors';
 import { typography, spacing } from '@/constants/Typography';
 import { useColorScheme } from '@/components/useColorScheme';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, router } from 'expo-router';
 
 interface UrgentItem {
   id: number;
@@ -25,12 +25,21 @@ export default function UrgentScreen() {
     : [];
 
   const renderUrgentItem = ({ item }: { item: UrgentItem }) => (
-    <View style={[styles.urgentCard, { backgroundColor: colors.card }]}>
+    <Pressable 
+      onPress={() => router.push(`/agenda/${item.agendaId}`)}
+      style={({ pressed }) => [
+        styles.urgentCard,
+        { 
+          backgroundColor: colors.card,
+          opacity: pressed ? 0.7 : 1
+        }
+      ]}
+    >
       <Text style={[typography.h3, { color: colors.text }]}>{item.subject}</Text>
       <Text style={[typography.caption, { color: colors.placeholder }]}>
         {item.agendaName} • Due: {new Date(item.deadline).toLocaleDateString()}
       </Text>
-    </View>
+    </Pressable>
   );
 
   return (
