@@ -125,34 +125,17 @@ export default function HomeScreen() {
     try {
       setLoading(true);
       
-      // First get member and editor IDs
-      const [{ data: memberData }, { data: editorData }] = await Promise.all([
-        supabase
-          .from('Agenda Member')
-          .select('agenda_id')
-          .eq('user_id', userSession.user.id),
-        supabase
-          .from('Agenda Editor')
-          .select('agenda_id')
-          .eq('user_id', userSession.user.id)
-      ]);
-
-      const memberIds = memberData?.map(m => m.agenda_id) || [];
-      const editorIds = editorData?.map(e => e.agenda_id) || [];
-      
-      // Then fetch agendas with the collected IDs
-      const { data: accessibleAgendas, error } = await supabase
+      const { data: agendas, error } = await supabase
         .from("Agenda")
-        .select('*')
-        .or(
-          `creator_id.eq.${userSession.user.id},` +
-          `and(key_visible.eq.true,id.in.(${memberIds.join(',')})),` +
-          `id.in.(${editorIds.join(',')})`
-        );
+        .select(`
+          *,
+          sections:"Agenda Section"(*)
+        `) // Fixed: Use correct table name with quotes
+        .or(`creator_id.eq.${userSession.user.id},key_visible.eq.true`)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
-      
-      setAgendas(accessibleAgendas || []);
+      setAgendas(agendas || []);
     } catch (error) {
       console.error('Fetch agendas error:', error);
       Alert.alert('Error', 'Failed to load agendas');

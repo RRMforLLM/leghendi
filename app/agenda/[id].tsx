@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback, Alert, Modal } from 'react';
-import { StyleSheet, FlatList, View as RNView, ScrollView, Pressable } from 'react-native';
+import { useEffect, useState, useCallback } from 'react';
+import { StyleSheet, FlatList, View as RNView, ScrollView, Pressable, Alert, Platform } from 'react-native';
 import { View, Text } from '@/components/Themed';
 import { Button, Input, Dialog, Icon, Avatar } from '@rneui/themed';
 import { supabase } from '@/lib/supabase';
@@ -74,6 +74,7 @@ export default function AgendaScreen() {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [editors, setEditors] = useState<string[]>([]); // Store editor IDs
   const [isEditingMembers, setIsEditingMembers] = useState(false);
+  const [showCompletedButton, setShowCompletedButton] = useState(false);
 
   const fetchAgenda = useCallback(async () => {
     try {
@@ -161,13 +162,22 @@ export default function AgendaScreen() {
 
       if (sectionsError) throw sectionsError;
 
+      // Filter out completed elements for each section
+      const filteredSections = sectionsData.map(section => ({
+        ...section,
+        elements: (section.elements || []).filter(element => 
+          !completedElements[element.id]
+        )
+      }));
+
       const agendaWithSections: AgendaWithSections = {
         ...agenda,
-        sections: sectionsData.map(section => ({
-          ...section,
-          elements: section.elements || []
-        }))
+        sections: filteredSections
       };
+
+      // Check if there are any completed elements
+      const hasCompletedElements = Object.keys(completedElements).length > 0;
+      setShowCompletedButton(hasCompletedElements);
 
       setMembers(membersList);
       setAgenda(agendaWithSections);
@@ -182,7 +192,7 @@ export default function AgendaScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, completedElements]);
 
   useEffect(() => {
     let mounted = true;
@@ -673,6 +683,48 @@ export default function AgendaScreen() {
     }
   };
 
+  const navigateToCompleted = useCallback(async () => {
+    try {
+      // Fetch completed elements data with full agenda info
+      const { data: completedData } = await supabase
+        .from('Agenda Element')
+        .select(`
+          id,
+          subject,
+          deadline,
+          section:Agenda Section (
+            id,
+            agenda:Agenda (
+              id,
+              name
+            )
+          )
+        `)
+        .in('id', Object.keys(completedElements));
+
+      if (!completedData) return;
+
+      const formattedItems = completedData.map(item => ({
+        id: item.id,
+        subject: item.subject,
+        deadline: item.deadline,
+        agendaName: item.section.agenda.name,
+        agendaId: item.section.agenda.id,
+        sectionId: item.section.id
+      }));
+
+      router.push({
+        pathname: "/completed",
+        params: {
+          items: encodeURIComponent(JSON.stringify(formattedItems))
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching completed elements:', error);
+      Alert.alert('Error', 'Failed to load completed elements');
+    }
+  }, [completedElements]);
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -697,23 +749,25 @@ export default function AgendaScreen() {
       >
         <View style={styles.header}>
           <Text style={styles.title}>{agenda.name}</Text>
-          {isCreator && (
-            <RNView style={styles.headerActions}>
-              <Button
-                title="Add Section"
-                type="clear"
-                onPress={() => setShowSectionDialog(true)}
-              />
-              <Icon
-                name="trash"
-                type="font-awesome-5"
-                size={16}
-                color={theme.error}
-                onPress={() => deleteAgenda(agenda.id, agenda.creator_id)}
-                containerStyle={styles.deleteIcon}
-              />
-            </RNView>
-          )}
+          <RNView style={styles.headerActions}>
+            {isCreator && (
+              <RNView style={styles.headerActions}>
+                <Button
+                  title="Add Section"
+                  type="clear"
+                  onPress={() => setShowSectionDialog(true)}
+                />
+                <Icon
+                  name="trash"
+                  type="font-awesome-5"
+                  size={16}
+                  color={theme.error}
+                  onPress={() => deleteAgenda(agenda.id, agenda.creator_id)}
+                  containerStyle={styles.deleteIcon}
+                />
+              </RNView>
+            )}
+          </RNView>
         </View>
 
         <View style={styles.sectionsContainer}>
@@ -727,6 +781,31 @@ export default function AgendaScreen() {
             )}
           />
         </View>
+
+        {/* Add this before the members section */}
+        {Object.keys(completedElements).length > 0 && (
+          <Pressable
+            onPress={navigateToCompleted}
+            style={({ pressed }) => [
+              styles.completedButton,
+              { 
+                backgroundColor: theme.card,
+                opacity: pressed ? 0.7 : 1
+              }
+            ]}
+          >
+            <Icon
+              name="check-circle"
+              type="font-awesome-5"
+              size={16}
+              color={theme.tint}
+              containerStyle={{ marginRight: spacing.xs }}
+            />
+            <Text style={[typography.body, { color: theme.text }]}>
+              {`View Completed (${Object.keys(completedElements).length})`}
+            </Text>
+          </Pressable>
+        )}
 
         {/* Add Members List */}
         <View style={[styles.membersSection, { marginTop: spacing.xl }]}>
@@ -1147,5 +1226,19 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.tint,
     borderRadius: 8,
     padding: spacing.xs,
+  },
+  completedButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.md,
+    borderRadius: 12,
+    marginTop: spacing.md,
+    marginBottom: spacing.lg,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
 });
