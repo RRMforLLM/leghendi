@@ -108,12 +108,61 @@ export default function Settings() {
 
   const handleSignOut = async () => {
     try {
-      setLoading(true)
       const { error } = await supabase.auth.signOut()
       if (error) throw error
-      router.replace('/three')
+      // The root layout will handle the navigation and reload
     } catch (error) {
       Alert.alert("Error", "Failed to sign out")
+    }
+  }
+
+  const deleteAccount = async () => {
+    try {
+      setLoading(true)
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError) throw userError
+
+      Alert.alert(
+        "Delete Account",
+        "This will permanently delete your account and all associated data. This action cannot be undone. Are you sure?",
+        [
+          {
+            text: "Cancel",
+            style: "cancel"
+          },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+                if (sessionError) throw sessionError
+
+                // Use supabase functions directly instead of raw fetch
+                const { data, error: functionError } = await supabase.functions.invoke('delete-account', {
+                  method: 'POST',
+                })
+
+                if (functionError) {
+                  throw functionError
+                }
+
+                // Sign out and redirect
+                await supabase.auth.signOut()
+                router.replace('/')
+              } catch (error) {
+                console.error('Delete account error:', error)
+                Alert.alert('Error', 'Failed to delete account')
+              }
+            }
+          }
+        ]
+      )
+    } catch (error) {
+      console.error('Delete account error:', error)
+      Alert.alert('Error', 'Failed to delete account')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -211,6 +260,22 @@ export default function Settings() {
             titleStyle={{ color: colors.buttonText }}
           />
         </View>
+
+        <View style={styles.dangerZone}>
+          <Text style={[typography.h3, { color: colors.error, marginBottom: spacing.md }]}>
+            Danger Zone
+          </Text>
+          <Button
+            title="Delete Account"
+            onPress={deleteAccount}
+            containerStyle={[styles.button, styles.deleteButton]}
+            buttonStyle={{ backgroundColor: colors.error }}
+            titleStyle={{ color: colors.buttonText }}
+          />
+          <Text style={[typography.caption, { color: colors.placeholder, marginTop: spacing.xs }]}>
+            This action cannot be undone. All your data will be permanently deleted.
+          </Text>
+        </View>
       </View>
     </ScrollView>
   )
@@ -249,5 +314,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
-  }
+  },
+  dangerZone: {
+    marginTop: spacing.xl * 2,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: '#ff0000',
+    borderRadius: 8,
+    opacity: 0.8,
+  },
+  deleteButton: {
+    marginBottom: spacing.xs,
+  },
 })

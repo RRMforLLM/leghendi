@@ -464,12 +464,6 @@ const UserProfileScreen = () => {
                     color={commentText.trim() ? colors.text : colors.placeholder}
                     size={20}
                     onPress={postComment}
-                    style={{ opacity: commentText.trim() ? 1 : 0.5 }}
-                    pressableProps={{
-                      android_ripple: null,
-                      style: styles.pressableIcon,
-                      hitSlop: { top: 10, bottom: 10, left: 10, right: 10 }
-                    }}
                   />
                 }
               />
@@ -477,34 +471,33 @@ const UserProfileScreen = () => {
           </RNView>
 
           <View style={styles.commentsList}>
-            {comments.length === 0 ? (
+            {comments.map((comment) => (
+              <View key={comment.id.toString()} style={[styles.commentCard, { backgroundColor: colors.card }]}>
+                <RNView style={styles.commentHeader}>
+                  <RNView style={styles.commentAuthor}>
+                    <Avatar
+                      size={24}
+                      rounded
+                      source={{ uri: comment.author.avatar_url || DEFAULT_AVATAR }}
+                      containerStyle={styles.commentAvatar}
+                    />
+                    <Text style={[typography.caption, { color: colors.text }]}>
+                      {comment.author.username}
+                    </Text>
+                  </RNView>
+                  <Text style={[typography.caption, { color: colors.placeholder }]}>
+                    {getRelativeTime(comment.created_at)}
+                  </Text>
+                </RNView>
+                <Text style={[typography.body, { color: colors.text }]}>
+                  {comment.text}
+                </Text>
+              </View>
+            ))}
+            {comments.length === 0 && (
               <Text style={[typography.body, { color: colors.placeholder }]}>
                 No comments yet. Be the first to comment!
               </Text>
-            ) : (
-              comments.map((comment) => (
-                <RNView key={comment.id} style={[styles.commentCard, { backgroundColor: colors.card }]}>
-                  <RNView style={styles.commentHeader}>
-                    <RNView style={styles.commentAuthor}>
-                      <Avatar
-                        size={24}
-                        rounded
-                        source={{ uri: comment.author.avatar_url || DEFAULT_AVATAR }}
-                        containerStyle={styles.commentAvatar}
-                      />
-                      <Text style={[typography.caption, { color: colors.text }]}>
-                        {comment.author.username}
-                      </Text>
-                    </RNView>
-                    <Text style={[typography.caption, { color: colors.placeholder }]}>
-                      {getRelativeTime(comment.created_at)}
-                    </Text>
-                  </RNView>
-                  <Text style={[typography.body, { color: colors.text }]}>
-                    {comment.text}
-                  </Text>
-                </RNView>
-              ))
             )}
           </View>
         </View>

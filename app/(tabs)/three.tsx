@@ -109,21 +109,40 @@ export default function ProfileScreen() {
 
       if (profileData.error) throw profileData.error
       
-      if (profileData.data) {
+      if (!profileData.data) {
+        // Get email from session and extract username
+        const emailUsername = session?.user?.email?.split('@')[0] || 'user'
+        
+        // Create profile with username
+        const { error: createError } = await supabase
+          .from("Profile")
+          .insert({ 
+            id: userId,
+            username: emailUsername  // Set the username explicitly
+          })
+          .select()
+          .single()
+
+        if (createError) throw createError
+        
+        // Fetch the profile again to get DB-generated values
+        const { data: newProfile, error: refetchError } = await supabase
+          .from("Profile")
+          .select("username, avatar_url, description")
+          .eq("id", userId)
+          .single()
+          
+        if (refetchError) throw refetchError
+        
+        if (newProfile) {
+          setUsername(newProfile.username || '')
+          setAvatarUrl(newProfile.avatar_url)
+          setDescription(newProfile.description || '')
+        }
+      } else {
         setUsername(profileData.data.username || '')
         setAvatarUrl(profileData.data.avatar_url)
         setDescription(profileData.data.description || '')
-      } else {
-        // Create profile if it doesn't exist
-        const { error: createError } = await supabase
-          .from("Profile")
-          .insert({
-            id: userId,
-            username: email?.split('@')[0] || 'User',
-            avatar_url: null,
-            description: ''
-          })
-        if (createError) throw createError
       }
 
       // Calculate reaction counts
@@ -162,29 +181,21 @@ export default function ProfileScreen() {
 
     setAuthLoading(true)
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
-      if (error) throw error
-      
-      // Create profile if it doesn't exist
-      if (data.user) {
-        const { error: profileError } = await supabase
-          .from("Profile")
-          .upsert({
-            id: data.user.id,
-            username: data.user.email?.split('@')[0],
-            avatar_url: null,
-            updated_at: new Date().toISOString()
-          })
-
-        if (profileError) throw profileError
+      if (error) {
+        // Properly throw the error so it can be caught
+        throw error
       }
+      // Success case - no need to do anything else as the auth state change will trigger
     } catch (error) {
-      console.error("Sign in error:", error)
-      Alert.alert("Error", "Failed to sign in")
+      // Proper error handling
+      const message = error?.message || 'An error occurred during sign in'
+      console.error("Sign in error:", message)
+      Alert.alert("Error", message)
     } finally {
       setAuthLoading(false)
     }
@@ -201,23 +212,19 @@ export default function ProfileScreen() {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: null, // Disable email confirmation
+          data: {
+            email_confirmed: true // Mark as confirmed immediately
+          }
+        }
       })
 
       if (error) throw error
       
-      if (data.user) {
-        // Create initial profile without created_at (it's auto-set by DB)
-        const { error: profileError } = await supabase
-          .from("Profile")
-          .insert({
-            id: data.user.id,
-            username: data.user.email?.split('@')[0] || 'User',
-            avatar_url: null
-          })
-
-        if (profileError) throw profileError
-        
-        Alert.alert("Success", "Please check your email to verify your account")
+      // User should be logged in immediately now
+      if (!data.session) {
+        throw new Error("Failed to create session")
       }
     } catch (error) {
       console.error("Sign up error:", error)
@@ -632,7 +639,7 @@ function Account({
       </RNView>
       
       <ScrollView 
-        showsVerticalScrollIndicator={false}
+        showsconst renderVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.profileContainer}>
@@ -775,7 +782,7 @@ function Account({
                     size={20}
                     onPress={() => {
                       if (session?.user?.id && commentText.trim()) {
-                        onPostComment(session.user.id, commentText)
+                        onPostComment(session.user.id, commentText);
                       }
                     }}
                     style={{ opacity: commentText.trim() ? 1 : 0.5 }}
@@ -784,18 +791,34 @@ function Account({
               />
             </RNView>
 
-            {/* Replace FlatList with manual mapping */}
             <View style={styles.commentsList}>
-              {comments.length === 0 ? (
+              {comments.map((comment) => (
+                <View key={comment.id.toString()} style={[styles.commentContainer, { backgroundColor: colors.card }]}>
+                  <RNView style={styles.commentHeader}>
+                    <RNView style={styles.commentAuthor}>
+                      <Avatar
+                        size={24}
+                        rounded
+                        source={{ uri: comment.author.avatar_url || DEFAULT_AVATAR }}
+                        containerStyle={styles.commentAvatar}
+                      />
+                      <Text style={[typography.caption, { color: colors.text }]}>
+                        {comment.author.username}
+                      </Text>
+                    </RNView>
+                    <Text style={[typography.caption, { color: colors.placeholder }]}>
+                      {getRelativeTime(comment.created_at)}
+                    </Text>
+                  </RNView>
+                  <Text style={[typography.body, { color: colors.text }]}>
+                    {comment.text}
+                  </Text>
+                </View>
+              ))}
+              {comments.length === 0 && (
                 <Text style={[typography.body, { color: colors.placeholder }]}>
                   No comments yet. Be the first to comment!
                 </Text>
-              ) : (
-                comments.map(item => (
-                  <View key={item.id.toString()}>
-                    {renderComment({ item })}
-                  </View>
-                ))
               )}
             </View>
           </View>

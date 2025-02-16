@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { StyleSheet, FlatList, View as RNView, ScrollView, Pressable, Alert, Platform } from 'react-native';
+import { StyleSheet, FlatList, View as RNView, ScrollView, Pressable, Alert, Platform, Modal } from 'react-native';
 import { View, Text } from '@/components/Themed';
 import { Button, Input, Dialog, Icon, Avatar } from '@rneui/themed';
 import { supabase } from '@/lib/supabase';
@@ -212,7 +212,7 @@ export default function AgendaScreen() {
     });
   }, []);
 
-  const fetchElementStates = useCallback(async () => {
+  const fetchElementStates = async () => {
     if (!session?.user?.id) return;
     
     try {
@@ -220,7 +220,8 @@ export default function AgendaScreen() {
         supabase
           .from('Completed Element')
           .select('element_id')
-          .eq('user_id', session.user.id),
+          .eq('user_id', session.user.id)
+          .eq('agenda_id', id), // Add agenda_id filter here
         supabase
           .from('Urgent Element')
           .select('element_id')
@@ -242,40 +243,7 @@ export default function AgendaScreen() {
     } catch (error) {
       console.error('Error fetching element states:', error);
     }
-  }, [session?.user?.id]);
-
-  useEffect(() => {
-    fetchElementStates();
-  }, [fetchElementStates]);
-
-  // Add realtime subscription for urgent/completed elements
-  useEffect(() => {
-    if (!session?.user?.id) return;
-
-    const subscription = supabase
-      .channel('element_states_changes')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'Urgent Element',
-        filter: `user_id=eq.${session.user.id}`
-      }, () => {
-        fetchElementStates();
-      })
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'Completed Element',
-        filter: `user_id=eq.${session.user.id}`
-      }, () => {
-        fetchElementStates();
-      })
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [session?.user?.id, fetchElementStates]);
+  };
 
   const addSection = async () => {
     try {
@@ -373,12 +341,6 @@ export default function AgendaScreen() {
     const stateMap = type === 'completed' ? completedElements : urgentElements;
     const setState = type === 'completed' ? setCompletedElements : setUrgentElements;
 
-    // Optimistically update the UI
-    setState(prev => ({
-      ...prev,
-      [elementId]: !prev[elementId]
-    }));
-
     try {
       if (stateMap[elementId]) {
         // Remove the state
@@ -395,20 +357,20 @@ export default function AgendaScreen() {
           .from(table)
           .insert({
             user_id: session.user.id,
-            element_id: elementId
+            element_id: elementId,
+            ...(type === 'completed' ? { agenda_id: id } : {})
           });
 
         if (error) throw error;
       }
 
-      // Fetch fresh state after successful update
-      fetchElementStates();
+      // After successful toggle, refresh both element states and agenda
+      await Promise.all([
+        fetchElementStates(),
+        fetchAgenda()
+      ]);
+
     } catch (error) {
-      // Revert UI on error
-      setState(prev => ({
-        ...prev,
-        [elementId]: stateMap[elementId] || false
-      }));
       console.error(`Error toggling ${type} state:`, error);
       Alert.alert('Error', `Failed to update element state`);
     }
@@ -685,45 +647,59 @@ export default function AgendaScreen() {
 
   const navigateToCompleted = useCallback(async () => {
     try {
-      // Fetch completed elements data with full agenda info
-      const { data: completedData } = await supabase
-        .from('Agenda Element')
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) return;
+
+      const { data: completedData, error } = await supabase
+        .from('Completed Element')
         .select(`
-          id,
-          subject,
-          deadline,
-          section:Agenda Section (
+          element_id,
+          element:"Agenda Element"!inner (
             id,
-            agenda:Agenda (
+            subject,
+            deadline,
+            section:"Agenda Section"!inner (
               id,
-              name
+              name,
+              agenda:Agenda!inner (
+                id,
+                name
+              )
             )
           )
         `)
-        .in('id', Object.keys(completedElements));
+        .eq('user_id', session.user.id)
+        .eq('agenda_id', id);
 
-      if (!completedData) return;
+      if (error) throw error;
+      if (!completedData?.length) {
+        Alert.alert('No completed items', 'You have no completed items in this agenda');
+        return;
+      }
 
       const formattedItems = completedData.map(item => ({
-        id: item.id,
-        subject: item.subject,
-        deadline: item.deadline,
-        agendaName: item.section.agenda.name,
-        agendaId: item.section.agenda.id,
-        sectionId: item.section.id
+        id: item.element.id,
+        elementId: item.element_id, // Add this to store the actual element_id
+        subject: item.element.subject,
+        deadline: item.element.deadline,
+        agendaName: item.element.section.agenda.name,
+        agendaId: item.element.section.agenda.id,
+        sectionId: item.element.section.id
       }));
 
+      // Instead of showing modal, navigate to completed screen
       router.push({
         pathname: "/completed",
         params: {
           items: encodeURIComponent(JSON.stringify(formattedItems))
         }
       });
+
     } catch (error) {
       console.error('Error fetching completed elements:', error);
       Alert.alert('Error', 'Failed to load completed elements');
     }
-  }, [completedElements]);
+  }, [id]);
 
   if (loading) {
     return (
@@ -783,11 +759,11 @@ export default function AgendaScreen() {
         </View>
 
         {/* Add this before the members section */}
-        {Object.keys(completedElements).length > 0 && (
+        {completedElements && Object.keys(completedElements).length > 0 && (
           <Pressable
             onPress={navigateToCompleted}
             style={({ pressed }) => [
-              styles.completedButton,
+              styles.actionButton,
               { 
                 backgroundColor: theme.card,
                 opacity: pressed ? 0.7 : 1
@@ -1227,7 +1203,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: spacing.xs,
   },
-  completedButton: {
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

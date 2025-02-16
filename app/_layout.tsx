@@ -1,10 +1,12 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';  // Add useRouter here
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import { supabase } from '@/lib/supabase';
+import * as Updates from 'expo-updates';
 
 import { useColorScheme } from '@/components/useColorScheme';
 
@@ -26,6 +28,7 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     ...FontAwesome.font,
   });
+  const router = useRouter();
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
@@ -37,6 +40,25 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [loaded]);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
+      if (event === 'SIGNED_OUT') {
+        // Perform a full reload of the app
+        if (__DEV__) {
+          router.replace('/three');
+          await Updates.reloadAsync();
+        } else {
+          // In production, use this method
+          await Updates.reloadAsync();
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   if (!loaded) {
     return null;
@@ -62,6 +84,10 @@ function RootLayoutNav() {
         }} />
         <Stack.Screen name="user-profile" options={{ 
           title: 'Profile',
+          presentation: 'modal'
+        }} />
+        <Stack.Screen name="completed" options={{ 
+          title: 'Completed Items',
           presentation: 'modal'
         }} />
       </Stack>

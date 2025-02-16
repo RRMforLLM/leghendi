@@ -33,6 +33,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [key, setKey] = useState("")
   const [agendaElements, setAgendaElements] = useState<AgendaElement[]>([])
+  const [completedElements, setCompletedElements] = useState<AgendaElement[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [newAgendaData, setNewAgendaData] = useState({
@@ -49,6 +50,7 @@ export default function HomeScreen() {
   const resetState = useCallback(() => {
     setAgendas([])
     setAgendaElements([])
+    setCompletedElements([])
     setKey("")
     setShowCreateDialog(false)
     setShowJoinDialog(false)
@@ -56,67 +58,86 @@ export default function HomeScreen() {
     setJoinAgendaData({ name: '', key: '' })
   }, [])
 
+  // Add this function to clear any Supabase cache
+  const clearSupabaseCache = useCallback(async () => {
+    try {
+      // Remove all data from Supabase cache for these tables
+      await Promise.all([
+        supabase.auth.refreshSession(), // Refresh the auth session
+        supabase.from('Agenda').select().abortSignal, // Clear agenda cache
+        supabase.from('Agenda Section').select().abortSignal, // Clear sections cache
+        supabase.from('Agenda Element').select().abortSignal, // Clear elements cache
+      ]);
+    } catch (error) {
+      console.log('Cache clear error:', error);
+    }
+  });
+
+  // Remove the session dependency from initialize effect and handle everything in auth change
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth state changed:', event, session?.user?.email)
-      
+    supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT') {
-        resetState()
-        router.replace('/three')
-        return
+        await clearSupabaseCache();
+        resetState();
+        setSession(null); // Add this
+        router.replace('/three');
+        return;
       }
 
-      if (event === 'SIGNED_IN') {
-        resetState()
-        setSession(session)
-        if (session?.user) {
-          Promise.all([
+      if (session) {
+        setSession(session);
+        setLoading(true);
+
+        try {
+          await Promise.all([
             fetchAgendas(session),
             fetchAgendaElements(session)
-          ]).finally(() => setLoading(false))
+          ]);
+        } catch (error) {
+          console.error('Auth change error:', error);
+          Alert.alert('Error', 'Failed to load data');
+        } finally {
+          setLoading(false);
         }
       }
-    })
+    });
+  }, []); // Empty dependency array
 
-    return () => {
-      subscription?.unsubscribe()
-    }
-  }, [resetState, fetchAgendas, fetchAgendaElements])
-
+  // Modify the initialize effect to only run once on mount
   useEffect(() => {
-    let mounted = true
+    let mounted = true;
 
     async function initialize() {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!mounted) return
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
         
-        if (!session?.user) {
-          router.replace('/three')
-          return
+        if (!session) {
+          router.replace('/three');
+          return;
         }
 
-        setSession(session)
+        setSession(session);
+        setLoading(true);
         await Promise.all([
           fetchAgendas(session),
           fetchAgendaElements(session)
-        ])
+        ]);
       } catch (error) {
-        console.error('Init error:', error)
+        console.error('Init error:', error);
         if (mounted) {
-          Alert.alert('Error', 'Failed to initialize')
+          Alert.alert('Error', 'Failed to initialize');
         }
       } finally {
         if (mounted) {
-          setLoading(false)
+          setLoading(false);
         }
       }
     }
 
-    resetState()
-    initialize()
-    return () => { mounted = false }
-  }, [resetState])
+    initialize();
+    return () => { mounted = false };
+  }, []); // Empty dependency array - only run once on mount
 
   const fetchAgendas = useCallback(async (currentSession?: Session | null) => {
     const userSession = currentSession || session;
@@ -125,17 +146,34 @@ export default function HomeScreen() {
     try {
       setLoading(true);
       
-      const { data: agendas, error } = await supabase
-        .from("Agenda")
-        .select(`
-          *,
-          sections:"Agenda Section"(*)
-        `) // Fixed: Use correct table name with quotes
-        .or(`creator_id.eq.${userSession.user.id},key_visible.eq.true`)
-        .order('created_at', { ascending: false });
+      // First get agendas where user is creator or member
+      const [{ data: ownedAgendas }, { data: memberAgendas }] = await Promise.all([
+        supabase
+          .from("Agenda")
+          .select(`*, sections:"Agenda Section"(*)`)
+          .eq('creator_id', userSession.user.id),
+        supabase
+          .from("Agenda Member")
+          .select(`
+            agenda:Agenda!inner(
+              *,
+              sections:"Agenda Section"(*)
+            )
+          `)
+          .eq('user_id', userSession.user.id)
+      ]);
 
-      if (error) throw error;
-      setAgendas(agendas || []);
+      // Combine and deduplicate the results
+      const combined = [
+        ...(ownedAgendas || []),
+        ...(memberAgendas?.map(m => m.agenda) || [])
+      ];
+
+      const uniqueAgendas = Array.from(new Map(
+        combined.map(item => [item.id, item])
+      ).values());
+
+      setAgendas(uniqueAgendas);
     } catch (error) {
       console.error('Fetch agendas error:', error);
       Alert.alert('Error', 'Failed to load agendas');
@@ -184,6 +222,43 @@ export default function HomeScreen() {
         }));
 
       setAgendaElements(elements || []);
+
+      // Add this after fetching urgent elements in fetchAgendaElements
+      const { data: completedElements, error: completedError } = await supabase
+        .from('Completed Element')
+        .select(`
+          element_id,
+          element:"Agenda Element" (
+            id,
+            subject,
+            details,
+            deadline,
+            status,
+            section:"Agenda Section" (
+              id,
+              name,
+              agenda:Agenda (
+                id,
+                name
+              )
+            )
+          )
+        `)
+        .eq('user_id', userSession.user.id)
+        .order('created_at', { ascending: false });
+
+      if (completedError) throw completedError;
+
+      // Filter and map completed elements
+      const completedItems = completedElements
+        ?.filter(ce => ce.element)
+        .map(ce => ({
+          ...ce.element,
+          agendaName: ce.element.section.agenda.name
+        }));
+
+      // Update the state
+      setCompletedElements(completedItems || []);
     } catch (error) {
       console.error('Error fetching urgent elements:', error);
       Alert.alert('Error', 'Failed to load urgent items');
@@ -194,9 +269,12 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       if (session?.user) {
-        fetchAgendaElements();
+        Promise.all([
+          fetchAgendas(),
+          fetchAgendaElements()
+        ]);
       }
-    }, [session, fetchAgendaElements])
+    }, [session?.user?.id])
   );
 
   const onRefresh = useCallback(() => {

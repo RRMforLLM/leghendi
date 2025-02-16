@@ -5,7 +5,6 @@ import Colors from '@/constants/Colors';
 import { typography, spacing } from '@/constants/Typography';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useLocalSearchParams, router } from 'expo-router';
-import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
 interface CompletedItem {
@@ -14,14 +13,13 @@ interface CompletedItem {
   deadline: string;
   agendaName: string;
   agendaId: string;
-  sectionId: string;
+  elementId: number; // Add this to store the actual element_id
 }
 
 export default function CompletedScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme];
   const { items } = useLocalSearchParams();
-  const [refreshing, setRefreshing] = useState(false);
   
   const completedItems: CompletedItem[] = items 
     ? JSON.parse(decodeURIComponent(items as string))
@@ -40,12 +38,17 @@ export default function CompletedScreen() {
 
       if (error) throw error;
 
-      // Navigate back to the agenda the item belongs from
-      const item = completedItems.find(i => i.id === elementId);
-      if (item) {
-        router.replace(`/agenda/${item.agendaId}`);
-      } else {
+      // Update the local state by removing the uncompleted item
+      const updatedItems = completedItems.filter(i => i.elementId !== elementId);
+      
+      if (updatedItems.length === 0) {
+        // If no items left, go back
         router.back();
+      } else {
+        // Update the URL with remaining items
+        router.setParams({
+          items: encodeURIComponent(JSON.stringify(updatedItems))
+        });
       }
     } catch (error) {
       console.error('Error uncompleting element:', error);
@@ -55,7 +58,7 @@ export default function CompletedScreen() {
 
   const renderCompletedItem = ({ item }: { item: CompletedItem }) => (
     <Pressable 
-      onPress={() => handleUncomplete(item.id)}
+      onPress={() => handleUncomplete(item.elementId)}
       style={({ pressed }) => [
         styles.completedCard,
         { 
