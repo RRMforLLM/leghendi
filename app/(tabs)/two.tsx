@@ -92,11 +92,18 @@ export default function TabTwoScreen() {
             containerStyle={styles.avatar}
           />
           <View style={[styles.userTextContainer, { backgroundColor: theme.card }]}>
-            <Text style={[typography.h3, { color: theme.text }]}>{item.username}</Text>
+            <Text 
+              style={[typography.h3, { color: theme.text }]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {item.username}
+            </Text>
             {item.description && (
               <Text 
                 style={[typography.body, { color: theme.text, opacity: 0.7 }]}
-                numberOfLines={2}
+                numberOfLines={1}
+                ellipsizeMode="tail"
               >
                 {item.description}
               </Text>

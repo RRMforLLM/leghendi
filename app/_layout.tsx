@@ -90,6 +90,10 @@ function RootLayoutNav() {
           title: 'Completed Items',
           presentation: 'modal'
         }} />
+        <Stack.Screen name="members-management" options={{ 
+          title: 'Manage Members',
+          presentation: 'modal'
+        }} />
       </Stack>
     </ThemeProvider>
   );

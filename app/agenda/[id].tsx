@@ -9,6 +9,7 @@ import Colors from '@/constants/Colors';
 import { typography, spacing } from '@/constants/Typography';  // Add typography import
 import { useColorScheme } from '@/components/useColorScheme';
 import { getRelativeTime } from '@/utils/dateUtils';
+import { useFocusEffect } from '@react-navigation/native'; // Add this import
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg"
 
@@ -186,13 +187,16 @@ export default function AgendaScreen() {
       // Store editor IDs
       const editorIds = editors?.map(e => e.user_id) || [];
       setEditors(editorIds);
+
+      // Add this line to fetch element states when agenda loads
+      await fetchElementStates();
     } catch (error) {
       console.error('Error fetching agenda:', error);
       Alert.alert('Error', 'Could not load agenda');
     } finally {
       setLoading(false);
     }
-  }, [id, completedElements]);
+  }, [id]); // Remove completedElements from dependencies
 
   useEffect(() => {
     let mounted = true;
@@ -212,6 +216,15 @@ export default function AgendaScreen() {
     });
   }, []);
 
+  // Add useFocusEffect to refresh states when returning to the screen
+  useFocusEffect(
+    useCallback(() => {
+      if (session?.user?.id) {
+        fetchElementStates();
+      }
+    }, [session?.user?.id])
+  );
+
   const fetchElementStates = async () => {
     if (!session?.user?.id) return;
     
@@ -228,15 +241,17 @@ export default function AgendaScreen() {
           .eq('user_id', session.user.id)
       ]);
 
-      const completedMap = (completed || []).reduce((acc, item) => ({
-        ...acc,
-        [item.element_id]: true
-      }), {});
+      // Reset states before setting new ones
+      const completedMap = {};
+      const urgentMap = {};
 
-      const urgentMap = (urgent || []).reduce((acc, item) => ({
-        ...acc,
-        [item.element_id]: true
-      }), {});
+      (completed || []).forEach(item => {
+        completedMap[item.element_id] = true;
+      });
+
+      (urgent || []).forEach(item => {
+        urgentMap[item.element_id] = true;
+      });
 
       setCompletedElements(completedMap);
       setUrgentElements(urgentMap);
@@ -246,11 +261,24 @@ export default function AgendaScreen() {
   };
 
   const addSection = async () => {
+    // Validate section name
+    const cleanName = newSectionName.trim();
+    if (cleanName.length > 15) {
+      Alert.alert("Error", "Section name cannot exceed 15 characters");
+      return;
+    }
+    
+    // Check for special characters
+    if (!/^[a-zA-Z0-9\s]+$/.test(cleanName)) {
+      Alert.alert("Error", "Section name can only contain letters, numbers, and spaces");
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from("Agenda Section")
         .insert([{
-          name: newSectionName,
+          name: cleanName,
           agenda_id: id
         }])
         .select()
@@ -267,11 +295,24 @@ export default function AgendaScreen() {
   };
 
   const addElement = async () => {
+    // Validate element subject
+    const cleanSubject = newElementData.subject.trim();
+    if (cleanSubject.length > 15) {
+      Alert.alert("Error", "Element subject cannot exceed 15 characters");
+      return;
+    }
+    
+    // Check for special characters in subject
+    if (!/^[a-zA-Z0-9\s]+$/.test(cleanSubject)) {
+      Alert.alert("Error", "Element subject can only contain letters, numbers, and spaces");
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from("Agenda Element")
         .insert([{
-          subject: newElementData.subject,
+          subject: cleanSubject,
           details: newElementData.details,
           deadline: newElementData.deadline,
           status: "pending",
@@ -337,31 +378,57 @@ export default function AgendaScreen() {
   const toggleElementState = async (elementId: string, type: 'completed' | 'urgent') => {
     if (!session?.user?.id) return;
 
-    const table = type === 'completed' ? 'Completed Element' : 'Urgent Element';
-    const stateMap = type === 'completed' ? completedElements : urgentElements;
-    const setState = type === 'completed' ? setCompletedElements : setUrgentElements;
-
     try {
-      if (stateMap[elementId]) {
-        // Remove the state
-        const { error } = await supabase
-          .from(table)
-          .delete()
-          .eq('user_id', session.user.id)
-          .eq('element_id', elementId);
+      if (type === 'completed') {
+        if (completedElements[elementId]) {
+          // Remove completed state
+          const { error } = await supabase
+            .from('Completed Element')
+            .delete()
+            .eq('user_id', session.user.id)
+            .eq('element_id', elementId);
 
-        if (error) throw error;
-      } else {
-        // Add the state
-        const { error } = await supabase
-          .from(table)
-          .insert({
-            user_id: session.user.id,
-            element_id: elementId,
-            ...(type === 'completed' ? { agenda_id: id } : {})
-          });
+          if (error) throw error;
+        } else {
+          // Add completed state AND remove urgent state if it exists
+          await Promise.all([
+            supabase
+              .from('Completed Element')
+              .insert({
+                user_id: session.user.id,
+                element_id: elementId,
+                agenda_id: id
+              }),
+            supabase
+              .from('Urgent Element')
+              .delete()
+              .eq('user_id', session.user.id)
+              .eq('element_id', elementId)
+          ]);
+        }
+      } else if (type === 'urgent') {
+        if (urgentElements[elementId]) {
+          // Remove urgent state
+          const { error } = await supabase
+            .from('Urgent Element')
+            .delete()
+            .eq('user_id', session.user.id)
+            .eq('element_id', elementId);
 
-        if (error) throw error;
+          if (error) throw error;
+        } else {
+          // Only add urgent state if element is not completed
+          if (!completedElements[elementId]) {
+            const { error } = await supabase
+              .from('Urgent Element')
+              .insert({
+                user_id: session.user.id,
+                element_id: elementId
+              });
+
+            if (error) throw error;
+          }
+        }
       }
 
       // After successful toggle, refresh both element states and agenda
@@ -380,7 +447,13 @@ export default function AgendaScreen() {
     <View style={[styles.elementCard, { backgroundColor: theme.card }]}>
       <View style={[styles.elementHeader, { backgroundColor: theme.card }]}>
         <View style={[styles.elementTitleContainer, { backgroundColor: theme.card }]}>
-          <Text style={[styles.elementTitle, { color: theme.text }]}>{item.subject}</Text>
+          <Text 
+            style={[styles.elementTitle, { color: theme.text }]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {item.subject}
+          </Text>
           <View style={[styles.elementActions, { backgroundColor: theme.card }]}>
             <Icon
               name="exclamation"
@@ -450,7 +523,13 @@ export default function AgendaScreen() {
             onPress={() => toggleSection(section.id)}
             containerStyle={styles.collapseIcon}
           />
-          <Text style={styles.sectionTitle}>{section.name}</Text>
+          <Text 
+            style={styles.sectionTitle}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {section.name}
+          </Text>
         </RNView>
         {isCreator && (
           <RNView style={styles.sectionActions}>
@@ -474,7 +553,7 @@ export default function AgendaScreen() {
         <FlatList
           data={section.elements}
           renderItem={renderElement}
-          keyExtractor={item => item.id}
+          keyExtractor={item => `element-${item.id}`}  // Update this line
           style={styles.elementsList}
           ListEmptyComponent={() => (
             <Text style={styles.emptyText}>No elements in this section</Text>
@@ -701,6 +780,76 @@ export default function AgendaScreen() {
     }
   }, [id]);
 
+  const handleLeaveAgenda = async () => {
+    if (!session?.user?.id) return;
+
+    Alert.alert(
+      "Leave Agenda",
+      "Are you sure you want to leave this agenda? This will remove all your data from this agenda.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Leave",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // First get all section IDs for this agenda
+              const { data: sections } = await supabase
+                .from("Agenda Section")
+                .select('id')
+                .eq('agenda_id', id);
+
+              // Then get all element IDs from these sections
+              const { data: elements } = await supabase
+                .from("Agenda Element")
+                .select('id')
+                .in('section_id', sections?.map(s => s.id) || []);
+
+              // Now remove all user data using the element IDs we found
+              await Promise.all([
+                // Remove from members
+                supabase
+                  .from("Agenda Member")
+                  .delete()
+                  .eq('user_id', session.user.id)
+                  .eq('agenda_id', id),
+                // Remove from editors
+                supabase
+                  .from("Agenda Editor")
+                  .delete()
+                  .eq('user_id', session.user.id)
+                  .eq('agenda_id', id),
+                // Remove completed elements
+                supabase
+                  .from("Completed Element")
+                  .delete()
+                  .eq('user_id', session.user.id)
+                  .eq('agenda_id', id),
+                // Remove urgent elements
+                supabase
+                  .from("Urgent Element")
+                  .delete()
+                  .eq('user_id', session.user.id)
+                  .in('element_id', elements?.map(e => e.id) || []),
+                // Remove comments
+                supabase
+                  .from("Agenda Comment")
+                  .delete()
+                  .eq('author_id', session.user.id)
+                  .eq('agenda_id', id)
+              ]);
+
+              router.replace("/");
+            } catch (error) {
+              console.error("Leave agenda error:", error);
+              Alert.alert("Error", "Failed to leave agenda");
+            }
+          }
+        }
+      ]
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -726,7 +875,7 @@ export default function AgendaScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>{agenda.name}</Text>
           <RNView style={styles.headerActions}>
-            {isCreator && (
+            {isCreator ? (
               <RNView style={styles.headerActions}>
                 <Button
                   title="Add Section"
@@ -742,6 +891,15 @@ export default function AgendaScreen() {
                   containerStyle={styles.deleteIcon}
                 />
               </RNView>
+            ) : (
+              <Icon
+                name="sign-out-alt"
+                type="font-awesome-5"
+                size={16}
+                color={theme.error}
+                onPress={handleLeaveAgenda}
+                containerStyle={styles.deleteIcon}
+              />
             )}
           </RNView>
         </View>
@@ -750,7 +908,7 @@ export default function AgendaScreen() {
           <FlatList
             data={agenda.sections}
             renderItem={renderSection}
-            keyExtractor={item => item.id}
+            keyExtractor={item => `section-${item.id}`}  // Update this line
             scrollEnabled={false} // Important: disable scrolling on nested FlatList
             ListEmptyComponent={() => (
               <Text style={styles.emptyText}>No sections yet</Text>
@@ -783,23 +941,29 @@ export default function AgendaScreen() {
           </Pressable>
         )}
 
-        {/* Add Members List */}
+        {/* Replace the existing Members section with this */}
         <View style={[styles.membersSection, { marginTop: spacing.xl }]}>
           <RNView style={styles.sectionHeader}>
             <Text style={[typography.h3, { color: theme.text }]}>
-              Members
+              Members ({members.length})
             </Text>
             {isCreator && (
               <Icon
-                name={isEditingMembers ? "check" : "edit"}
-                type="font-awesome"
+                name="users-cog"
+                type="font-awesome-5"
                 size={16}
-                color={isEditingMembers ? theme.tint : theme.text}
-                onPress={() => setIsEditingMembers(!isEditingMembers)}
-                containerStyle={styles.editIcon}
+                color={theme.text}
+                onPress={() => router.push({
+                  pathname: "members-management",  // Remove the leading slash
+                  params: { 
+                    id: agenda.id, 
+                    creatorId: agenda.creator_id 
+                  }
+                })}
               />
             )}
           </RNView>
+          {/* Rest of the members section remains the same */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}

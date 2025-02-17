@@ -288,6 +288,20 @@ export default function HomeScreen() {
   const handleJoinAgenda = async () => {
     if (!session?.user?.id || !joinAgendaData.name || !joinAgendaData.key) return
     
+    const trimmedName = joinAgendaData.name.trim();
+  
+    // Validate agenda name
+    if (trimmedName.length > 15) {
+      Alert.alert("Error", "Agenda name cannot exceed 15 characters");
+      return;
+    }
+    
+    // Check for special characters
+    if (!/^[a-zA-Z0-9\s]+$/.test(trimmedName)) {
+      Alert.alert("Error", "Agenda name can only contain letters, numbers, and spaces");
+      return;
+    }
+    
     try {
       const trimmedName = joinAgendaData.name.trim()
       const trimmedKey = joinAgendaData.key.trim()
@@ -398,13 +412,26 @@ export default function HomeScreen() {
   }
 
   const handleCreateAgenda = async () => {
-    if (!session?.user?.id || !newAgendaData.name) return
+    if (!session?.user?.id || !newAgendaData.name) return;
+    
+    // Validate agenda name
+    const cleanName = newAgendaData.name.trim();
+    if (cleanName.length > 15) {
+      Alert.alert("Error", "Agenda name cannot exceed 15 characters");
+      return;
+    }
+    
+    // Check for special characters
+    if (!/^[a-zA-Z0-9\s]+$/.test(cleanName)) {
+      Alert.alert("Error", "Agenda name can only contain letters, numbers, and spaces");
+      return;
+    }
     
     try {
       const { data, error } = await supabase
         .from("Agenda")
         .insert([{
-          name: newAgendaData.name,
+          name: cleanName,
           key: newAgendaData.key || Math.random().toString(36).substring(2, 8),
           key_visible: newAgendaData.key_visible,
           creator_id: session.user.id

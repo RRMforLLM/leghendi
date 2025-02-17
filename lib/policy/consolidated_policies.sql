@@ -1,16 +1,16 @@
 BEGIN;
 
--- Drop ALL constraints first (including foreign keys)
+-- Drop ALL constraints first (including foreign keys, check constraints, and unique constraints)
 DO $$ 
 DECLARE
     r RECORD;
 BEGIN
-    -- Find and drop all foreign key constraints
+    -- Find and drop all constraints (foreign key, check, unique)
     FOR r IN (
-        SELECT tc.table_schema, tc.table_name, tc.constraint_name
+        SELECT tc.table_schema, tc.table_name, tc.constraint_name, tc.constraint_type
         FROM information_schema.table_constraints tc
-        WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND tc.table_schema = 'public'
+        WHERE tc.table_schema = 'public'
+        AND tc.constraint_type IN ('FOREIGN KEY', 'CHECK', 'UNIQUE')
     ) LOOP
         EXECUTE format('ALTER TABLE %I.%I DROP CONSTRAINT IF EXISTS %I CASCADE',
             r.table_schema, r.table_name, r.constraint_name);
@@ -344,6 +344,30 @@ FOR ALL USING (
 CREATE POLICY "editor_access" ON "Agenda Editor"
 FOR ALL USING (
     user_id = auth.uid() OR
+    EXISTS (
+        SELECT 1 FROM "Agenda"
+        WHERE id = agenda_id AND creator_id = auth.uid()
+    )
+);
+
+-- Add specific policy for managing members (after the existing member policies)
+CREATE POLICY "agenda_member_management" ON "Agenda Member"
+FOR ALL USING (
+    EXISTS (
+        SELECT 1 FROM "Agenda"
+        WHERE id = agenda_id AND (
+            creator_id = auth.uid() OR
+            id IN (
+                SELECT agenda_id FROM "Agenda Editor"
+                WHERE user_id = auth.uid()
+            )
+        )
+    )
+);
+
+-- Add similar policy for editor management
+CREATE POLICY "agenda_editor_management" ON "Agenda Editor"
+FOR ALL USING (
     EXISTS (
         SELECT 1 FROM "Agenda"
         WHERE id = agenda_id AND creator_id = auth.uid()
