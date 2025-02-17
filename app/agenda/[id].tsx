@@ -76,6 +76,7 @@ export default function AgendaScreen() {
   const [editors, setEditors] = useState<string[]>([]); // Store editor IDs
   const [isEditingMembers, setIsEditingMembers] = useState(false);
   const [showCompletedButton, setShowCompletedButton] = useState(false);
+  const [isEditor, setIsEditor] = useState(false);
 
   const fetchAgenda = useCallback(async () => {
     try {
@@ -198,12 +199,37 @@ export default function AgendaScreen() {
     }
   }, [id]); // Remove completedElements from dependencies
 
+  const checkEditorStatus = useCallback(async () => {
+    if (!session?.user?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('Agenda Editor')
+        .select('user_id')
+        .eq('agenda_id', id)
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      setIsEditor(!!data);
+    } catch (error) {
+      console.error('Error checking editor status:', error);
+    }
+  }, [session?.user?.id, id]);
+
   useEffect(() => {
     let mounted = true;
     setLoading(true);
-    fetchAgenda();
+    Promise.all([
+      fetchAgenda(),
+      checkEditorStatus()
+    ]).finally(() => {
+      if (mounted) {
+        setLoading(false);
+      }
+    });
     return () => { mounted = false };
-  }, [fetchAgenda]);
+  }, [fetchAgenda, checkEditorStatus]);
 
   // Add session fetch in useEffect
   useEffect(() => {
@@ -475,7 +501,7 @@ export default function AgendaScreen() {
             />
           </View>
         </View>
-        {isCreator && (
+        {(isCreator || isEditor) && (
           <Icon
             name="trash"
             type="font-awesome-5"
@@ -531,7 +557,7 @@ export default function AgendaScreen() {
             {section.name}
           </Text>
         </RNView>
-        {isCreator && (
+        {(isCreator || isEditor) && (
           <RNView style={styles.sectionActions}>
             <Button
               title="+"
@@ -892,14 +918,23 @@ export default function AgendaScreen() {
                 />
               </RNView>
             ) : (
-              <Icon
-                name="sign-out-alt"
-                type="font-awesome-5"
-                size={16}
-                color={theme.error}
-                onPress={handleLeaveAgenda}
-                containerStyle={styles.deleteIcon}
-              />
+              <RNView style={styles.headerActions}>
+                {isEditor && (
+                  <Button
+                    title="Add Section"
+                    type="clear"
+                    onPress={() => setShowSectionDialog(true)}
+                  />
+                )}
+                <Icon
+                  name="sign-out-alt"
+                  type="font-awesome-5"
+                  size={16}
+                  color={theme.error}
+                  onPress={handleLeaveAgenda}
+                  containerStyle={styles.deleteIcon}
+                />
+              </RNView>
             )}
           </RNView>
         </View>
