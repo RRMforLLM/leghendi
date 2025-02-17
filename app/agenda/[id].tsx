@@ -164,11 +164,22 @@ export default function AgendaScreen() {
 
       if (sectionsError) throw sectionsError;
 
+      // Create map of completed elements for faster lookup
+      const completedMap = {};
+      (await supabase
+        .from('Completed Element')
+        .select('element_id')
+        .eq('user_id', session?.user?.id)
+        .eq('agenda_id', id)
+      ).data?.forEach(item => {
+        completedMap[item.element_id] = true;
+      });
+
       // Filter out completed elements for each section
       const filteredSections = sectionsData.map(section => ({
         ...section,
         elements: (section.elements || []).filter(element => 
-          !completedElements[element.id]
+          !completedMap[element.id]
         )
       }));
 
