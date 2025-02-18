@@ -346,14 +346,14 @@ export default function AgendaScreen() {
     }
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("Agenda Element")
         .insert([{
           subject: cleanSubject,
           details: newElementData.details,
           deadline: newElementData.deadline,
           status: "pending",
-          section_id: newElementData.sectionId
+          section_id: newElementData.sectionId.toString() // Convert to string if it's a number
         }])
         .select()
         .single();

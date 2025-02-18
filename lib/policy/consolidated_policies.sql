@@ -181,10 +181,24 @@ ADD CONSTRAINT "Reaction_sender_id_fkey"
 ADD CONSTRAINT "Reaction_recipient_id_fkey"
     FOREIGN KEY (recipient_id) REFERENCES "Profile"(id) ON DELETE CASCADE;
 
--- 1. Core Profile & User Policies
+-- Drop ALL specific policies first
+DROP POLICY IF EXISTS "element_access" ON "Agenda Element";
+DROP POLICY IF EXISTS "section_select" ON "Agenda Section";
+DROP POLICY IF EXISTS "section_insert" ON "Agenda Section";
+DROP POLICY IF EXISTS "section_delete" ON "Agenda Section";
+DROP POLICY IF EXISTS "agenda_direct_access" ON "Agenda";
+DROP POLICY IF EXISTS "section_direct_access" ON "Agenda Section";
+DROP POLICY IF EXISTS "element_direct_access" ON "Agenda Element";
+DROP POLICY IF EXISTS "member_basic_access" ON "Agenda Member";
+DROP POLICY IF EXISTS "editor_basic_access" ON "Agenda Editor";
 DROP POLICY IF EXISTS "profile_access" ON "Profile";
 DROP POLICY IF EXISTS "profile_update" ON "Profile";
+DROP POLICY IF EXISTS "profile_comment_access" ON "Profile Comment";
+DROP POLICY IF EXISTS "profile_comment_modify" ON "Profile Comment";
+DROP POLICY IF EXISTS "profile_comment_author_access" ON "Profile Comment";
+DROP POLICY IF EXISTS "reaction_access" ON "Reaction";
 
+-- 1. Core Profile & User Policies
 CREATE POLICY "public_profiles" ON "Profile"
 FOR SELECT USING (true);
 
@@ -245,11 +259,20 @@ FOR SELECT USING (user_id = auth.uid());
 CREATE POLICY "member_insert" ON "Agenda Member"
 FOR INSERT WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "section_select" ON "Agenda Section";
+DROP POLICY IF EXISTS "section_insert" ON "Agenda Section";
+DROP POLICY IF EXISTS "section_delete" ON "Agenda Section";
+
 CREATE POLICY "section_select" ON "Agenda Section"
 FOR SELECT USING (
     agenda_id IN (
         SELECT id FROM "Agenda"
-        WHERE creator_id = auth.uid() OR key_visible = true
+        WHERE creator_id = auth.uid() 
+        OR key_visible = true 
+        OR id IN (
+            SELECT agenda_id FROM "Agenda Editor"
+            WHERE user_id = auth.uid()
+        )
     )
 );
 
@@ -258,60 +281,50 @@ FOR INSERT WITH CHECK (
     agenda_id IN (
         SELECT id FROM "Agenda"
         WHERE creator_id = auth.uid()
+        OR id IN (
+            SELECT agenda_id FROM "Agenda Editor"
+            WHERE user_id = auth.uid()
+        )
     )
 );
 
--- Add missing section deletion policy after the section_insert policy
 CREATE POLICY "section_delete" ON "Agenda Section"
 FOR DELETE USING (
     agenda_id IN (
         SELECT id FROM "Agenda"
         WHERE creator_id = auth.uid()
-    )
-);
-
-CREATE POLICY "element_select" ON "Agenda Element"
-FOR SELECT USING (
-    section_id IN (
-        SELECT id FROM "Agenda Section"
-        WHERE agenda_id IN (
-            SELECT id FROM "Agenda"
-            WHERE creator_id = auth.uid() OR key_visible = true
+        OR id IN (
+            SELECT agenda_id FROM "Agenda Editor"
+            WHERE user_id = auth.uid()
         )
     )
 );
 
--- Also add element deletion policy
-CREATE POLICY "element_delete" ON "Agenda Element"
-FOR DELETE USING (
-    section_id IN (
-        SELECT id FROM "Agenda Section"
-        WHERE agenda_id IN (
-            SELECT id FROM "Agenda"
-            WHERE creator_id = auth.uid()
-        )
-    )
-);
+DROP POLICY IF EXISTS "element_select" ON "Agenda Element";
+DROP POLICY IF EXISTS "element_access" ON "Agenda Element";
+DROP POLICY IF EXISTS "element_delete" ON "Agenda Element";
 
--- 3. Element & State Policies
 CREATE POLICY "element_access" ON "Agenda Element"
 FOR ALL USING (
     section_id IN (
         SELECT s.id FROM "Agenda Section" s
         WHERE s.agenda_id IN (
             SELECT id FROM "Agenda"
-            WHERE creator_id = auth.uid() OR
-            key_visible = true OR
-            id IN (
-                SELECT agenda_id FROM "Agenda Member" WHERE user_id = auth.uid()
-            ) OR
-            id IN (
-                SELECT agenda_id FROM "Agenda Editor" WHERE user_id = auth.uid()
+            WHERE creator_id = auth.uid()
+            OR key_visible = true
+            OR id IN (
+                SELECT agenda_id FROM "Agenda Editor"
+                WHERE user_id = auth.uid()
+            )
+            OR id IN (
+                SELECT agenda_id FROM "Agenda Member"
+                WHERE user_id = auth.uid()
             )
         )
     )
 );
 
+-- 3. Element & State Policies
 CREATE POLICY "completed_element_access" ON "Completed Element"
 FOR ALL USING (
     user_id = auth.uid() AND
