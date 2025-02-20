@@ -113,4 +113,23 @@ export const cleanupOldCache = async () => {
   }
 };
 
+export const initializeStorage = async () => {
+  try {
+    // First check if storage is already initialized
+    const initialized = await AsyncStorage.getItem('storage_initialized');
+    if (initialized) return;
+
+    // Initialize all storage keys with empty data
+    await Promise.all(
+      Object.entries(KEYS).map(([_, key]) => 
+        storeData(key, getData(key)) // Uses the existing getData logic for proper empty values
+      )
+    );
+    
+    await AsyncStorage.setItem('storage_initialized', 'true');
+  } catch (error) {
+    console.error('Error initializing storage:', error);
+  }
+};
+
 export { KEYS };

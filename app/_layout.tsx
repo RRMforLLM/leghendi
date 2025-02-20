@@ -7,7 +7,7 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { supabase } from '@/lib/supabase';
 import * as Updates from 'expo-updates';
-import { initializeStorage } from '@/utils/initStorage';
+import { initializeStorage } from '@/utils/offlineStorage';
 
 import { useColorScheme } from '@/components/useColorScheme';
 
