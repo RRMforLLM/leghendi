@@ -5,6 +5,10 @@ import Colors from '@/constants/Colors';
 import { typography, spacing } from '@/constants/Typography';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useLocalSearchParams, router } from 'expo-router';
+import { useNetworkState } from '@/hooks/useNetworkState';
+import { storeData, getData, KEYS } from '@/utils/offlineStorage';
+import OfflineBanner from '@/components/OfflineBanner';
+import { useState, useEffect } from 'react';
 
 interface UrgentItem {
   id: number;
@@ -17,12 +21,26 @@ interface UrgentItem {
 export default function UrgentScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme];
+  const isOnline = useNetworkState();
   const { items } = useLocalSearchParams();
-  
-  // Safely parse the items from the URL-encoded JSON string
-  const urgentItems: UrgentItem[] = items 
-    ? JSON.parse(decodeURIComponent(items as string))
-    : [];
+  const [urgentItems, setUrgentItems] = useState<UrgentItem[]>([]);
+
+  useEffect(() => {
+    const initializeItems = async () => {
+      if (items) {
+        const parsedItems = JSON.parse(decodeURIComponent(items as string));
+        setUrgentItems(parsedItems);
+        // Cache the urgent items whenever we receive new ones
+        await storeData(KEYS.URGENT_ITEMS, parsedItems);
+      } else {
+        // If no items provided via params, try to load from cache
+        const cachedItems = await getData(KEYS.URGENT_ITEMS);
+        setUrgentItems(cachedItems || []);
+      }
+    };
+
+    initializeItems();
+  }, [items]);
 
   const renderUrgentItem = ({ item }: { item: UrgentItem }) => (
     <Pressable 
@@ -44,6 +62,7 @@ export default function UrgentScreen() {
 
   return (
     <View style={styles.container}>
+      {!isOnline && <OfflineBanner />}
       <FlatList
         data={urgentItems}
         renderItem={renderUrgentItem}

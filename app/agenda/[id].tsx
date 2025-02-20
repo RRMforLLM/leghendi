@@ -10,6 +10,9 @@ import { typography, spacing } from '@/constants/Typography';  // Add typography
 import { useColorScheme } from '@/components/useColorScheme';
 import { getRelativeTime } from '@/utils/dateUtils';
 import { useFocusEffect } from '@react-navigation/native'; // Add this import
+import { useNetworkState } from '@/hooks/useNetworkState';
+import { storeAgendaData, getAgendaData, KEYS } from '@/utils/offlineStorage';
+import OfflineBanner from '@/components/OfflineBanner';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg"
 
@@ -47,6 +50,7 @@ const DialogButton = ({ onPress, disabled = false, children }: {
 export default function AgendaScreen() {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'light'];
+  const isOnline = useNetworkState();
   
   // Add session state
   const [session, setSession] = useState(null);
@@ -80,6 +84,22 @@ export default function AgendaScreen() {
 
   const fetchAgenda = useCallback(async () => {
     try {
+      if (!isOnline) {
+        const cachedData = await getAgendaData(id as string);
+        if (cachedData) {
+          setAgenda(cachedData.agenda);
+          setComments(cachedData.comments);
+          setMembers(cachedData.members);
+          setEditors(cachedData.editors);
+          // Update completed elements state from cache
+          const completedMap = cachedData.completedElements || {};
+          setCompletedElements(completedMap);
+          // Make sure to set the button visibility based on cached data
+          setShowCompletedButton(Object.keys(completedMap).length > 0);
+          return;
+        }
+      }
+
       const [
         { data: agenda, error }, 
         { data: comments, error: commentsError },
@@ -166,14 +186,19 @@ export default function AgendaScreen() {
 
       // Create map of completed elements for faster lookup
       const completedMap = {};
-      (await supabase
+      const { data: completedData } = await supabase
         .from('Completed Element')
         .select('element_id')
         .eq('user_id', session?.user?.id)
-        .eq('agenda_id', id)
-      ).data?.forEach(item => {
+        .eq('agenda_id', id);
+
+      (completedData || []).forEach(item => {
         completedMap[item.element_id] = true;
       });
+
+      setCompletedElements(completedMap);
+      // Set button visibility immediately after updating state
+      setShowCompletedButton(Object.keys(completedMap).length > 0);
 
       // Filter out completed elements for each section
       const filteredSections = sectionsData.map(section => ({
@@ -202,13 +227,35 @@ export default function AgendaScreen() {
 
       // Add this line to fetch element states when agenda loads
       await fetchElementStates();
+
+      // Cache the fetched data
+      await storeAgendaData(id as string, {
+        agenda: agendaWithSections,
+        comments: comments || [],
+        members: membersList,
+        editors: editorIds,
+        completedElements: completedMap // Make sure to cache this
+      });
     } catch (error) {
       console.error('Error fetching agenda:', error);
-      Alert.alert('Error', 'Could not load agenda');
+      // Try loading from cache on error
+      const cachedData = await getAgendaData(id as string);
+      if (cachedData) {
+        setAgenda(cachedData.agenda);
+        setComments(cachedData.comments);
+        setMembers(cachedData.members);
+        setEditors(cachedData.editors);
+        // Make sure to restore completed elements from cache on error
+        const completedMap = cachedData.completedElements || {};
+        setCompletedElements(completedMap);
+        setShowCompletedButton(Object.keys(completedMap).length > 0);
+      } else {
+        Alert.alert('Error', 'Could not load agenda');
+      }
     } finally {
       setLoading(false);
     }
-  }, [id]); // Remove completedElements from dependencies
+  }, [id, isOnline, session?.user?.id]);
 
   const checkEditorStatus = useCallback(async () => {
     if (!session?.user?.id) return;
@@ -262,6 +309,27 @@ export default function AgendaScreen() {
     }, [session?.user?.id])
   );
 
+  // Add useFocusEffect to maintain completed elements state
+  useFocusEffect(
+    useCallback(() => {
+      if (session?.user?.id) {
+        // Check completed elements whenever screen is focused
+        const checkCompletedElements = async () => {
+          const completedMap = completedElements;
+          setShowCompletedButton(Object.keys(completedMap).length > 0);
+        };
+        checkCompletedElements();
+      }
+    }, [session?.user?.id, completedElements])
+  );
+
+  // Add a new useEffect to handle completedElements state persistence
+  useEffect(() => {
+    if (completedElements && Object.keys(completedElements).length > 0) {
+      setShowCompletedButton(true);
+    }
+  }, [completedElements]);
+
   const fetchElementStates = async () => {
     if (!session?.user?.id) return;
     
@@ -271,14 +339,13 @@ export default function AgendaScreen() {
           .from('Completed Element')
           .select('element_id')
           .eq('user_id', session.user.id)
-          .eq('agenda_id', id), // Add agenda_id filter here
+          .eq('agenda_id', id),
         supabase
           .from('Urgent Element')
           .select('element_id')
           .eq('user_id', session.user.id)
       ]);
 
-      // Reset states before setting new ones
       const completedMap = {};
       const urgentMap = {};
 
@@ -292,10 +359,47 @@ export default function AgendaScreen() {
 
       setCompletedElements(completedMap);
       setUrgentElements(urgentMap);
+      // Set button visibility immediately
+      setShowCompletedButton(Object.keys(completedMap).length > 0);
+
+      // Cache the states
+      await storeAgendaData(id as string, {
+        ...(await getAgendaData(id as string) || {}),
+        completedElements: completedMap,
+        urgentElements: urgentMap
+      });
     } catch (error) {
       console.error('Error fetching element states:', error);
+      // Try to load from cache
+      const cachedData = await getAgendaData(id as string);
+      if (cachedData?.completedElements) {
+        setCompletedElements(cachedData.completedElements);
+        setShowCompletedButton(Object.keys(cachedData.completedElements).length > 0);
+      }
     }
   };
+
+  // Modify the useFocusEffect to be more aggressive with cache
+  useFocusEffect(
+    useCallback(() => {
+      if (session?.user?.id) {
+        // Load from cache first
+        const loadCache = async () => {
+          const cachedData = await getAgendaData(id as string);
+          if (cachedData?.completedElements) {
+            setCompletedElements(cachedData.completedElements);
+            setShowCompletedButton(Object.keys(cachedData.completedElements).length > 0);
+          }
+        };
+        loadCache();
+        
+        // Then fetch fresh data if online
+        if (isOnline) {
+          fetchElementStates();
+        }
+      }
+    }, [session?.user?.id, isOnline])
+  );
 
   const addSection = async () => {
     // Validate section name
@@ -766,56 +870,101 @@ export default function AgendaScreen() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user?.id) return;
 
-      const { data: completedData, error } = await supabase
-        .from('Completed Element')
-        .select(`
-          element_id,
-          element:"Agenda Element"!inner (
-            id,
-            subject,
-            deadline,
-            section:"Agenda Section"!inner (
-              id,
-              name,
-              agenda:Agenda!inner (
-                id,
-                name
-              )
-            )
-          )
-        `)
-        .eq('user_id', session.user.id)
-        .eq('agenda_id', id);
+      // First try to get completed items from cache
+      const cachedData = await getAgendaData(id as string);
+      
+      // If we have cached completed elements, format them for display
+      if (cachedData?.completedElements) {
+        // Get all sections and their elements from agenda cache
+        const sections = cachedData.agenda?.sections || [];
+        const completedIds = Object.keys(cachedData.completedElements);
+        
+        // Find completed elements in the cached sections
+        const formattedItems = sections.flatMap(section => 
+          section.elements
+            ?.filter(element => completedIds.includes(element.id.toString()))
+            .map(element => ({
+              id: element.id,
+              elementId: element.id,
+              subject: element.subject,
+              deadline: element.deadline,
+              agendaName: cachedData.agenda.name,
+              agendaId: id,
+              sectionId: section.id
+            }))
+        ).filter(Boolean);
 
-      if (error) throw error;
-      if (!completedData?.length) {
-        Alert.alert('No completed items', 'You have no completed items in this agenda');
-        return;
+        if (formattedItems?.length > 0) {
+          router.push({
+            pathname: "/completed",
+            params: {
+              items: encodeURIComponent(JSON.stringify(formattedItems))
+            }
+          });
+          return;
+        }
       }
 
-      const formattedItems = completedData.map(item => ({
-        id: item.element.id,
-        elementId: item.element_id, // Add this to store the actual element_id
-        subject: item.element.subject,
-        deadline: item.element.deadline,
-        agendaName: item.element.section.agenda.name,
-        agendaId: item.element.section.agenda.id,
-        sectionId: item.element.section.id
-      }));
+      // If no cache or online, fetch from server
+      if (isOnline) {
+        const { data: completedData, error } = await supabase
+          .from('Completed Element')
+          .select(`
+            element_id,
+            element:"Agenda Element"!inner (
+              id,
+              subject,
+              deadline,
+              section:"Agenda Section"!inner (
+                id,
+                name,
+                agenda:Agenda!inner (
+                  id,
+                  name
+                )
+              )
+            )
+          `)
+          .eq('user_id', session.user.id)
+          .eq('agenda_id', id);
 
-      // Instead of showing modal, navigate to completed screen
-      router.push({
-        pathname: "/completed",
-        params: {
-          items: encodeURIComponent(JSON.stringify(formattedItems))
+        if (error) throw error;
+
+        const formattedItems = completedData?.map(item => ({
+          id: item.element.id,
+          elementId: item.element_id,
+          subject: item.element.subject,
+          deadline: item.element.deadline,
+          agendaName: item.element.section.agenda.name,
+          agendaId: item.element.section.agenda.id,
+          sectionId: item.element.section.id
+        })) || [];
+
+        await storeAgendaData(id as string, {
+          ...(cachedData || {}),
+          completedItems: formattedItems
+        });
+
+        if (formattedItems.length === 0) {
+          Alert.alert('No completed items', 'You have no completed items in this agenda');
+          return;
         }
-      });
+
+        router.push({
+          pathname: "/completed",
+          params: {
+            items: encodeURIComponent(JSON.stringify(formattedItems))
+          }
+        });
+      } else {
+        Alert.alert('No completed items', 'You have no completed items in this agenda');
+      }
 
     } catch (error) {
       console.error('Error fetching completed elements:', error);
       Alert.alert('Error', 'Failed to load completed elements');
     }
-  }, [id]);
+  }, [id, isOnline]);
 
   const handleLeaveAgenda = async () => {
     if (!session?.user?.id) return;
@@ -905,6 +1054,7 @@ export default function AgendaScreen() {
 
   return (
     <View style={styles.container}>
+      {!isOnline && <OfflineBanner />}
       <ScrollView 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}

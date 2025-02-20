@@ -10,6 +10,9 @@ import Colors from "@/constants/Colors"
 import { typography, spacing } from "@/constants/Typography"
 import { useColorScheme } from "@/components/useColorScheme"
 import { useFocusEffect } from '@react-navigation/native';
+import { useNetworkState } from '@/hooks/useNetworkState';
+import { storeData, getData, KEYS } from '@/utils/offlineStorage';
+import OfflineBanner from '@/components/OfflineBanner';
 
 const DialogButton = ({ onPress, disabled = false, children }: {
   onPress: () => void;
@@ -46,6 +49,7 @@ export default function HomeScreen() {
     name: '',
     key: ''
   })
+  const isOnline = useNetworkState();
 
   const resetState = useCallback(() => {
     setAgendas([])
@@ -146,47 +150,72 @@ export default function HomeScreen() {
     try {
       setLoading(true);
       
-      // First get agendas where user is creator or member
-      const [{ data: ownedAgendas }, { data: memberAgendas }] = await Promise.all([
-        supabase
-          .from("Agenda")
-          .select(`*, sections:"Agenda Section"(*)`)
-          .eq('creator_id', userSession.user.id),
-        supabase
-          .from("Agenda Member")
-          .select(`
-            agenda:Agenda!inner(
-              *,
-              sections:"Agenda Section"(*)
-            )
-          `)
-          .eq('user_id', userSession.user.id)
-      ]);
+      // Always load cached data first
+      const cachedAgendas = await getData(KEYS.AGENDAS);
+      if (cachedAgendas?.length > 0) {
+        setAgendas(cachedAgendas);
+      }
+      
+      // If online, fetch fresh data
+      if (isOnline) {
+        const [{ data: ownedAgendas }, { data: memberAgendas }] = await Promise.all([
+          supabase
+            .from("Agenda")
+            .select(`*, sections:"Agenda Section"(*)`)
+            .eq('creator_id', userSession.user.id),
+          supabase
+            .from("Agenda Member")
+            .select(`
+              agenda:Agenda!inner(
+                *,
+                sections:"Agenda Section"(*)
+              )
+            `)
+            .eq('user_id', userSession.user.id)
+        ]);
 
-      // Combine and deduplicate the results
-      const combined = [
-        ...(ownedAgendas || []),
-        ...(memberAgendas?.map(m => m.agenda) || [])
-      ];
+        const combined = [
+          ...(ownedAgendas || []),
+          ...(memberAgendas?.map(m => m.agenda) || [])
+        ];
 
-      const uniqueAgendas = Array.from(new Map(
-        combined.map(item => [item.id, item])
-      ).values());
+        const uniqueAgendas = Array.from(new Map(
+          combined.map(item => [item.id, item])
+        ).values());
 
-      setAgendas(uniqueAgendas);
+        // Only update state and cache if we got new data
+        if (uniqueAgendas.length > 0) {
+          setAgendas(uniqueAgendas);
+          await storeData(KEYS.AGENDAS, uniqueAgendas);
+        }
+      }
     } catch (error) {
       console.error('Fetch agendas error:', error);
-      Alert.alert('Error', 'Failed to load agendas');
+      // Load from cache as fallback if we haven't already
+      if (agendas.length === 0) {
+        const cachedAgendas = await getData(KEYS.AGENDAS);
+        if (cachedAgendas?.length > 0) {
+          setAgendas(cachedAgendas);
+        }
+      }
     } finally {
       setLoading(false);
     }
-  }, [session]);
+  }, [session, isOnline, agendas.length]);
 
   const fetchAgendaElements = useCallback(async (currentSession?: Session | null) => {
     const userSession = currentSession || session;
     if (!userSession?.user?.id) return;
 
     try {
+      if (!isOnline) {
+        const cachedElements = await getData(KEYS.AGENDA_ELEMENTS);
+        const cachedCompleted = await getData(KEYS.COMPLETED_ELEMENTS);
+        if (cachedElements) setAgendaElements(cachedElements);
+        if (cachedCompleted) setCompletedElements(cachedCompleted);
+        return;
+      }
+
       // Fetch urgent elements for this user
       const { data: urgentElements, error: urgentError } = await supabase
         .from('Urgent Element')
@@ -259,20 +288,36 @@ export default function HomeScreen() {
 
       // Update the state
       setCompletedElements(completedItems || []);
+
+      // Cache the fetched data
+      await Promise.all([
+        storeData(KEYS.AGENDA_ELEMENTS, elements || []),
+        storeData(KEYS.COMPLETED_ELEMENTS, completedItems || [])
+      ]);
     } catch (error) {
-      console.error('Error fetching urgent elements:', error);
-      Alert.alert('Error', 'Failed to load urgent items');
+      console.error('Error fetching elements:', error);
+      // Try loading from cache
+      const cachedElements = await getData(KEYS.AGENDA_ELEMENTS);
+      const cachedCompleted = await getData(KEYS.COMPLETED_ELEMENTS);
+      if (cachedElements) setAgendaElements(cachedElements);
+      if (cachedCompleted) setCompletedElements(cachedCompleted);
     }
-  }, [session]);
+  }, [session, isOnline]);
 
   // Focus listener to refresh data when returning to this screen
   useFocusEffect(
     useCallback(() => {
       if (session?.user) {
-        Promise.all([
-          fetchAgendas(),
-          fetchAgendaElements()
-        ]);
+        // Load from cache immediately
+        getData(KEYS.AGENDAS).then(cachedAgendas => {
+          if (cachedAgendas?.length > 0) {
+            setAgendas(cachedAgendas);
+          }
+        });
+        
+        // Then fetch fresh data
+        fetchAgendas();
+        fetchAgendaElements();
       }
     }, [session?.user?.id])
   );
@@ -487,6 +532,7 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {!isOnline && <OfflineBanner />}
       {/* Urgent section */}
       {!loading && agendaElements.length > 0 && (
         <View style={styles.section}>

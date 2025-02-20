@@ -6,6 +6,10 @@ import { typography, spacing } from '@/constants/Typography';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useLocalSearchParams, router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
+import { useNetworkState } from '@/hooks/useNetworkState';
+import { storeData, getData, KEYS } from '@/utils/offlineStorage';
+import OfflineBanner from '@/components/OfflineBanner';
+import { useState, useEffect } from 'react';
 
 interface CompletedItem {
   id: number;
@@ -19,13 +23,33 @@ interface CompletedItem {
 export default function CompletedScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme];
+  const isOnline = useNetworkState();
   const { items } = useLocalSearchParams();
-  
-  const completedItems: CompletedItem[] = items 
-    ? JSON.parse(decodeURIComponent(items as string))
-    : [];
+  const [completedItems, setCompletedItems] = useState<CompletedItem[]>([]);
+
+  useEffect(() => {
+    const initializeItems = async () => {
+      if (items) {
+        const parsedItems = JSON.parse(decodeURIComponent(items as string));
+        setCompletedItems(parsedItems);
+        // Cache the completed items whenever we receive new ones
+        await storeData(KEYS.COMPLETED_ITEMS, parsedItems);
+      } else {
+        // If no items provided via params, try to load from cache
+        const cachedItems = await getData(KEYS.COMPLETED_ITEMS);
+        setCompletedItems(cachedItems || []);
+      }
+    };
+
+    initializeItems();
+  }, [items]);
 
   const handleUncomplete = async (elementId: number) => {
+    if (!isOnline) {
+      Alert.alert('Error', 'Cannot uncomplete items while offline');
+      return;
+    }
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user?.id) return;
@@ -79,6 +103,7 @@ export default function CompletedScreen() {
 
   return (
     <View style={styles.container}>
+      {!isOnline && <OfflineBanner />}
       <FlatList
         data={completedItems}
         renderItem={renderCompletedItem}

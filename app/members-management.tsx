@@ -7,6 +7,8 @@ import { typography, spacing } from '@/constants/Typography';
 import { useLocalSearchParams, router } from 'expo-router';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
+import { useNetworkState } from '@/hooks/useNetworkState';
+import OfflineBanner from '@/components/OfflineBanner';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg"
 
@@ -21,6 +23,7 @@ export default function MembersManagementScreen() {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'light'];
   const { id: agendaId, creatorId } = useLocalSearchParams();
+  const isOnline = useNetworkState();
   
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
@@ -195,6 +198,7 @@ export default function MembersManagementScreen() {
 
   return (
     <View style={styles.container}>
+      {!isOnline && <OfflineBanner />}
       <ScrollView style={styles.scrollView}>
         {members.map(renderMember)}
       </ScrollView>

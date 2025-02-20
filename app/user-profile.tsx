@@ -9,6 +9,8 @@ import { typography, spacing } from '@/constants/Typography';
 import { useColorScheme } from '@/components/useColorScheme';
 import { getRelativeTime } from '@/utils/dateUtils';
 import { StatusBar } from 'expo-status-bar';
+import { useNetworkState } from '@/hooks/useNetworkState';
+import OfflineBanner from '@/components/OfflineBanner';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg";
 
@@ -28,6 +30,8 @@ interface Reaction {
 }
 
 const UserProfileScreen = () => {
+  const isOnline = useNetworkState();
+
   // Let's add type safety for our statistics
   interface ReactionStatistics {
     hugs: number;
@@ -365,6 +369,7 @@ const UserProfileScreen = () => {
 
   return (
     <View style={styles.container}>
+      {!isOnline && <OfflineBanner />}
       <StatusBar style={Platform.OS === 'ios' ? 'light' : 'auto'} />
       <ScrollView 
         style={styles.content}

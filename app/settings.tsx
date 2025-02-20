@@ -7,6 +7,8 @@ import Colors from "@/constants/Colors"
 import { typography, spacing } from "@/constants/Typography"
 import { useColorScheme } from "@/components/useColorScheme"
 import { router } from "expo-router"
+import { useNetworkState } from '@/hooks/useNetworkState';
+import OfflineBanner from '@/components/OfflineBanner';
 
 export default function Settings() {
   const [loading, setLoading] = useState(true)
@@ -23,6 +25,7 @@ export default function Settings() {
   })
   const colorScheme = useColorScheme()
   const colors = Colors[colorScheme]
+  const isOnline = useNetworkState();
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -177,6 +180,7 @@ export default function Settings() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
+        {!isOnline && <OfflineBanner />}
         <View style={styles.content}>
           <Text style={[typography.h2, { color: colors.text, marginBottom: spacing.lg }]}>
             Account Settings

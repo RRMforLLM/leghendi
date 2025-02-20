@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { supabase } from '@/lib/supabase';
 import * as Updates from 'expo-updates';
+import { initializeStorage } from '@/utils/initStorage';
 
 import { useColorScheme } from '@/components/useColorScheme';
 
@@ -30,16 +31,25 @@ export default function RootLayout() {
   });
   const router = useRouter();
 
+  // Modify initialization to ensure storage is ready
+  useEffect(() => {
+    const init = async () => {
+      try {
+        await initializeStorage();
+        if (loaded) {
+          await SplashScreen.hideAsync();
+        }
+      } catch (error) {
+        console.error('Initialization error:', error);
+      }
+    };
+    init();
+  }, [loaded]);
+
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
     if (error) throw error;
   }, [error]);
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {

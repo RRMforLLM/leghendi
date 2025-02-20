@@ -11,6 +11,9 @@ import { useColorScheme } from "@/components/useColorScheme"
 import * as ImagePicker from 'expo-image-picker'
 import { decode } from 'base64-arraybuffer'
 import { getRelativeTime } from '@/utils/dateUtils';
+import { useNetworkState } from '@/hooks/useNetworkState';
+import { storeData, getData, KEYS } from '@/utils/offlineStorage';
+import OfflineBanner from '@/components/OfflineBanner';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg" // Default avatar URL
 
@@ -27,6 +30,7 @@ interface ProfileComment {
 export default function ProfileScreen() {
   const colorScheme = useColorScheme()
   const colors = Colors[colorScheme]
+  const isOnline = useNetworkState();
   
   const [session, setSession] = useState<Session | null>(null)
   const [email, setEmail] = useState("")
@@ -79,7 +83,20 @@ export default function ProfileScreen() {
 
   async function getProfile(userId: string) {
     try {
-      setLoading(true)
+      setLoading(true);
+
+      if (!isOnline) {
+        const cachedProfile = await getData(KEYS.USER_PROFILE);
+        if (cachedProfile) {
+          setUsername(cachedProfile.username || '');
+          setAvatarUrl(cachedProfile.avatar_url);
+          setDescription(cachedProfile.description || '');
+          setReactionStats(cachedProfile.reactionStats || { hugs: 0, hearts: 0, kisses: 0 });
+          setComments(cachedProfile.comments || []);
+          return;
+        }
+      }
+
       const [profileData, reactionCounts, commentsData] = await Promise.all([
         supabase
           .from("Profile")
@@ -101,75 +118,62 @@ export default function ProfileScreen() {
           `)
           .eq('profile_id', userId)
           .order('created_at', { ascending: false })
-      ])
-      
-      if (!commentsData.error) {
-        setComments(commentsData.data || [])
-      }
-
-      if (profileData.error) throw profileData.error
-      
-      if (!profileData.data) {
-        // Get email from session and extract username
-        const emailUsername = session?.user?.email?.split('@')[0] || 'user'
-        
-        // Create profile with username
-        const { error: createError } = await supabase
-          .from("Profile")
-          .insert({ 
-            id: userId,
-            username: emailUsername  // Set the username explicitly
-          })
-          .select()
-          .single()
-
-        if (createError) throw createError
-        
-        // Fetch the profile again to get DB-generated values
-        const { data: newProfile, error: refetchError } = await supabase
-          .from("Profile")
-          .select("username, avatar_url, description")
-          .eq("id", userId)
-          .single()
-          
-        if (refetchError) throw refetchError
-        
-        if (newProfile) {
-          setUsername(newProfile.username || '')
-          setAvatarUrl(newProfile.avatar_url)
-          setDescription(newProfile.description || '')
-        }
-      } else {
-        setUsername(profileData.data.username || '')
-        setAvatarUrl(profileData.data.avatar_url)
-        setDescription(profileData.data.description || '')
-      }
+      ]);
 
       // Calculate reaction counts
-      if (!reactionCounts.error) {
-        const stats = {
-          hugs: 0,
-          hearts: 0,
-          kisses: 0
-        }
+      const newStats = {
+        hugs: 0,
+        hearts: 0,
+        kisses: 0
+      };
+
+      if (!reactionCounts.error && reactionCounts.data) {
         reactionCounts.data.forEach((reaction: { type: string }) => {
           switch (reaction.type) {
-            case 'hug': stats.hugs++; break
-            case 'heart': stats.hearts++; break
-            case 'kiss': stats.kisses++; break
+            case 'hug': newStats.hugs++; break;
+            case 'heart': newStats.hearts++; break;
+            case 'kiss': newStats.kisses++; break;
           }
-        })
-        setReactionStats(stats)
+        });
+      }
+
+      setReactionStats(newStats);
+      
+      // Update state with profile data
+      if (!profileData.error && profileData.data) {
+        setUsername(profileData.data.username || '');
+        setAvatarUrl(profileData.data.avatar_url);
+        setDescription(profileData.data.description || '');
       }
 
       if (!commentsData.error) {
-        setComments(commentsData.data || [])
+        setComments(commentsData.data || []);
       }
+
+      // Cache the profile data
+      await storeData(KEYS.USER_PROFILE, {
+        username: profileData.data?.username || '',
+        avatar_url: profileData.data?.avatar_url,
+        description: profileData.data?.description || '',
+        reactionStats: newStats,
+        comments: commentsData.data || []
+      });
+
     } catch (error) {
-      console.error("Error loading profile:", error)
-      Alert.alert("Error", "Failed to load profile")
+      console.error("Error loading profile:", error);
+      // Try loading from cache
+      const cachedProfile = await getData(KEYS.USER_PROFILE);
+      if (cachedProfile) {
+        setUsername(cachedProfile.username || '');
+        setAvatarUrl(cachedProfile.avatar_url);
+        setDescription(cachedProfile.description || '');
+        setReactionStats(cachedProfile.reactionStats || { hugs: 0, hearts: 0, kisses: 0 });
+        setComments(cachedProfile.comments || []);
+      } else {
+        Alert.alert("Error", "Failed to load profile");
+      }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
@@ -481,6 +485,7 @@ export default function ProfileScreen() {
     setCommentText={setCommentText}
     updateReactionStats={updateReactionStats}
     fetchComments={fetchComments}  // Add this prop
+    isOnline={isOnline} // Add this prop
   />
 }
 
@@ -502,6 +507,7 @@ function Account({
   setCommentText,
   updateReactionStats,
   fetchComments,  // Add this to props
+  isOnline, // Add this prop
 }: { 
   session: Session
   signOut: () => Promise<void>
@@ -520,6 +526,7 @@ function Account({
   setCommentText: (text: string) => void
   updateReactionStats: () => Promise<void>;
   fetchComments: () => Promise<void>;  // Add this type
+  isOnline: boolean; // Add this type
 }) {
   const colorScheme = useColorScheme()
   const colors = Colors[colorScheme]
@@ -626,6 +633,7 @@ function Account({
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {!isOnline && <OfflineBanner />}
       <RNView style={styles.headerContainer}>
         <RNView style={styles.settingsIconWrapper}>
           <Icon
@@ -639,7 +647,7 @@ function Account({
       </RNView>
       
       <ScrollView 
-        showsconst renderVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.profileContainer}>

@@ -7,6 +7,9 @@ import Colors from '@/constants/Colors';
 import { typography, spacing } from '@/constants/Typography';
 import { useColorScheme } from '@/components/useColorScheme';
 import { router } from 'expo-router';
+import { useNetworkState } from '@/hooks/useNetworkState';
+import { storeData, getData, KEYS } from '@/utils/offlineStorage';
+import OfflineBanner from '@/components/OfflineBanner';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg"
 
@@ -24,12 +27,20 @@ export default function TabTwoScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const isOnline = useNetworkState();
 
   const fetchUsers = useCallback(async () => {
     try {
-      // First get the current user's ID
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUserId(user?.id || null);
+
+      if (!isOnline) {
+        const cachedUsers = await getData(KEYS.USER_PROFILES);
+        if (cachedUsers) {
+          setUsers(cachedUsers);
+          return;
+        }
+      }
 
       const { data, error } = await supabase
         .from('Profile')
@@ -38,7 +49,6 @@ export default function TabTwoScreen() {
 
       if (error) throw error;
 
-      // Sort the data to put current user's profile first
       const sortedData = (data || []).sort((a, b) => {
         if (a.id === user?.id) return -1;
         if (b.id === user?.id) return 1;
@@ -46,12 +56,17 @@ export default function TabTwoScreen() {
       });
 
       setUsers(sortedData);
+      await storeData(KEYS.USER_PROFILES, sortedData);
     } catch (error) {
       console.error('Error fetching users:', error);
+      const cachedUsers = await getData(KEYS.USER_PROFILES);
+      if (cachedUsers) {
+        setUsers(cachedUsers);
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isOnline]);
 
   useEffect(() => {
     fetchUsers();
@@ -64,12 +79,10 @@ export default function TabTwoScreen() {
   }, [fetchUsers]);
 
   const handleUserPress = (userId: string) => {
-    // If it's the current user's profile, redirect to profile tab
     if (userId === currentUserId) {
       router.push('/three');
       return;
     }
-    // Otherwise, open the modal
     router.push(`/user-profile?id=${userId}`);
   };
 
@@ -79,7 +92,6 @@ export default function TabTwoScreen() {
         styles.userCard,
         { 
           backgroundColor: theme.card,
-          // Optional: Add visual indication for user's own profile
           borderWidth: item.id === currentUserId ? 1 : 0,
           borderColor: theme.text
         }
@@ -124,6 +136,7 @@ export default function TabTwoScreen() {
 
   return (
     <View style={styles.container}>
+      {!isOnline && <OfflineBanner />}
       <FlatList
         data={users}
         renderItem={renderUser}
