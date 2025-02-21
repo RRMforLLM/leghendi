@@ -99,6 +99,29 @@ CREATE TRIGGER set_timestamp
     FOR EACH ROW
     EXECUTE FUNCTION update_profile_timestamp();
 
+-- Add trigger function for auto-creating profile
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public."Profile" (id, username, avatar_url, updated_at)
+  VALUES (
+    NEW.id,
+    split_part(NEW.email, '@', 1),  -- Set username to email prefix
+    'https://api.dicebear.com/7.x/avataaars/svg',  -- Default avatar
+    NOW()
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Drop existing trigger if exists
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+
+-- Create trigger for new user signup
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
 -- First add PRIMARY KEYS
 ALTER TABLE "Profile" ADD PRIMARY KEY (id);
 ALTER TABLE "Agenda" ADD PRIMARY KEY (id);

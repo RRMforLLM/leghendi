@@ -29,7 +29,7 @@ interface ProfileComment {
 
 export default function ProfileScreen() {
   const colorScheme = useColorScheme()
-  const colors = Colors[colorScheme]
+  const theme = Colors[colorScheme ?? 'light'];
   const isOnline = useNetworkState();
   
   const [session, setSession] = useState<Session | null>(null)
@@ -226,10 +226,28 @@ export default function ProfileScreen() {
 
       if (error) throw error
       
-      // User should be logged in immediately now
       if (!data.session) {
         throw new Error("Failed to create session")
       }
+
+      // Wait a moment for the trigger to create the profile
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      // Fetch the newly created profile
+      const { data: profile, error: profileError } = await supabase
+        .from('Profile')
+        .select('*')
+        .eq('id', data.session.user.id)
+        .single()
+
+      if (profileError) {
+        console.error('Profile fetch error:', profileError)
+        // Don't throw here, as the user is still created
+      }
+
+      // The trigger should have created the profile, so we can proceed
+      setSession(data.session)
+      router.replace('/(tabs)/')
     } catch (error) {
       console.error("Sign up error:", error)
       Alert.alert("Error", "Failed to sign up")
@@ -411,56 +429,56 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <Text style={[typography.body, { color: colors.text }]}>Loading...</Text>
+      <View style={styles.container}>
+        <Text style={{ color: theme.text }}>Loading users...</Text>
       </View>
     )
   }
 
   if (!session) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={styles.inputContainer}>
-          <Text style={[typography.h2, { color: colors.text, marginBottom: spacing.lg }]}>
+          <Text style={[typography.h2, { color: theme.text, marginBottom: spacing.lg }]}>
             {isSignUp ? "Create Account" : "Welcome Back"}
           </Text>
           <Input
             label="Email"
-            leftIcon={{ type: "font-awesome", name: "envelope", color: colors.text }}
+            leftIcon={{ type: "font-awesome", name: "envelope", color: theme.text }}
             onChangeText={setEmail}
             value={email}
             placeholder="email@address.com"
             autoCapitalize="none"
             containerStyle={styles.input}
-            inputStyle={{ color: colors.text }}
-            placeholderTextColor={colors.placeholder}
+            inputStyle={{ color: theme.text }}
+            placeholderTextColor={theme.placeholder}
           />
           <Input
             label="Password"
-            leftIcon={{ type: "font-awesome", name: "lock", color: colors.text }}
+            leftIcon={{ type: "font-awesome", name: "lock", color: theme.text }}
             onChangeText={setPassword}
             value={password}
             secureTextEntry={true}
             placeholder="Password"
             autoCapitalize="none"
             containerStyle={styles.input}
-            inputStyle={{ color: colors.text }}
-            placeholderTextColor={colors.placeholder}
+            inputStyle={{ color: theme.text }}
+            placeholderTextColor={theme.placeholder}
           />
           <Button
             title={isSignUp ? "Sign up" : "Sign in"}
             disabled={authLoading}
             onPress={isSignUp ? signUpWithEmail : signInWithEmail}
             containerStyle={styles.button}
-            buttonStyle={{ backgroundColor: colors.button }}
-            titleStyle={{ color: colors.buttonText }}
+            buttonStyle={{ backgroundColor: theme.button }}
+            titleStyle={{ color: theme.buttonText }}
           />
           <Button
             title={isSignUp ? "Already have an account? Sign in" : "Need an account? Sign up"}
             type="clear"
             onPress={() => setIsSignUp(!isSignUp)}
             containerStyle={styles.switchButton}
-            titleStyle={{ color: colors.text }}
+            titleStyle={{ color: theme.text }}
           />
         </View>
       </View>
@@ -529,7 +547,7 @@ function Account({
   isOnline: boolean; // Add this type
 }) {
   const colorScheme = useColorScheme()
-  const colors = Colors[colorScheme]
+  const theme = Colors[colorScheme ?? 'light'];
   const [isEditingUsername, setIsEditingUsername] = useState(false)
   const [newUsername, setNewUsername] = useState(username)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
@@ -576,7 +594,7 @@ function Account({
   }
 
   const renderComment = ({ item }: { item: ProfileComment }) => (
-    <RNView style={[styles.commentContainer, { backgroundColor: colors.card }]}>
+    <RNView style={[styles.commentContainer, { backgroundColor: theme.card }]}>
       <RNView style={styles.commentHeader}>
         <RNView style={styles.commentAuthor}>
           <Avatar
@@ -585,15 +603,15 @@ function Account({
             source={{ uri: item.author.avatar_url || DEFAULT_AVATAR }}
             containerStyle={styles.commentAvatar}
           />
-          <Text style={[typography.caption, { color: colors.text }]}>
+          <Text style={[typography.caption, { color: theme.text }]}>
             {item.author.username}
           </Text>
         </RNView>
-        <Text style={[typography.caption, { color: colors.placeholder }]}>
+        <Text style={[typography.caption, { color: theme.placeholder }]}>
           {getRelativeTime(item.created_at)}
         </Text>
       </RNView>
-      <Text style={[typography.body, { color: colors.text }]}>
+      <Text style={[typography.body, { color: theme.text }]}>
         {item.text}
       </Text>
     </RNView>
@@ -632,14 +650,14 @@ function Account({
   }, [session?.user?.id]);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {!isOnline && <OfflineBanner />}
       <RNView style={styles.headerContainer}>
         <RNView style={styles.settingsIconWrapper}>
           <Icon
             name="cog"
             type="font-awesome-5"
-            color={colors.text}
+            color={theme.text}
             size={24}
             onPress={() => router.push("/settings")}
           />
@@ -666,14 +684,14 @@ function Account({
                   value={newUsername}
                   onChangeText={setNewUsername}
                   containerStyle={styles.usernameInput}
-                  inputStyle={{ color: colors.text }}
+                  inputStyle={{ color: theme.text }}
                   autoFocus
                   onSubmitEditing={updateUsername}
                   rightIcon={
                     <Icon
                       name="check"
                       type="font-awesome"
-                      color={colors.text}
+                      color={theme.text}
                       size={20}
                       onPress={updateUsername}
                     />
@@ -682,13 +700,13 @@ function Account({
               </RNView>
             ) : (
               <RNView style={styles.usernameRow}>
-                <Text style={[typography.h2, { color: colors.text }]}>
+                <Text style={[typography.h2, { color: theme.text }]}>
                   {loading ? "Loading..." : username || session.user.email}
                 </Text>
                 <Icon
                   name="edit"
                   type="font-awesome"
-                  color={colors.text}
+                  color={theme.text}
                   size={20}
                   onPress={() => setIsEditingUsername(true)}
                   containerStyle={styles.editIcon}
@@ -707,14 +725,14 @@ function Account({
                   multiline
                   numberOfLines={3}
                   containerStyle={styles.descriptionInput}
-                  inputStyle={{ color: colors.text }}
+                  inputStyle={{ color: theme.text }}
                   autoFocus
                   onSubmitEditing={updateDescription}
                   rightIcon={
                     <Icon
                       name="check"
                       type="font-awesome"
-                      color={colors.text}
+                      color={theme.text}
                       size={20}
                       onPress={updateDescription}
                     />
@@ -723,13 +741,13 @@ function Account({
               </RNView>
             ) : (
               <RNView style={styles.descriptionRow}>
-                <Text style={[typography.body, { color: colors.text }]}>
+                <Text style={[typography.body, { color: theme.text }]}>
                   {description || "No description"}
                 </Text>
                 <Icon
                   name="edit"
                   type="font-awesome"
-                  color={colors.text}
+                  color={theme.text}
                   size={16}
                   onPress={() => setIsEditingDescription(true)}
                   containerStyle={styles.editIcon}
@@ -747,7 +765,7 @@ function Account({
                 size={30}
                 style={styles.iconStyle}
               />
-              <Text style={[typography.body, { color: colors.text }]}>{reactionStats.hugs}</Text>
+              <Text style={[typography.body, { color: theme.text }]}>{reactionStats.hugs}</Text>
             </RNView>
             <RNView style={styles.reactionItem}>
               <Icon 
@@ -757,7 +775,7 @@ function Account({
                 size={30}
                 style={styles.iconStyle}
               />
-              <Text style={[typography.body, { color: colors.text }]}>{reactionStats.hearts}</Text>
+              <Text style={[typography.body, { color: theme.text }]}>{reactionStats.hearts}</Text>
             </RNView>
             <RNView style={styles.reactionItem}>
               <Icon 
@@ -767,12 +785,12 @@ function Account({
                 size={30}
                 style={styles.iconStyle}
               />
-              <Text style={[typography.body, { color: colors.text }]}>{reactionStats.kisses}</Text>
+              <Text style={[typography.body, { color: theme.text }]}>{reactionStats.kisses}</Text>
             </RNView>
           </RNView>
 
           <View style={styles.commentsSection}>
-            <Text style={[typography.h3, { color: colors.text }]}>Comments</Text>
+            <Text style={[typography.h3, { color: theme.text }]}>Comments</Text>
             
             <RNView style={styles.commentInputContainer}>
               <Input
@@ -781,12 +799,12 @@ function Account({
                 onChangeText={setCommentText}
                 multiline
                 containerStyle={styles.commentInput}
-                inputStyle={{ color: colors.text }}
+                inputStyle={{ color: theme.text }}
                 rightIcon={
                   <Icon
                     name="send"
                     type="font-awesome"
-                    color={commentText.trim() ? colors.text : colors.placeholder}
+                    color={commentText.trim() ? theme.text : theme.placeholder}
                     size={20}
                     onPress={() => {
                       if (session?.user?.id && commentText.trim()) {
@@ -801,7 +819,7 @@ function Account({
 
             <View style={styles.commentsList}>
               {comments.map((comment) => (
-                <View key={comment.id.toString()} style={[styles.commentContainer, { backgroundColor: colors.card }]}>
+                <View key={comment.id.toString()} style={[styles.commentContainer, { backgroundColor: theme.card }]}>
                   <RNView style={styles.commentHeader}>
                     <RNView style={styles.commentAuthor}>
                       <Avatar
@@ -810,21 +828,21 @@ function Account({
                         source={{ uri: comment.author.avatar_url || DEFAULT_AVATAR }}
                         containerStyle={styles.commentAvatar}
                       />
-                      <Text style={[typography.caption, { color: colors.text }]}>
+                      <Text style={[typography.caption, { color: theme.text }]}>
                         {comment.author.username}
                       </Text>
                     </RNView>
-                    <Text style={[typography.caption, { color: colors.placeholder }]}>
+                    <Text style={[typography.caption, { color: theme.placeholder }]}>
                       {getRelativeTime(comment.created_at)}
                     </Text>
                   </RNView>
-                  <Text style={[typography.body, { color: colors.text }]}>
+                  <Text style={[typography.body, { color: theme.text }]}>
                     {comment.text}
                   </Text>
                 </View>
               ))}
               {comments.length === 0 && (
-                <Text style={[typography.body, { color: colors.placeholder }]}>
+                <Text style={[typography.body, { color: theme.placeholder }]}>
                   No comments yet. Be the first to comment!
                 </Text>
               )}
