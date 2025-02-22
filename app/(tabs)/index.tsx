@@ -1,4 +1,4 @@
-import { StyleSheet, FlatList, RefreshControl, Alert, Switch, Pressable } from "react-native"
+import { StyleSheet, FlatList, RefreshControl, Alert, Switch, Pressable, ScrollView } from "react-native"
 import { View, Text } from "@/components/Themed"
 import { useEffect, useState, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
@@ -13,6 +13,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useNetworkState } from '@/hooks/useNetworkState';
 import { storeData, getData, KEYS } from '@/utils/offlineStorage';
 import OfflineBanner from '@/components/OfflineBanner';
+import VibesDisplay from '@/components/VibesDisplay';
+import { useCredits } from '@/hooks/useCredits';
 
 const DialogButton = ({ onPress, disabled = false, children }: {
   onPress: () => void;
@@ -30,7 +32,7 @@ const DialogButton = ({ onPress, disabled = false, children }: {
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme()
-  const colors = Colors[colorScheme]
+  const theme = Colors[colorScheme ?? 'light'];
   const [agendas, setAgendas] = useState<Agenda[]>([])
   const [session, setSession] = useState<Session | null>(null)
   const [refreshing, setRefreshing] = useState(false)
@@ -50,6 +52,7 @@ export default function HomeScreen() {
     key: ''
   })
   const isOnline = useNetworkState();
+  const { credits, setCredits, fetchCredits } = useCredits();
 
   const resetState = useCallback(() => {
     setAgendas([])
@@ -95,7 +98,8 @@ export default function HomeScreen() {
         try {
           await Promise.all([
             fetchAgendas(session),
-            fetchAgendaElements(session)
+            fetchAgendaElements(session),
+            fetchUserCredits(session)
           ]);
         } catch (error) {
           console.error('Auth change error:', error);
@@ -125,7 +129,8 @@ export default function HomeScreen() {
         setLoading(true);
         await Promise.all([
           fetchAgendas(session),
-          fetchAgendaElements(session)
+          fetchAgendaElements(session),
+          fetchUserCredits(session)
         ]);
       } catch (error) {
         console.error('Init error:', error);
@@ -143,6 +148,12 @@ export default function HomeScreen() {
     return () => { mounted = false };
   }, []); // Empty dependency array - only run once on mount
 
+  // Add this helper function near the top of the component
+  const clearAgendas = useCallback(async () => {
+    setAgendas([]);
+    await storeData(KEYS.AGENDAS, []);
+  }, []);
+
   const fetchAgendas = useCallback(async (currentSession?: Session | null) => {
     const userSession = currentSession || session;
     if (!userSession?.user?.id) return;
@@ -150,13 +161,6 @@ export default function HomeScreen() {
     try {
       setLoading(true);
       
-      // Always load cached data first
-      const cachedAgendas = await getData(KEYS.AGENDAS);
-      if (cachedAgendas?.length > 0) {
-        setAgendas(cachedAgendas);
-      }
-      
-      // If online, fetch fresh data
       if (isOnline) {
         const [{ data: ownedAgendas }, { data: memberAgendas }] = await Promise.all([
           supabase
@@ -183,25 +187,37 @@ export default function HomeScreen() {
           combined.map(item => [item.id, item])
         ).values());
 
-        // Only update state and cache if we got new data
-        if (uniqueAgendas.length > 0) {
+        // If we got an empty list from the server, clear everything
+        if (uniqueAgendas.length === 0) {
+          await clearAgendas();
+        } else {
           setAgendas(uniqueAgendas);
           await storeData(KEYS.AGENDAS, uniqueAgendas);
         }
+        return;
       }
+      
+      // Only load from cache if we're offline
+      const cachedAgendas = await getData(KEYS.AGENDAS);
+      if (cachedAgendas?.length > 0) {
+        setAgendas(cachedAgendas);
+      } else {
+        await clearAgendas();
+      }
+      
     } catch (error) {
       console.error('Fetch agendas error:', error);
-      // Load from cache as fallback if we haven't already
-      if (agendas.length === 0) {
-        const cachedAgendas = await getData(KEYS.AGENDAS);
-        if (cachedAgendas?.length > 0) {
-          setAgendas(cachedAgendas);
-        }
+      // On error, try cache, but if cache is empty, clear everything
+      const cachedAgendas = await getData(KEYS.AGENDAS);
+      if (cachedAgendas?.length > 0) {
+        setAgendas(cachedAgendas);
+      } else {
+        await clearAgendas();
       }
     } finally {
       setLoading(false);
     }
-  }, [session, isOnline, agendas.length]);
+  }, [session, isOnline, clearAgendas]);
 
   const fetchAgendaElements = useCallback(async (currentSession?: Session | null) => {
     const userSession = currentSession || session;
@@ -304,22 +320,34 @@ export default function HomeScreen() {
     }
   }, [session, isOnline]);
 
+  const fetchUserCredits = useCallback(async (currentSession?: Session | null) => {
+    const userSession = currentSession || session;
+    if (!userSession?.user?.id) return;
+    const amount = await fetchCredits();
+    setCredits(amount);
+  }, [session, fetchCredits, setCredits]);
+
   // Focus listener to refresh data when returning to this screen
   useFocusEffect(
     useCallback(() => {
       if (session?.user) {
-        // Load from cache immediately
-        getData(KEYS.AGENDAS).then(cachedAgendas => {
-          if (cachedAgendas?.length > 0) {
-            setAgendas(cachedAgendas);
-          }
-        });
-        
-        // Then fetch fresh data
-        fetchAgendas();
-        fetchAgendaElements();
+        fetchCredits();
+        if (isOnline) {
+          // Force a fresh fetch from server when screen is focused
+          fetchAgendas(session);
+          fetchAgendaElements(session);
+        } else {
+          // If offline, just check cache
+          getData(KEYS.AGENDAS).then(cachedAgendas => {
+            if (cachedAgendas?.length > 0) {
+              setAgendas(cachedAgendas);
+            } else {
+              clearAgendas();
+            }
+          });
+        }
       }
-    }, [session?.user?.id])
+    }, [session?.user?.id, fetchCredits, isOnline, clearAgendas])
   );
 
   const onRefresh = useCallback(() => {
@@ -497,159 +525,222 @@ export default function HomeScreen() {
   }
 
   const renderAgendaItem = ({ item }: { item: Agenda }) => (
-    <View style={[styles.card, { backgroundColor: colors.card }]}>
-      <Text style={[typography.h3, { color: colors.text }]}>{item.name || "Untitled"}</Text>
+    <View style={[styles.card, { backgroundColor: theme.card }]}>
+      <Text style={[typography.h3, { color: theme.text }]}>{item.name || "Untitled"}</Text>
       {item.key_visible && (
-        <Text style={[typography.caption, { color: colors.text }]}>Key: {item.key}</Text>
+        <Text style={[typography.caption, { color: theme.text }]}>Key: {item.key}</Text>
       )}
       <Button
         title="View"
         type="clear"
-        titleStyle={{ color: colors.tint }}
+        titleStyle={{ color: theme.tint }}
         onPress={() => router.push(`/agenda/${item.id}`)}
       />
     </View>
   )
 
   const renderUrgentItem = ({ item }: { item: AgendaElement }) => (
-    <View style={[styles.urgentCard, { backgroundColor: colors.card }]}>
-      <Text style={[typography.h3, { color: colors.text }]}>{item.subject}</Text>
-      <Text style={[typography.caption, { color: colors.placeholder }]}>
+    <View style={[styles.urgentCardBase, { 
+      backgroundColor: theme.card,
+      borderLeftColor: Colors.light.error, // Move this to a constant since it doesn't change
+    }]}>
+      <Text style={[typography.h3, { color: theme.text }]}>{item.subject}</Text>
+      <Text style={[typography.caption, { color: theme.placeholder }]}>
         {item.agendaName} • Due: {new Date(item.deadline).toLocaleDateString()}
       </Text>
       <Button
         title="View Agenda"
         type="clear"
-        titleStyle={{ color: colors.tint }}
+        titleStyle={{ color: theme.tint }}
         onPress={() => router.push(`/agenda/${item.section.agenda.id}`)}
       />
     </View>
   );
+
+  const handleLeaveAgenda = async () => {
+    if (!session?.user?.id) return;
+
+    Alert.alert(
+      "Leave Agenda",
+      "Are you sure you want to leave this agenda? This will remove all your data from this agenda.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Leave",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // Just remove from Agenda Member - everything else cascades
+              const { error } = await supabase
+                .from("Agenda Member")
+                .delete()
+                .eq('user_id', session.user.id)
+                .eq('agenda_id', id);
+
+              if (error) throw error;
+
+              // Update local cache
+              try {
+                const cachedData = await getData(KEYS.AGENDAS) || [];
+                const updatedAgendas = cachedData.filter(a => a.id !== id);
+                await storeData(KEYS.AGENDAS, updatedAgendas);
+                await storeAgendaData(id as string, null);
+              } catch (storageError) {
+                console.log('Cache update error:', storageError);
+              }
+
+              router.replace("/");
+            } catch (error) {
+              console.error("Leave agenda error:", error);
+              Alert.alert("Error", "Failed to leave agenda");
+            }
+          }
+        }
+      ]
+    );
+  };
 
   if (!session || !session.user) {
     return null // Will redirect via useEffect
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {!isOnline && <OfflineBanner />}
-      {/* Urgent section */}
-      {!loading && agendaElements.length > 0 && (
-        <View style={styles.section}>
-          <View>
-            {agendaElements.slice(0, 2).map((item) => (
-              <View key={item.id}>
-                {renderUrgentItem({ item })}
-              </View>
-            ))}
-            {agendaElements.length > 2 && (
-              <Link 
-                href={{
-                  pathname: "/urgent",
-                  params: {
-                    items: encodeURIComponent(JSON.stringify(agendaElements.map(item => ({
-                      id: item.id,
-                      subject: item.subject,
-                      deadline: item.deadline,
-                      agendaName: item.agendaName,
-                      agendaId: item.section.agenda.id
-                    }))))
-                  }
-                }} 
-                asChild
-              >
-                <Pressable>
-                  {({ pressed }) => (
-                    <Text
-                      style={[
-                        typography.body,
-                        { 
-                          color: colors.text,
-                          opacity: pressed ? 0.5 : 1,
-                          textAlign: 'center',
-                          padding: spacing.sm,
-                          fontSize: 20 
-                        }
-                      ]}
-                    >
-                      •••
-                    </Text>
-                  )}
-                </Pressable>
-              </Link>
-            )}
-          </View>
-        </View>
-      )}
-
-      {/* Your Agendas section */}
-      <View style={styles.section}>
-        {loading ? (
-          <Text style={{ color: colors.text }}>Loading agendas...</Text>
-        ) : agendas.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={{ color: colors.text }}>No agendas found</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={agendas}
-            renderItem={renderAgendaItem}
-            keyExtractor={(item) => item.id}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.listContainer}
+      <View style={styles.headerRow}>
+        <VibesDisplay amount={credits} />
+      </View>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.text}
           />
+        }
+      >
+        {/* Rest of the content */}
+        {/* Remove the headerRow from here */}
+        {/* Urgent section */}
+        {!loading && agendaElements.length > 0 && (
+          <View style={styles.section}>
+            <View>
+              {agendaElements.slice(0, 2).map((item) => (
+                <View key={item.id}>
+                  {renderUrgentItem({ item })}
+                </View>
+              ))}
+              {agendaElements.length > 2 && (
+                <Link 
+                  href={{
+                    pathname: "/urgent",
+                    params: {
+                      items: encodeURIComponent(JSON.stringify(agendaElements.map(item => ({
+                        id: item.id,
+                        subject: item.subject,
+                        deadline: item.deadline,
+                        agendaName: item.agendaName,
+                        agendaId: item.section.agenda.id
+                      }))))
+                    }
+                  }} 
+                  asChild
+                >
+                  <Pressable>
+                    {({ pressed }) => (
+                      <Text
+                        style={[
+                          typography.body,
+                          { 
+                            color: theme.text,
+                            opacity: pressed ? 0.5 : 1,
+                            textAlign: 'center',
+                            padding: spacing.sm,
+                            fontSize: 20 
+                          }
+                        ]}
+                      >
+                        •••
+                      </Text>
+                    )}
+                  </Pressable>
+                </Link>
+              )}
+            </View>
+          </View>
         )}
-      </View>
-      <View style={styles.section}>
-        <View style={styles.buttonGroup}>
-          <Button
-            title="Create Agenda"
-            onPress={() => setShowCreateDialog(true)}
-            containerStyle={styles.button}
-            buttonStyle={{ backgroundColor: colors.button }}
-            titleStyle={{ color: colors.buttonText }}
-          />
-          <Button
-            title="Join Agenda"
-            type="outline"
-            onPress={() => setShowJoinDialog(true)}
-            containerStyle={styles.button}
-            buttonStyle={{ borderColor: colors.button }}
-            titleStyle={{ color: colors.button }}
-          />
+
+        {/* Your Agendas section */}
+        <View style={styles.section}>
+          {loading ? (
+            <Text style={{ color: theme.text }}>Loading agendas...</Text>
+          ) : agendas.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={{ color: theme.text }}>No agendas found</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={agendas}
+              renderItem={renderAgendaItem}
+              keyExtractor={(item) => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.listContainer}
+            />
+          )}
         </View>
-      </View>
+        <View style={[styles.section, styles.bottomSection]}>
+          <View style={styles.buttonGroup}>
+            <Button
+              title="Create Agenda"
+              onPress={() => setShowCreateDialog(true)}
+              containerStyle={styles.button}
+              buttonStyle={{ backgroundColor: theme.button }}
+              titleStyle={{ color: theme.buttonText }}
+            />
+            <Button
+              title="Join Agenda"
+              type="outline"
+              onPress={() => setShowJoinDialog(true)}
+              containerStyle={styles.button}
+              buttonStyle={{ borderColor: theme.button }}
+              titleStyle={{ color: theme.button }}
+            />
+          </View>
+        </View>
+      </ScrollView>
 
       <Dialog
         isVisible={showCreateDialog}
         onBackdropPress={() => setShowCreateDialog(false)}
-        overlayStyle={[styles.dialog, { backgroundColor: colors.card }]}
+        overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
       >
-        <View style={[styles.dialogContent, , { backgroundColor: colors.card }]}>
-          <Text style={[typography.h3, { color: colors.text }]}>Create New Agenda</Text>
+        <View style={[styles.dialogContent, , { backgroundColor: theme.card }]}>
+          <Text style={[typography.h3, { color: theme.text }]}>Create New Agenda</Text>
           <Input
             placeholder="Agenda Name"
             value={newAgendaData.name}
             onChangeText={(text) => setNewAgendaData(prev => ({ ...prev, name: text }))}
-            inputStyle={{ color: colors.text }}
+            inputStyle={{ color: theme.text }}
           />
           <Input
             placeholder="Custom Key (optional)"
             value={newAgendaData.key}
             onChangeText={(text) => setNewAgendaData(prev => ({ ...prev, key: text }))}
-            inputStyle={{ color: colors.text }}
+            inputStyle={{ color: theme.text }}
           />
-          <View style={[styles.switchContainer, { backgroundColor: colors.card }]}>
-            <Text style={{ color: colors.text }}>Make key visible</Text>
+          <View style={[styles.switchContainer, { backgroundColor: theme.card }]}>
+            <Text style={{ color: theme.text }}>Make key visible</Text>
             <Switch
               value={newAgendaData.key_visible}
               onValueChange={(value) => setNewAgendaData(prev => ({ ...prev, key_visible: value }))}
-              trackColor={{ false: colors.placeholder, true: colors.button }}
-              thumbColor={colors.buttonText}
+              trackColor={{ false: theme.placeholder, true: theme.button }}
+              thumbColor={theme.buttonText}
             />
           </View>
-          <View style={[{ flexDirection: 'row', justifyContent: 'flex-end' }, { backgroundColor: colors.card }]}>
+          <View style={[{ flexDirection: 'row', justifyContent: 'flex-end' }, { backgroundColor: theme.card }]}>
             <DialogButton onPress={() => setShowCreateDialog(false)}>
               Cancel
             </DialogButton>
@@ -666,23 +757,23 @@ export default function HomeScreen() {
       <Dialog
         isVisible={showJoinDialog}
         onBackdropPress={() => setShowJoinDialog(false)}
-        overlayStyle={[styles.dialog, { backgroundColor: colors.card }]}
+        overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
       >
-        <View style={[styles.dialogContent, { backgroundColor: colors.card }]}>
-          <Text style={[typography.h3, { color: colors.text }]}>Join New Agenda</Text>
+        <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
+          <Text style={[typography.h3, { color: theme.text }]}>Join New Agenda</Text>
           <Input
             placeholder="Agenda Name"
             value={joinAgendaData.name}
             onChangeText={(text) => setJoinAgendaData(prev => ({ ...prev, name: text }))}
-            inputStyle={{ color: colors.text }}
+            inputStyle={{ color: theme.text }}
           />
           <Input
             placeholder="Agenda Key"
             value={joinAgendaData.key}
             onChangeText={(text) => setJoinAgendaData(prev => ({ ...prev, key: text }))}
-            inputStyle={{ color: colors.text }}
+            inputStyle={{ color: theme.text }}
           />
-          <View style={[{ flexDirection: 'row', justifyContent: 'flex-end' }, { backgroundColor: colors.card }]}>
+          <View style={[{ flexDirection: 'row', justifyContent: 'flex-end' }, { backgroundColor: theme.card }]}>
             <DialogButton onPress={() => setShowJoinDialog(false)}>
               Cancel
             </DialogButton>
@@ -702,7 +793,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: spacing.lg,
   },
   section: {
     marginBottom: spacing.lg,
@@ -727,12 +817,11 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  urgentCard: {
+  urgentCardBase: {
     padding: spacing.md,
     borderRadius: 12,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
     borderLeftWidth: 4,
-    borderLeftColor: Colors.light.error,
   },
   actionButtons: {
     width: "100%",
@@ -858,5 +947,23 @@ const styles = StyleSheet.create({
     marginVertical: 30,
     height: 1,
     width: '80%',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    width: '100%',
+    padding: spacing.lg,
+    paddingBottom: 0,
+    position: 'absolute',
+    zIndex: 1,
+    backgroundColor: 'transparent',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingTop: spacing.xl + spacing.lg, // Add extra padding to account for floating header
+    padding: spacing.lg,
+  },
+  bottomSection: {
+    marginBottom: spacing.xl,
   },
 })

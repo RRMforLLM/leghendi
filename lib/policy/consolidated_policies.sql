@@ -103,6 +103,7 @@ CREATE TRIGGER set_timestamp
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
+  -- Create Profile
   INSERT INTO public."Profile" (id, username, avatar_url, updated_at)
   VALUES (
     NEW.id,
@@ -110,6 +111,11 @@ BEGIN
     'https://api.dicebear.com/7.x/avataaars/svg',  -- Default avatar
     NOW()
   );
+  
+  -- Create User Credit with initial balance of 100
+  INSERT INTO public."User Credit" (user_id, amount)
+  VALUES (NEW.id, 100);
+  
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -167,18 +173,23 @@ ADD CONSTRAINT "Agenda_Member_user_id_fkey"
 ADD CONSTRAINT "Agenda_Member_agenda_id_fkey"
     FOREIGN KEY (agenda_id) REFERENCES "Agenda"(id) ON DELETE CASCADE;
 
--- Element states
+-- Element states - Update these constraints
 ALTER TABLE "Completed Element"
 ADD CONSTRAINT "Completed_Element_user_id_fkey"
     FOREIGN KEY (user_id) REFERENCES "Profile"(id) ON DELETE CASCADE,
 ADD CONSTRAINT "Completed_Element_element_id_fkey"
-    FOREIGN KEY (element_id) REFERENCES "Agenda Element"(id) ON DELETE CASCADE;
+    FOREIGN KEY (element_id) REFERENCES "Agenda Element"(id) ON DELETE CASCADE,
+ADD CONSTRAINT "Completed_Element_agenda_id_fkey"
+    FOREIGN KEY (agenda_id) REFERENCES "Agenda"(id) ON DELETE CASCADE;
 
 ALTER TABLE "Urgent Element"
+ADD COLUMN IF NOT EXISTS agenda_id BIGINT REFERENCES "Agenda"(id) ON DELETE CASCADE,
 ADD CONSTRAINT "Urgent_Element_user_id_fkey"
     FOREIGN KEY (user_id) REFERENCES "Profile"(id) ON DELETE CASCADE,
 ADD CONSTRAINT "Urgent_Element_element_id_fkey"
-    FOREIGN KEY (element_id) REFERENCES "Agenda Element"(id) ON DELETE CASCADE;
+    FOREIGN KEY (element_id) REFERENCES "Agenda Element"(id) ON DELETE CASCADE,
+ADD CONSTRAINT "Urgent_Element_agenda_id_fkey"
+    FOREIGN KEY (agenda_id) REFERENCES "Agenda"(id) ON DELETE CASCADE;
 
 -- Comments (reference Profile for authors)
 ALTER TABLE "Profile Comment"
@@ -220,6 +231,36 @@ DROP POLICY IF EXISTS "profile_comment_access" ON "Profile Comment";
 DROP POLICY IF EXISTS "profile_comment_modify" ON "Profile Comment";
 DROP POLICY IF EXISTS "profile_comment_author_access" ON "Profile Comment";
 DROP POLICY IF EXISTS "reaction_access" ON "Reaction";
+
+-- First, drop ALL element state policies (only once!)
+DROP POLICY IF EXISTS "element_state_creator_manage" ON "Completed Element";
+DROP POLICY IF EXISTS "completed_element_creator_manage" ON "Completed Element";
+DROP POLICY IF EXISTS "completed_element_access" ON "Completed Element";
+DROP POLICY IF EXISTS "element_access" ON "Completed Element";
+DROP POLICY IF EXISTS "urgent_element_creator_manage" ON "Urgent Element";
+DROP POLICY IF EXISTS "urgent_element_access" ON "Urgent Element";
+DROP POLICY IF EXISTS "element_access" ON "Urgent Element";
+
+-- Now create new policies for element states with clear comments
+CREATE POLICY "completed_element_creator_manage" ON "Completed Element"
+FOR ALL USING (
+    user_id = auth.uid() OR  -- User can manage their own
+    EXISTS (
+        SELECT 1 FROM "Agenda"
+        WHERE id = agenda_id 
+        AND creator_id = auth.uid()  -- Creator can manage anyone's
+    )
+);
+
+CREATE POLICY "urgent_element_creator_manage" ON "Urgent Element"
+FOR ALL USING (
+    user_id = auth.uid() OR  -- User can manage their own
+    EXISTS (
+        SELECT 1 FROM "Agenda"
+        WHERE id = agenda_id 
+        AND creator_id = auth.uid()  -- Creator can manage anyone's
+    )
+);
 
 -- 1. Core Profile & User Policies
 CREATE POLICY "public_profiles" ON "Profile"
@@ -366,6 +407,19 @@ WITH CHECK (user_id = auth.uid());
 CREATE POLICY "urgent_element_access" ON "Urgent Element"
 FOR ALL USING (user_id = auth.uid())
 WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "element_state_creator_manage" ON "Completed Element"
+FOR ALL USING (
+    user_id = auth.uid() OR
+    agenda_id IN (
+        SELECT id FROM "Agenda"
+        WHERE creator_id = auth.uid()
+    )
+);
+
+-- Make sure these are the ONLY policies for these tables
+DROP POLICY IF EXISTS "completed_element_access" ON "Completed Element";
+DROP POLICY IF EXISTS "urgent_element_access" ON "Urgent Element";
 
 -- 4. Member & Editor Policies
 CREATE POLICY "member_access" ON "Agenda Member"

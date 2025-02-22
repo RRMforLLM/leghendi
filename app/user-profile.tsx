@@ -11,8 +11,15 @@ import { getRelativeTime } from '@/utils/dateUtils';
 import { StatusBar } from 'expo-status-bar';
 import { useNetworkState } from '@/hooks/useNetworkState';
 import OfflineBanner from '@/components/OfflineBanner';
+import VibesDisplay from '@/components/VibesDisplay';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg";
+
+const REACTION_COSTS = {
+  heart: 5,
+  kiss: 10,
+  hug: 0
+} as const;
 
 interface ProfileComment {
   id: number;
@@ -44,7 +51,7 @@ const UserProfileScreen = () => {
 
   const { id } = useLocalSearchParams();
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme];
+  const theme = Colors[colorScheme ?? 'light'];
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -61,6 +68,8 @@ const UserProfileScreen = () => {
   const [isPostingComment, setIsPostingComment] = useState(false);
   const [userReactions, setUserReactions] = useState<Reaction[]>([]);
   const [sendingReaction, setSendingReaction] = useState(false);
+  const [userCredits, setUserCredits] = useState(0);
+  const [currentUserCredits, setCurrentUserCredits] = useState(0);
 
   // Add a type-safe mapping
   const reactionTypeToStatKey = {
@@ -138,8 +147,112 @@ const UserProfileScreen = () => {
   };
 
   const handleReactionWithAnimation = async (type: 'hug' | 'heart' | 'kiss') => {
+    if (!currentUserId || sendingReaction) return; // Check authentication first
+    
+    const cost = REACTION_COSTS[type];
+    
+    // Only check credits for paid reactions
+    if (cost > 0 && currentUserCredits < cost) {
+      Alert.alert(
+        "Insufficient Vibes",
+        `You need ${cost} Vibes to send this reaction. Would you like to get more?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { 
+            text: "Get Vibes",
+            onPress: () => router.push('/store')
+          }
+        ]
+      );
+      return;
+    }
+
+    // If we get here, we can proceed with the reaction
+    setSendingReaction(true);
     animatePress(type);
-    await handleReaction(type);
+
+    try {
+      const statKey = reactionTypeToStatKey[type];
+      const existingReaction = userReactions.find(r => r.type.toLowerCase() === type.toLowerCase());
+
+      if (type === 'hug') {
+        // Handle hug toggle logic
+        if (existingReaction) {
+          // Remove hug
+          const { error: deleteError } = await supabase
+            .from('Reaction')
+            .delete()
+            .eq('id', existingReaction.id)
+            .eq('sender_id', currentUserId);
+
+          if (deleteError) throw deleteError;
+
+          setUserReactions(prev => prev.filter(r => r.id !== existingReaction.id));
+          setStatistics(prev => ({
+            ...prev,
+            [statKey]: Math.max(0, prev[statKey] - 1)
+          }));
+        } else {
+          // Add hug
+          const { data, error } = await supabase
+            .from('Reaction')
+            .insert({
+              type: type.toLowerCase(),
+              sender_id: currentUserId,
+              recipient_id: id,
+              paid: false
+            })
+            .select()
+            .single();
+
+          if (error) throw error;
+
+          if (data) {
+            setUserReactions(prev => [...prev, data]);
+            setStatistics(prev => ({
+              ...prev,
+              [statKey]: prev[statKey] + 1
+            }));
+          }
+        }
+      } else {
+        // Handle paid reactions
+        const { data: reactionData, error: reactionError } = await supabase
+          .from('Reaction')
+          .insert({
+            type: type.toLowerCase(),
+            sender_id: currentUserId,
+            recipient_id: id,
+            paid: true
+          })
+          .select()
+          .single();
+
+        if (reactionError) throw reactionError;
+
+        // Deduct credits
+        const { error: creditError } = await supabase
+          .from('User Credit')
+          .update({ amount: currentUserCredits - cost })
+          .eq('user_id', currentUserId);
+
+        if (creditError) throw creditError;
+
+        // Update local states
+        setCurrentUserCredits(prev => prev - cost);
+        setUserReactions(prev => [...prev, reactionData]);
+        setStatistics(prev => ({
+          ...prev,
+          [statKey]: prev[statKey] + 1
+        }));
+      }
+    } catch (error) {
+      console.error('Reaction error:', error);
+      Alert.alert('Error', 'Failed to process reaction');
+      await fetchProfile(currentUserId);
+    } finally {
+      setSendingReaction(false);
+    }
   };
 
   useEffect(() => {
@@ -156,6 +269,7 @@ const UserProfileScreen = () => {
         }
         
         setCurrentUserId(user?.id || null);
+        await fetchCurrentUserCredits(user?.id);  // Add this line
         await fetchProfile(user?.id || null);  // Pass the userId directly
       } catch (error) {
         console.error('Init error:', error);
@@ -175,7 +289,7 @@ const UserProfileScreen = () => {
     if (!id) return;
     
     try {
-      const [profileData, reactionsData, userReactionsData, commentsData] = await Promise.all([
+      const [profileData, reactionsData, userReactionsData, commentsData, creditsData] = await Promise.all([
         supabase
           .from("Profile")
           .select("*")
@@ -201,7 +315,12 @@ const UserProfileScreen = () => {
             author:Profile!author_id(username, avatar_url)
           `)
           .eq('profile_id', id)
-          .order('created_at', { ascending: false })
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('User Credit')
+          .select('amount')
+          .eq('user_id', id)
+          .single()
       ]);
 
       if (profileData.error) throw profileData.error;
@@ -240,8 +359,28 @@ const UserProfileScreen = () => {
         kisses: reactionCounts.kisses
       }));
 
+      if (!creditsData.error) {
+        setUserCredits(creditsData.data?.amount || 0);
+      }
+
     } catch (error) {
       console.error('Error loading profile:', error);
+    }
+  };
+
+  const fetchCurrentUserCredits = async (userId: string | null) => {
+    if (!userId) return;
+    try {
+      const { data, error } = await supabase
+        .from('User Credit')
+        .select('amount')
+        .eq('user_id', userId)
+        .single();
+  
+      if (error) throw error;
+      setCurrentUserCredits(data.amount || 0);
+    } catch (error) {
+      console.error('Error fetching credits:', error);
     }
   };
 
@@ -281,80 +420,10 @@ const UserProfileScreen = () => {
     }
   };
 
-  const handleReaction = async (type: 'hug' | 'heart' | 'kiss') => {
-    if (!currentUserId || sendingReaction) return;
-    
-    try {
-      setSendingReaction(true);
-      const statKey = reactionTypeToStatKey[type];
-      const existingReaction = userReactions.find(r => r.type.toLowerCase() === type.toLowerCase());
-
-      if (existingReaction) {
-        // First verify the reaction exists and belongs to the user
-        const { data: verifyReaction, error: verifyError } = await supabase
-          .from('Reaction')
-          .select('id')
-          .eq('id', existingReaction.id)
-          .eq('sender_id', currentUserId)
-          .single();
-
-        if (verifyError || !verifyReaction) {
-          throw new Error('Reaction verification failed');
-        }
-
-        // Then delete it
-        const { error: deleteError } = await supabase
-          .from('Reaction')
-          .delete()
-          .eq('id', existingReaction.id)
-          .eq('sender_id', currentUserId); // Add this safety check
-
-        if (deleteError) throw deleteError;
-
-        // Update local state only after successful deletion
-        setUserReactions(prev => prev.filter(r => r.id !== existingReaction.id));
-        setStatistics(prev => ({
-          ...prev,
-          [statKey]: Math.max(0, prev[statKey] - 1)
-        }));
-      } else {
-        // Add new reaction
-        const { data, error } = await supabase
-          .from('Reaction')
-          .insert({
-            type: type.toLowerCase(),
-            sender_id: currentUserId,
-            recipient_id: id,
-            paid: false
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        if (data) {
-          // Update local state only after successful addition
-          setUserReactions(prev => [...prev, data]);
-          setStatistics(prev => ({
-            ...prev,
-            [statKey]: prev[statKey] + 1
-          }));
-        }
-      }
-    } catch (error) {
-      console.error('Reaction error:', error);
-      Alert.alert('Error', 'Failed to process reaction');
-      // Refresh the entire profile state on error
-      await fetchProfile(currentUserId);
-    } finally {
-      setSendingReaction(false);
-    }
-  };
-
   if (loading) {
     return (
       <View style={styles.container}>
-        <Text style={{ color: colors.text }}>Loading profile...</Text>
+        <Text style={{ color: theme.text }}>Loading profile...</Text>
       </View>
     );
   }
@@ -362,7 +431,7 @@ const UserProfileScreen = () => {
   if (!profile) {
     return (
       <View style={styles.container}>
-        <Text style={{ color: colors.text }}>Profile not found</Text>
+        <Text style={{ color: theme.text }}>Profile not found</Text>
       </View>
     );
   }
@@ -370,7 +439,9 @@ const UserProfileScreen = () => {
   return (
     <View style={styles.container}>
       {!isOnline && <OfflineBanner />}
-      <StatusBar style={Platform.OS === 'ios' ? 'light' : 'auto'} />
+      <View style={styles.headerRow}>
+        <VibesDisplay amount={currentUserCredits} />
+      </View>
       <ScrollView 
         style={styles.content}
         showsVerticalScrollIndicator={false}
@@ -384,13 +455,13 @@ const UserProfileScreen = () => {
             containerStyle={[styles.avatar, styles.avatarContainer]}
           />
           <View style={styles.usernameContainer}>
-            <Text style={[typography.h2, { color: colors.text }]}>
+            <Text style={[typography.h2, { color: theme.text }]}>
               {profile.username}
             </Text>
           </View>
           
           <View style={styles.descriptionContainer}>
-            <Text style={[typography.body, { color: colors.text, textAlign: 'center' }]}>
+            <Text style={[typography.body, { color: theme.text, textAlign: 'center' }]}>
               {profile.description || "No description"}
             </Text>
           </View>
@@ -405,53 +476,53 @@ const UserProfileScreen = () => {
                   <Icon
                     name="like1"
                     type="ant-design"
-                    color={userReactions.some(r => r.type === 'hug') ? '#1877F2' : colors.text}
+                    color={userReactions.some(r => r.type === 'hug') ? '#1877F2' : theme.text}
                     size={30}
                     style={styles.iconStyle}
                   />
                 </Animated.View>
               </TouchableWithoutFeedback>
-              <Text style={[typography.body, { color: colors.text }]}>{statistics.hugs}</Text>
+              <Text style={[typography.body, { color: theme.text }]}>{statistics.hugs}</Text>
             </View>
             <View style={styles.reactionItem}>
               <TouchableWithoutFeedback 
                 onPress={() => !sendingReaction && handleReactionWithAnimation('heart')}
-                disabled={!currentUserId || sendingReaction}
+                disabled={!currentUserId || sendingReaction || currentUserCredits < REACTION_COSTS.heart}
               >
                 <Animated.View style={{ transform: [{ scale: scaleAnims.heart }] }}>
                   <Icon
                     name="heart"
                     type="font-awesome"
-                    color={userReactions.some(r => r.type === 'heart') ? '#FF3B30' : colors.text}
+                    color={'#FF3B30'}
                     size={30}
                     style={styles.iconStyle}
                   />
                 </Animated.View>
               </TouchableWithoutFeedback>
-              <Text style={[typography.body, { color: colors.text }]}>{statistics.hearts}</Text>
+              <Text style={[typography.body, { color: theme.text }]}>{statistics.hearts}</Text>
             </View>
             <View style={styles.reactionItem}>
               <TouchableWithoutFeedback 
                 onPress={() => !sendingReaction && handleReactionWithAnimation('kiss')}
-                disabled={!currentUserId || sendingReaction}
+                disabled={!currentUserId || sendingReaction || currentUserCredits < REACTION_COSTS.kiss}
               >
                 <Animated.View style={{ transform: [{ scale: scaleAnims.kiss }] }}>
                   <Icon
                     name="kiss-wink-heart"
                     type="font-awesome-5"
-                    color={userReactions.some(r => r.type === 'kiss') ? '#FF2D55' : colors.text}
+                    color={'#FF2D55'}
                     size={30}
                     style={styles.iconStyle}
                   />
                 </Animated.View>
               </TouchableWithoutFeedback>
-              <Text style={[typography.body, { color: colors.text }]}>{statistics.kisses}</Text>
+              <Text style={[typography.body, { color: theme.text }]}>{statistics.kisses}</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.commentsSection}>
-          <Text style={[typography.h3, { color: colors.text }]}>Comments</Text>
+          <Text style={[typography.h3, { color: theme.text }]}>Comments</Text>
           
           <RNView style={styles.commentInputContainer}>
             {currentUserId && (
@@ -461,12 +532,12 @@ const UserProfileScreen = () => {
                 onChangeText={setCommentText}
                 multiline
                 containerStyle={styles.commentInput}
-                inputStyle={{ color: colors.text }}
+                inputStyle={{ color: theme.text }}
                 rightIcon={
                   <Icon
                     name="send"
                     type="font-awesome"
-                    color={commentText.trim() ? colors.text : colors.placeholder}
+                    color={commentText.trim() ? theme.text : theme.placeholder}
                     size={20}
                     onPress={postComment}
                   />
@@ -477,7 +548,7 @@ const UserProfileScreen = () => {
 
           <View style={styles.commentsList}>
             {comments.map((comment) => (
-              <View key={comment.id.toString()} style={[styles.commentCard, { backgroundColor: colors.card }]}>
+              <View key={comment.id.toString()} style={[styles.commentCard, { backgroundColor: theme.card }]}>
                 <RNView style={styles.commentHeader}>
                   <RNView style={styles.commentAuthor}>
                     <Avatar
@@ -486,21 +557,21 @@ const UserProfileScreen = () => {
                       source={{ uri: comment.author.avatar_url || DEFAULT_AVATAR }}
                       containerStyle={styles.commentAvatar}
                     />
-                    <Text style={[typography.caption, { color: colors.text }]}>
+                    <Text style={[typography.caption, { color: theme.text }]}>
                       {comment.author.username}
                     </Text>
                   </RNView>
-                  <Text style={[typography.caption, { color: colors.placeholder }]}>
+                  <Text style={[typography.caption, { color: theme.placeholder }]}>
                     {getRelativeTime(comment.created_at)}
                   </Text>
                 </RNView>
-                <Text style={[typography.body, { color: colors.text }]}>
+                <Text style={[typography.body, { color: theme.text }]}>
                   {comment.text}
                 </Text>
               </View>
             ))}
             {comments.length === 0 && (
-              <Text style={[typography.body, { color: colors.placeholder }]}>
+              <Text style={[typography.body, { color: theme.placeholder }]}>
                 No comments yet. Be the first to comment!
               </Text>
             )}
@@ -516,13 +587,24 @@ export default UserProfileScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    width: '100%',
     padding: spacing.lg,
+    paddingBottom: 0,
+    position: 'absolute',
+    zIndex: 1,
+    backgroundColor: 'transparent',
   },
   content: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
+    paddingTop: spacing.xl + spacing.lg, // Add extra padding for floating header
+    padding: spacing.lg,
     paddingBottom: spacing.xl,
   },
   profileContainer: {

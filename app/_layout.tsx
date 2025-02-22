@@ -104,6 +104,10 @@ function RootLayoutNav() {
           title: 'Manage Members',
           presentation: 'modal'
         }} />
+        <Stack.Screen name="store" options={{
+          title: 'Store',
+          presentation: 'modal'
+        }} />
       </Stack>
     </ThemeProvider>
   );

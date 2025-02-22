@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { StyleSheet, Alert, View as RNView, FlatList, ScrollView } from "react-native"
 import { supabase } from "@/lib/supabase"
 import { Button, Input, Avatar, Icon } from "@rneui/themed"
@@ -14,6 +14,9 @@ import { getRelativeTime } from '@/utils/dateUtils';
 import { useNetworkState } from '@/hooks/useNetworkState';
 import { storeData, getData, KEYS } from '@/utils/offlineStorage';
 import OfflineBanner from '@/components/OfflineBanner';
+import VibesDisplay from '@/components/VibesDisplay';
+import { useCredits } from '@/hooks/useCredits';
+import { useFocusEffect } from '@react-navigation/native';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg" // Default avatar URL
 
@@ -50,6 +53,7 @@ export default function ProfileScreen() {
   const [newComment, setNewComment] = useState("")
   const [isPostingComment, setIsPostingComment] = useState(false)
   const [commentText, setCommentText] = useState("")  // Add this state here
+  const { credits, setCredits, fetchCredits } = useCredits();
 
   useEffect(() => {
     async function initialize() {
@@ -80,6 +84,15 @@ export default function ProfileScreen() {
       subscription?.unsubscribe()
     }
   }, [])
+
+  // Add focus effect to fetch credits when screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      if (session?.user) {
+        fetchCredits();
+      }
+    }, [session?.user, fetchCredits])
+  );
 
   async function getProfile(userId: string) {
     try {
@@ -427,10 +440,15 @@ export default function ProfileScreen() {
     }
   };
 
+  const fetchUserCredits = useCallback(async (userId: string) => {
+    const amount = await fetchCredits();
+    setCredits(amount);
+  }, [fetchCredits, setCredits]);
+
   if (loading) {
     return (
       <View style={styles.container}>
-        <Text style={{ color: theme.text }}>Loading users...</Text>
+        <Text style={{ color: theme.text }}>Loading profile...</Text>
       </View>
     )
   }
@@ -504,7 +522,30 @@ export default function ProfileScreen() {
     updateReactionStats={updateReactionStats}
     fetchComments={fetchComments}  // Add this prop
     isOnline={isOnline} // Add this prop
+    userCredits={credits} // Add this prop
   />
+}
+
+interface AccountProps {
+  session: Session
+  signOut: () => Promise<void>
+  username: string
+  loading: boolean
+  avatarUrl: string | null
+  reactionStats: { hugs: number; hearts: number; kisses: number }
+  description: string
+  onUpdateUsername: (newUsername: string) => Promise<void>
+  onUpdateAvatar: (base64: string) => Promise<void>
+  onUpdateDescription: (description: string) => Promise<void>
+  comments: ProfileComment[]
+  onPostComment: (userId: string, text: string) => Promise<void>
+  isPostingComment: boolean
+  commentText: string
+  setCommentText: (text: string) => void
+  updateReactionStats: () => Promise<void>;
+  fetchComments: () => Promise<void>;  // Add this type
+  isOnline: boolean; // Add this type
+  userCredits: number; // Add this type
 }
 
 function Account({ 
@@ -526,26 +567,8 @@ function Account({
   updateReactionStats,
   fetchComments,  // Add this to props
   isOnline, // Add this prop
-}: { 
-  session: Session
-  signOut: () => Promise<void>
-  username: string
-  loading: boolean
-  avatarUrl: string | null
-  reactionStats: { hugs: number; hearts: number; kisses: number }
-  description: string
-  onUpdateUsername: (newUsername: string) => Promise<void>
-  onUpdateAvatar: (base64: string) => Promise<void>
-  onUpdateDescription: (description: string) => Promise<void>
-  comments: ProfileComment[]
-  onPostComment: (userId: string, text: string) => Promise<void>
-  isPostingComment: boolean
-  commentText: string
-  setCommentText: (text: string) => void
-  updateReactionStats: () => Promise<void>;
-  fetchComments: () => Promise<void>;  // Add this type
-  isOnline: boolean; // Add this type
-}) {
+  userCredits, // Add this prop
+}: AccountProps) {
   const colorScheme = useColorScheme()
   const theme = Colors[colorScheme ?? 'light'];
   const [isEditingUsername, setIsEditingUsername] = useState(false)
@@ -653,6 +676,7 @@ function Account({
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {!isOnline && <OfflineBanner />}
       <RNView style={styles.headerContainer}>
+        <VibesDisplay amount={userCredits} />
         <RNView style={styles.settingsIconWrapper}>
           <Icon
             name="cog"
@@ -663,7 +687,6 @@ function Account({
           />
         </RNView>
       </RNView>
-      
       <ScrollView 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -857,7 +880,6 @@ function Account({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: spacing.lg,
   },
   profileContainer: {
     width: "100%",
@@ -972,13 +994,19 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: spacing.xl, // Add some bottom padding for better scrolling
+    paddingTop: spacing.xl + spacing.lg, // Add extra padding for floating header
+    padding: spacing.lg,
   },
   headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    padding: spacing.lg,
+    paddingBottom: 0,
     position: 'absolute',
-    top: spacing.lg,
-    right: spacing.lg,
     zIndex: 1,
+    backgroundColor: 'transparent',
   },
   settingsIconWrapper: {
     padding: spacing.xs,

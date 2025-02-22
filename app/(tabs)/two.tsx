@@ -10,6 +10,9 @@ import { router } from 'expo-router';
 import { useNetworkState } from '@/hooks/useNetworkState';
 import { storeData, getData, KEYS } from '@/utils/offlineStorage';
 import OfflineBanner from '@/components/OfflineBanner';
+import VibesDisplay from '@/components/VibesDisplay';
+import { useCredits } from '@/hooks/useCredits';
+import { useFocusEffect } from '@react-navigation/native';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg"
 
@@ -28,6 +31,7 @@ export default function TabTwoScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const isOnline = useNetworkState();
+  const { credits, setCredits, fetchCredits } = useCredits();
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -68,9 +72,20 @@ export default function TabTwoScreen() {
     }
   }, [isOnline]);
 
+  const fetchUserCredits = useCallback(async () => {
+    const amount = await fetchCredits();
+    setCredits(amount);
+  }, [fetchCredits, setCredits]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchCredits();
+    }, [fetchCredits])
+  );
+
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
+  }, [fetchUsers, currentUserId]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -135,8 +150,11 @@ export default function TabTwoScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {!isOnline && <OfflineBanner />}
+      <View style={styles.headerRow}>
+        <VibesDisplay amount={credits} />
+      </View>
       <FlatList
         data={users}
         renderItem={renderUser}
@@ -161,10 +179,21 @@ export default function TabTwoScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    width: '100%',
     padding: spacing.lg,
+    paddingBottom: 0,
+    position: 'absolute',
+    zIndex: 1,
+    backgroundColor: 'transparent',
   },
   listContent: {
     flexGrow: 1,
+    paddingTop: spacing.xl + spacing.lg, // Add extra padding for floating header
+    padding: spacing.lg,
   },
   userCard: {
     padding: spacing.md,

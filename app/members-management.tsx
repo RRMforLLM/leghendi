@@ -100,16 +100,53 @@ export default function MembersManagementScreen() {
     try {
       switch (action) {
         case 'remove':
+          // First get all sections for this agenda
+          const { data: sections } = await supabase
+            .from("Agenda Section")
+            .select('id')
+            .eq('agenda_id', agendaId);
+
+          if (!sections) throw new Error('No sections found');
+
+          // Then get all elements from these sections
+          const { data: elements } = await supabase
+            .from("Agenda Element")
+            .select('id')
+            .in('section_id', sections.map(s => s.id));
+
+          const elementIds = elements?.map(e => e.id) || [];
+
+          // Clean up ALL of the user's data from this agenda in parallel
           await Promise.all([
+            // Remove from members table
             supabase
               .from('Agenda Member')
               .delete()
               .eq('user_id', memberId)
               .eq('agenda_id', agendaId),
+            // Remove from editors table
             supabase
               .from('Agenda Editor')
               .delete()
               .eq('user_id', memberId)
+              .eq('agenda_id', agendaId),
+            // Remove ALL their completed elements for this agenda
+            supabase
+              .from('Completed Element')
+              .delete()
+              .eq('user_id', memberId)
+              .eq('agenda_id', agendaId),
+            // Remove ALL their urgent elements for this agenda
+            supabase
+              .from('Urgent Element')
+              .delete()
+              .eq('user_id', memberId)
+              .eq('agenda_id', agendaId),
+            // Remove ALL their comments on this agenda
+            supabase
+              .from('Agenda Comment')
+              .delete()
+              .eq('author_id', memberId)
               .eq('agenda_id', agendaId)
           ]);
           break;

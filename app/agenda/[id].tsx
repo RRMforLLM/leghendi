@@ -11,7 +11,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { getRelativeTime } from '@/utils/dateUtils';
 import { useFocusEffect } from '@react-navigation/native'; // Add this import
 import { useNetworkState } from '@/hooks/useNetworkState';
-import { storeAgendaData, getAgendaData, KEYS } from '@/utils/offlineStorage';
+import { storeAgendaData, getAgendaData, KEYS, storeData, getData } from '@/utils/offlineStorage';
 import OfflineBanner from '@/components/OfflineBanner';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg"
@@ -344,6 +344,7 @@ export default function AgendaScreen() {
           .from('Urgent Element')
           .select('element_id')
           .eq('user_id', session.user.id)
+          .eq('agenda_id', id)  // Add this line
       ]);
 
       const completedMap = {};
@@ -518,7 +519,7 @@ export default function AgendaScreen() {
 
   const toggleElementState = async (elementId: string, type: 'completed' | 'urgent') => {
     if (!session?.user?.id) return;
-
+  
     try {
       if (type === 'completed') {
         if (completedElements[elementId]) {
@@ -528,7 +529,7 @@ export default function AgendaScreen() {
             .delete()
             .eq('user_id', session.user.id)
             .eq('element_id', elementId);
-
+  
           if (error) throw error;
         } else {
           // Add completed state AND remove urgent state if it exists
@@ -554,8 +555,9 @@ export default function AgendaScreen() {
             .from('Urgent Element')
             .delete()
             .eq('user_id', session.user.id)
-            .eq('element_id', elementId);
-
+            .eq('element_id', elementId)
+            .eq('agenda_id', id); // Add agenda_id to deletion query
+  
           if (error) throw error;
         } else {
           // Only add urgent state if element is not completed
@@ -564,20 +566,21 @@ export default function AgendaScreen() {
               .from('Urgent Element')
               .insert({
                 user_id: session.user.id,
-                element_id: elementId
+                element_id: elementId,
+                agenda_id: id  // Add agenda_id when creating
               });
-
+  
             if (error) throw error;
           }
         }
       }
-
+  
       // After successful toggle, refresh both element states and agenda
       await Promise.all([
         fetchElementStates(),
         fetchAgenda()
       ]);
-
+  
     } catch (error) {
       console.error(`Error toggling ${type} state:`, error);
       Alert.alert('Error', `Failed to update element state`);
@@ -590,7 +593,7 @@ export default function AgendaScreen() {
         <View style={[styles.elementTitleContainer, { backgroundColor: theme.card }]}>
           <Text 
             style={[styles.elementTitle, { color: theme.text }]}
-            numberOfLines={1}
+            numberOfLines={1} 
             ellipsizeMode="tail"
           >
             {item.subject}
@@ -651,7 +654,7 @@ export default function AgendaScreen() {
       <View style={[
         styles.sectionHeader, 
         { 
-          borderBottomColor: theme.border,
+          borderBottomColor: theme.border, 
           marginBottom: collapsedSections[section.id] ? 0 : spacing.sm 
         }
       ]}>
@@ -666,7 +669,7 @@ export default function AgendaScreen() {
           />
           <Text 
             style={styles.sectionTitle}
-            numberOfLines={1}
+            numberOfLines={1} 
             ellipsizeMode="tail"
           >
             {section.name}
@@ -722,13 +725,20 @@ export default function AgendaScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              // With CASCADE, we only need to delete the agenda
+              // Delete from database
               const { error } = await supabase
                 .from("Agenda")
                 .delete()
                 .eq('id', agendaId);
-  
               if (error) throw error;
+
+              // Update local cache by removing this agenda
+              const cachedData = await getData(KEYS.AGENDAS);
+              if (cachedData) {
+                const updatedAgendas = cachedData.filter(a => a.id !== agendaId);
+                await storeData(KEYS.AGENDAS, updatedAgendas);
+              }
+
               router.replace("/");
             } catch (error) {
               console.error("Delete error:", error);
@@ -755,7 +765,6 @@ export default function AgendaScreen() {
                 .from("Agenda Section")
                 .delete()
                 .eq('id', section.id)
-
               if (error) throw error
               await fetchAgenda()
             } catch (error) {
@@ -818,53 +827,6 @@ export default function AgendaScreen() {
     </RNView>
   )
 
-  const handleMemberAction = async (memberId: string, action: 'remove' | 'promote' | 'demote') => {
-    if (!isCreator) return;
-
-    try {
-      switch (action) {
-        case 'remove':
-          // Remove from both tables
-          await Promise.all([
-            supabase
-              .from('Agenda Member')
-              .delete()
-              .eq('user_id', memberId)
-              .eq('agenda_id', id),
-            supabase
-              .from('Agenda Editor')
-              .delete()
-              .eq('user_id', memberId)
-              .eq('agenda_id', id)
-          ]);
-          break;
-
-        case 'promote':
-          // Add to editors
-          await supabase
-            .from('Agenda Editor')
-            .insert({ user_id: memberId, agenda_id: id });
-          break;
-
-        case 'demote':
-          // Remove from editors
-          await supabase
-            .from('Agenda Editor')
-            .delete()
-            .eq('user_id', memberId)
-            .eq('agenda_id', id);
-          break;
-      }
-
-      setShowMemberDialog(false);
-      setSelectedMember(null);
-      await fetchAgenda();
-    } catch (error) {
-      console.error('Member action error:', error);
-      Alert.alert('Error', 'Failed to update member status');
-    }
-  };
-
   const navigateToCompleted = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -872,7 +834,6 @@ export default function AgendaScreen() {
 
       // First try to get completed items from cache
       const cachedData = await getAgendaData(id as string);
-      
       // If we have cached completed elements, format them for display
       if (cachedData?.completedElements) {
         // Get all sections and their elements from agenda cache
@@ -883,7 +844,7 @@ export default function AgendaScreen() {
         const formattedItems = sections.flatMap(section => 
           section.elements
             ?.filter(element => completedIds.includes(element.id.toString()))
-            .map(element => ({
+            ?.map(element => ({
               id: element.id,
               elementId: element.id,
               subject: element.subject,
@@ -897,7 +858,7 @@ export default function AgendaScreen() {
         if (formattedItems?.length > 0) {
           router.push({
             pathname: "/completed",
-            params: {
+            params: { 
               items: encodeURIComponent(JSON.stringify(formattedItems))
             }
           });
@@ -927,7 +888,6 @@ export default function AgendaScreen() {
           `)
           .eq('user_id', session.user.id)
           .eq('agenda_id', id);
-
         if (error) throw error;
 
         const formattedItems = completedData?.map(item => ({
@@ -952,7 +912,7 @@ export default function AgendaScreen() {
 
         router.push({
           pathname: "/completed",
-          params: {
+          params: { 
             items: encodeURIComponent(JSON.stringify(formattedItems))
           }
         });
@@ -1025,6 +985,18 @@ export default function AgendaScreen() {
                   .eq('agenda_id', id)
               ]);
 
+              try {
+                // Update local cache by removing this agenda
+                const cachedData = await getData(KEYS.AGENDAS) || [];
+                const updatedAgendas = cachedData.filter(a => a.id !== id);
+                await storeData(KEYS.AGENDAS, updatedAgendas);
+                
+                // Also remove the agenda's specific cache
+                await storeAgendaData(id as string, null);
+              } catch (storageError) {
+                console.log('Cache update error:', storageError); // Continue with navigation even if cache update fails
+              }
+
               router.replace("/");
             } catch (error) {
               console.error("Leave agenda error:", error);
@@ -1056,7 +1028,7 @@ export default function AgendaScreen() {
     <View style={styles.container}>
       {!isOnline && <OfflineBanner />}
       <ScrollView 
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={false} 
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.header}>
@@ -1099,7 +1071,6 @@ export default function AgendaScreen() {
             )}
           </RNView>
         </View>
-
         <View style={styles.sectionsContainer}>
           <FlatList
             data={agenda.sections}
@@ -1114,12 +1085,12 @@ export default function AgendaScreen() {
 
         {/* Add this before the members section */}
         {completedElements && Object.keys(completedElements).length > 0 && (
-          <Pressable
+          <Pressable 
             onPress={navigateToCompleted}
             style={({ pressed }) => [
               styles.actionButton,
               { 
-                backgroundColor: theme.card,
+                backgroundColor: theme.card, 
                 opacity: pressed ? 0.7 : 1
               }
             ]}
@@ -1162,7 +1133,7 @@ export default function AgendaScreen() {
           {/* Rest of the members section remains the same */}
           <ScrollView
             horizontal
-            showsHorizontalScrollIndicator={false}
+            showsHorizontalScrollIndicator={false} 
             contentContainerStyle={styles.membersList}
           >
             {members.map((member) => (
@@ -1191,10 +1162,7 @@ export default function AgendaScreen() {
                     source={{ uri: member.avatar_url || DEFAULT_AVATAR }}
                     containerStyle={styles.memberAvatar}
                   />
-                  <Text 
-                    style={[typography.caption, { color: theme.text }]}
-                    numberOfLines={1}
-                  >
+                  <Text style={[typography.caption, { color: theme.text }]} numberOfLines={1}>
                     {member.username}
                     {editors.includes(member.id) && ' (Editor)'}
                     {member.id === agenda?.creator_id && ' (Creator)'}
@@ -1205,12 +1173,12 @@ export default function AgendaScreen() {
           </ScrollView>
 
           {/* Member Management Dialog */}
-          <Dialog
+          <Dialog 
             isVisible={showMemberDialog && !!selectedMember && selectedMember.id !== agenda?.creator_id}
             onBackdropPress={() => {
               setShowMemberDialog(false);
               setSelectedMember(null);
-            }}
+            }} 
             overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
           >
             {/* ...existing dialog content... */}
@@ -1219,7 +1187,6 @@ export default function AgendaScreen() {
 
         <View style={styles.commentsSection}>
           <Text style={[typography.h3, { color: theme.text }]}>Comments</Text>
-          
           <RNView style={styles.commentInputContainer}>
             <Input
               placeholder="Add a comment..."
@@ -1244,7 +1211,6 @@ export default function AgendaScreen() {
               }
             />
           </RNView>
-
           <View style={styles.commentsList}>
             {comments.length === 0 ? (
               <Text style={[typography.body, { color: theme.placeholder }]}>
@@ -1264,7 +1230,7 @@ export default function AgendaScreen() {
       {/* Add Section Dialog */}
       <Dialog
         isVisible={showSectionDialog}
-        onBackdropPress={() => setShowSectionDialog(false)}
+        onBackdropPress={() => setShowSectionDialog(false)} 
         overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
       >
         <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
@@ -1280,7 +1246,7 @@ export default function AgendaScreen() {
               Cancel
             </DialogButton>
             <DialogButton 
-              onPress={addSection}
+              onPress={addSection} 
               disabled={!newSectionName.trim()}
             >
               Add
@@ -1292,7 +1258,7 @@ export default function AgendaScreen() {
       {/* Add Element Dialog */}
       <Dialog
         isVisible={showElementDialog}
-        onBackdropPress={() => setShowElementDialog(false)}
+        onBackdropPress={() => setShowElementDialog(false)} 
         overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
       >
         <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
@@ -1322,7 +1288,7 @@ export default function AgendaScreen() {
               Cancel
             </DialogButton>
             <DialogButton 
-              onPress={addElement}
+              onPress={addElement} 
               disabled={!newElementData.subject.trim() || !newElementData.deadline.trim()}
             >
               Add
@@ -1358,14 +1324,14 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center', // This should already be here
+    alignItems: 'center',
+    marginBottom: spacing.sm,
     borderBottomWidth: 1,
     paddingBottom: spacing.xs,
-    minHeight: 40, // Add this to ensure consistent height
   },
   sectionTitleContainer: {
     flexDirection: 'row',
-    alignItems: 'center', // This should already be here
+    alignItems: 'center',
     flex: 1,
     height: '100%', // Add this
   },

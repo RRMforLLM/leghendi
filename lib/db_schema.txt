@@ -37,15 +37,16 @@ public schema:
 
 "Completed Element"
 - id // int8
-- user_id // auth.users.id
-- element_id // public.Agenda Element.id ON DELETE CASCADE
-- agenda_id // Foreign Key: public.Agenda.id
+- user_id // Foreign Key: auth.users.id ON DELETE CASCADE
+- element_id // Foreign Key: public.Agenda Element.id ON DELETE CASCADE
+- agenda_id // Foreign Key: public.Agenda.id ON DELETE CASCADE
 - created_at // timestamptz
 
 "Urgent Element"
 - id // int8
-- user_id // auth.users.id
+- user_id // auth.users.id ON DELETE CASCADE
 - element_id // public.Agenda Element.id ON DELETE CASCADE
+- agenda_id // Foreign Key: public.Agenda.id ON DELETE CASCADE
 - created_at // timestamptz
 
 "Profile"
