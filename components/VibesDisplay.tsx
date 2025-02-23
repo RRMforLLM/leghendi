@@ -1,6 +1,5 @@
-import { StyleSheet, View, Pressable } from 'react-native';
+import { StyleSheet, View, Pressable, Image } from 'react-native';
 import { Text } from './Themed';
-import { Icon } from '@rneui/themed';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { typography, spacing } from '@/constants/Typography';
@@ -25,15 +24,11 @@ export default function VibesDisplay({ amount }: { amount: number }) {
       ]}
       onPress={() => router.push('/store')}
     >
-      <Icon
-        name="stars"
-        type="material"
-        color={theme.text}
-        size={20}
+      <Image
+        source={{ uri: 'https://hmrvdkweceanxnuyuorq.supabase.co/storage/v1/object/public/utilities/Vibes-Icon.png' }}
+        style={styles.icon}
       />
-      <Text style={[typography.body, { color: theme.text }]}>
-        {credits} Vibes
-      </Text>
+      <Text style={[typography.body, { color: theme.text }]}>{credits}</Text>
     </Pressable>
   );
 }
@@ -45,4 +40,9 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     padding: spacing.sm,
   },
+  icon: {
+    width: 20,
+    height: 20,
+    resizeMode: 'contain'
+  }
 });
