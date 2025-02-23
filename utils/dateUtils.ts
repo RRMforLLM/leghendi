@@ -1,21 +1,29 @@
-export function getRelativeTime(date: string) {
-  const now = new Date()
-  const commentDate = new Date(date)
-  const diffInSeconds = Math.floor((now.getTime() - commentDate.getTime()) / 1000)
-  
-  if (diffInSeconds < 60) {
-    return `${diffInSeconds}s ago`
+import { useLanguage } from '@/contexts/LanguageContext';
+
+export function getRelativeTime(dateString: string, t: (key: string) => string, language: string) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  // If less than 30 seconds
+  if (seconds < 30) {
+    return t('time.now');
   }
-  
-  const diffInMinutes = Math.floor(diffInSeconds / 60)
-  if (diffInMinutes < 60) {
-    return `${diffInMinutes}m ago`
+
+  // If less than 24 hours, show relative time
+  if (seconds < 86400) { // 24 hours in seconds
+    if (seconds < 3600) { // Less than 1 hour
+      const minutes = Math.floor(seconds / 60);
+      if (minutes === 0) {
+        return t('time.seconds').replace('{n}', seconds.toString());
+      }
+      return t('time.minutes').replace('{n}', minutes.toString());
+    } else {
+      const hours = Math.floor(seconds / 3600);
+      return t('time.hours').replace('{n}', hours.toString());
+    }
   }
-  
-  const diffInHours = Math.floor(diffInMinutes / 60)
-  if (diffInHours < 24) {
-    return `${diffInHours}h ago`
-  }
-  
-  return commentDate.toLocaleDateString()
+
+  // If more than 24 hours, show the date
+  return date.toLocaleDateString(language);
 }

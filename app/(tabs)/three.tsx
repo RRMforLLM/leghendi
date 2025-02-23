@@ -17,6 +17,7 @@ import OfflineBanner from '@/components/OfflineBanner';
 import VibesDisplay from '@/components/VibesDisplay';
 import { useCredits } from '@/hooks/useCredits';
 import { useFocusEffect } from '@react-navigation/native';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg" // Default avatar URL
 
@@ -34,6 +35,7 @@ export default function ProfileScreen() {
   const colorScheme = useColorScheme()
   const theme = Colors[colorScheme ?? 'light'];
   const isOnline = useNetworkState();
+  const { t } = useLanguage();
   
   const [session, setSession] = useState<Session | null>(null)
   const [email, setEmail] = useState("")
@@ -64,7 +66,7 @@ export default function ProfileScreen() {
           await getProfile(session.user.id)
         }
       } catch (error) {
-        Alert.alert("Error", "Failed to initialize session")
+        Alert.alert(t('settings.error'), t('profile.error.session'))
       } finally {
         setLoading(false)
       }
@@ -192,7 +194,7 @@ export default function ProfileScreen() {
 
   async function signInWithEmail() {
     if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields")
+      Alert.alert(t('settings.error'), t('profile.error.fields'))
       return
     }
 
@@ -448,7 +450,7 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <Text style={{ color: theme.text }}>Loading profile...</Text>
+        <Text style={{ color: theme.text }}>{t('profile.loading')}</Text>
       </View>
     )
   }
@@ -458,10 +460,10 @@ export default function ProfileScreen() {
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={styles.inputContainer}>
           <Text style={[typography.h2, { color: theme.text, marginBottom: spacing.lg }]}>
-            {isSignUp ? "Create Account" : "Welcome Back"}
+            {isSignUp ? t('profile.createAccount') : t('profile.welcomeBack')}
           </Text>
           <Input
-            label="Email"
+            label={t('profile.email')}
             leftIcon={{ type: "font-awesome", name: "envelope", color: theme.text }}
             onChangeText={setEmail}
             value={email}
@@ -472,7 +474,7 @@ export default function ProfileScreen() {
             placeholderTextColor={theme.placeholder}
           />
           <Input
-            label="Password"
+            label={t('profile.password')}
             leftIcon={{ type: "font-awesome", name: "lock", color: theme.text }}
             onChangeText={setPassword}
             value={password}
@@ -484,7 +486,7 @@ export default function ProfileScreen() {
             placeholderTextColor={theme.placeholder}
           />
           <Button
-            title={isSignUp ? "Sign up" : "Sign in"}
+            title={isSignUp ? t('profile.signUp') : t('profile.signIn')}
             disabled={authLoading}
             onPress={isSignUp ? signUpWithEmail : signInWithEmail}
             containerStyle={styles.button}
@@ -492,7 +494,7 @@ export default function ProfileScreen() {
             titleStyle={{ color: theme.buttonText }}
           />
           <Button
-            title={isSignUp ? "Already have an account? Sign in" : "Need an account? Sign up"}
+            title={isSignUp ? t('profile.switchToSignIn') : t('profile.switchToSignUp')}
             type="clear"
             onPress={() => setIsSignUp(!isSignUp)}
             containerStyle={styles.switchButton}
@@ -523,6 +525,13 @@ export default function ProfileScreen() {
     fetchComments={fetchComments}  // Add this prop
     isOnline={isOnline} // Add this prop
     userCredits={credits} // Add this prop
+    translations={{
+      noDescription: t('profile.noDescription'),
+      addDescription: t('profile.addDescription'),
+      comments: t('profile.comments'),
+      addComment: t('profile.addComment'),
+      noComments: t('profile.noComments'),
+    }}
   />
 }
 
@@ -546,6 +555,13 @@ interface AccountProps {
   fetchComments: () => Promise<void>;  // Add this type
   isOnline: boolean; // Add this type
   userCredits: number; // Add this type
+  translations: {
+    noDescription: string;
+    addDescription: string;
+    comments: string;
+    addComment: string;
+    noComments: string;
+  };
 }
 
 function Account({ 
@@ -568,9 +584,11 @@ function Account({
   fetchComments,  // Add this to props
   isOnline, // Add this prop
   userCredits, // Add this prop
+  translations,
 }: AccountProps) {
   const colorScheme = useColorScheme()
   const theme = Colors[colorScheme ?? 'light'];
+  const { t, language } = useLanguage(); // Add language here
   const [isEditingUsername, setIsEditingUsername] = useState(false)
   const [newUsername, setNewUsername] = useState(username)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
@@ -631,7 +649,7 @@ function Account({
           </Text>
         </RNView>
         <Text style={[typography.caption, { color: theme.placeholder }]}>
-          {getRelativeTime(item.created_at)}
+          {getRelativeTime(item.created_at, t, language)}
         </Text>
       </RNView>
       <Text style={[typography.body, { color: theme.text }]}>
@@ -744,7 +762,7 @@ function Account({
                 <Input
                   value={newDescription}
                   onChangeText={setNewDescription}
-                  placeholder="Add a description..."
+                  placeholder={translations.addDescription}
                   multiline
                   numberOfLines={3}
                   containerStyle={styles.descriptionInput}
@@ -765,7 +783,7 @@ function Account({
             ) : (
               <RNView style={styles.descriptionRow}>
                 <Text style={[typography.body, { color: theme.text }]}>
-                  {description || "No description"}
+                  {description || translations.noDescription}
                 </Text>
                 <Icon
                   name="edit"
@@ -813,11 +831,11 @@ function Account({
           </RNView>
 
           <View style={styles.commentsSection}>
-            <Text style={[typography.h3, { color: theme.text }]}>Comments</Text>
+            <Text style={[typography.h3, { color: theme.text }]}>{translations.comments}</Text>
             
             <RNView style={styles.commentInputContainer}>
               <Input
-                placeholder="Add a comment..."
+                placeholder={translations.addComment}
                 value={commentText}
                 onChangeText={setCommentText}
                 multiline
@@ -856,7 +874,7 @@ function Account({
                       </Text>
                     </RNView>
                     <Text style={[typography.caption, { color: theme.placeholder }]}>
-                      {getRelativeTime(comment.created_at)}
+                      {getRelativeTime(comment.created_at, t, language)}
                     </Text>
                   </RNView>
                   <Text style={[typography.body, { color: theme.text }]}>
@@ -866,7 +884,7 @@ function Account({
               ))}
               {comments.length === 0 && (
                 <Text style={[typography.body, { color: theme.placeholder }]}>
-                  No comments yet. Be the first to comment!
+                  {translations.noComments}
                 </Text>
               )}
             </View>

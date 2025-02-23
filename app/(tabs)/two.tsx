@@ -13,6 +13,8 @@ import OfflineBanner from '@/components/OfflineBanner';
 import VibesDisplay from '@/components/VibesDisplay';
 import { useCredits } from '@/hooks/useCredits';
 import { useFocusEffect } from '@react-navigation/native';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { SUPPORTED_LANGUAGES, Language } from '@/constants/Translations';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg"
 
@@ -32,6 +34,7 @@ export default function TabTwoScreen() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const isOnline = useNetworkState();
   const { credits, setCredits, fetchCredits } = useCredits();
+  const { language, setLanguage, t } = useLanguage();
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -144,7 +147,7 @@ export default function TabTwoScreen() {
   if (loading && !refreshing) {
     return (
       <View style={styles.container}>
-        <Text style={{ color: theme.text }}>Loading users...</Text>
+        <Text style={{ color: theme.text }}>{t('userList.loading')}</Text>
       </View>
     );
   }
@@ -169,7 +172,9 @@ export default function TabTwoScreen() {
         }
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListEmptyComponent={() => (
-          <Text style={[typography.body, { color: theme.text }]}>No users found</Text>
+          <Text style={[typography.body, { color: theme.text }]}>
+            {t('userList.noUsers')}
+          </Text>
         )}
       />
     </View>

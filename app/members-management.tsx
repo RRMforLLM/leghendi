@@ -9,6 +9,7 @@ import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useNetworkState } from '@/hooks/useNetworkState';
 import OfflineBanner from '@/components/OfflineBanner';
+import { useLanguage } from '@/contexts/LanguageContext'; // Add this import
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg"
 
@@ -20,6 +21,7 @@ interface Member {
 }
 
 export default function MembersManagementScreen() {
+  const { t } = useLanguage(); // Add useLanguage hook
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'light'];
   const { id: agendaId, creatorId } = useLocalSearchParams();
@@ -189,11 +191,15 @@ export default function MembersManagementScreen() {
           source={{ uri: member.avatar_url || DEFAULT_AVATAR }}
         />
         <View style={[styles.memberTextInfo, { backgroundColor: theme.card }]}>
-          <Text style={[typography.body, { color: theme.text }]}>
+          <Text 
+            style={[typography.body, { color: theme.text }]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
             {member.username}
           </Text>
           <Text style={[typography.caption, { color: theme.placeholder }]}>
-            {member.id === creatorId ? 'Creator' : member.is_editor ? 'Editor' : 'Member'}
+            {member.id === creatorId ? t('members.creator') : member.is_editor ? t('members.editor') : t('members.member')}
           </Text>
         </View>
       </View>
@@ -202,13 +208,13 @@ export default function MembersManagementScreen() {
         <View style={[styles.actions, { backgroundColor: theme.card }]}>
           {member.is_editor ? (
             <Button
-              title="Demote"
+              title={t('members.demote')}
               type="clear"
               onPress={() => handleMemberAction(member.id, 'demote')}
             />
           ) : (
             <Button
-              title="Make Editor"
+              title={t('members.promote')}
               type="clear"
               onPress={() => handleMemberAction(member.id, 'promote')}
             />
@@ -228,7 +234,7 @@ export default function MembersManagementScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <Text>Loading members...</Text>
+        <Text>{t('members.loading')}</Text>
       </View>
     );
   }
@@ -271,6 +277,8 @@ const styles = StyleSheet.create({
   },
   memberTextInfo: {
     marginLeft: spacing.md,
+    flex: 1,  // Add this to enable text truncation
+    marginRight: spacing.md, // Add this to prevent text from overlapping with actions
   },
   actions: {
     flexDirection: 'row',

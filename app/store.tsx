@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import RainingIcons from '@/components/RainingIcons';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Bundle {
   id: string;
@@ -17,13 +18,14 @@ interface Bundle {
 }
 
 const BUNDLES: Bundle[] = [
-  { id: 'basic', name: 'Starter Pack', vibes: 50, price: 0.99 },
-  { id: 'medium', name: 'Popular Pack', vibes: 150, price: 2.49, popular: true },
-  { id: 'large', name: 'Super Pack', vibes: 400, price: 4.99 },
-  { id: 'xl', name: 'Mega Pack', vibes: 1000, price: 9.99 },
+  { id: 'basic', name: 'store.bundle.starter', vibes: 50, price: 0.99 },
+  { id: 'medium', name: 'store.bundle.popular', vibes: 150, price: 2.49, popular: true },
+  { id: 'large', name: 'store.bundle.super', vibes: 400, price: 4.99 },
+  { id: 'xl', name: 'store.bundle.mega', vibes: 1000, price: 9.99 },
 ];
 
 export default function StoreScreen() {
+  const { t } = useLanguage();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'light'];
   const [purchasing, setPurchasing] = useState(false);
@@ -33,10 +35,9 @@ export default function StoreScreen() {
     setPurchasing(true);
 
     try {
-      // This is where you'd integrate with your payment provider
       Alert.alert(
-        'Coming Soon',
-        'Payments will be available in a future update!'
+        t('store.comingSoon'),
+        t('store.comingSoonDesc')
       );
       
       // After successful payment, you'd update the user's credits:
@@ -55,7 +56,7 @@ export default function StoreScreen() {
       */
     } catch (error) {
       console.error('Purchase error:', error);
-      Alert.alert('Error', 'Failed to process purchase');
+      Alert.alert(t('store.error'), t('store.errorPurchase'));
     } finally {
       setPurchasing(false);
     }
@@ -87,7 +88,7 @@ export default function StoreScreen() {
             <View style={[styles.bundleContent, { backgroundColor: 'transparent' }]}>
               <View style={[styles.titleRow, { backgroundColor: 'transparent' }]}>
                 <Text style={[typography.h3, { color: theme.text }]}>
-                  {bundle.name}
+                  {t(bundle.name)}
                 </Text>
               </View>
               <View style={[styles.vibesRow, { backgroundColor: 'transparent' }]}>
@@ -115,7 +116,7 @@ export default function StoreScreen() {
               {bundle.popular && (
                 <View style={[styles.popularBadge, { backgroundColor: theme.tint }]}>
                   <Text style={[typography.caption, { color: theme.background }]}>
-                    BEST VALUE
+                    {t('store.bestValue')}
                   </Text>
                 </View>
               )}

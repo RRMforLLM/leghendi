@@ -3,7 +3,7 @@ import { StyleSheet, FlatList, View as RNView, ScrollView, Pressable, Alert, Pla
 import { View, Text } from '@/components/Themed';
 import { Button, Input, Dialog, Icon, Avatar } from '@rneui/themed';
 import { supabase } from '@/lib/supabase';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, router, useNavigation } from 'expo-router';
 import { AgendaWithSections, AgendaElement } from '@/types';
 import Colors from '@/constants/Colors';
 import { typography, spacing } from '@/constants/Typography';  // Add typography import
@@ -13,6 +13,7 @@ import { useFocusEffect } from '@react-navigation/native'; // Add this import
 import { useNetworkState } from '@/hooks/useNetworkState';
 import { storeAgendaData, getAgendaData, KEYS, storeData, getData } from '@/utils/offlineStorage';
 import OfflineBanner from '@/components/OfflineBanner';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg"
 
@@ -48,6 +49,8 @@ const DialogButton = ({ onPress, disabled = false, children }: {
 );
 
 export default function AgendaScreen() {
+  const navigation = useNavigation();
+  const { t, language } = useLanguage();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'light'];
   const isOnline = useNetworkState();
@@ -81,6 +84,39 @@ export default function AgendaScreen() {
   const [isEditingMembers, setIsEditingMembers] = useState(false);
   const [showCompletedButton, setShowCompletedButton] = useState(false);
   const [isEditor, setIsEditor] = useState(false);
+
+  useEffect(() => {
+    navigation.setOptions({
+      title: t('agenda.header'),
+      headerBackTitle: t('tabs.home'),
+      headerTitleStyle: {
+        ...Platform.select({
+          android: {
+            marginLeft: 'auto',  // This will center the title on Android
+            marginRight: 'auto'
+          }
+        })
+      },
+      // Keep the custom back button
+      headerLeft: () => (
+        <Pressable 
+          onPress={() => navigation.goBack()}
+          style={({ pressed }) => ({ 
+            opacity: pressed ? 0.7 : 1,
+            // Add proper padding for touch target
+            padding: spacing.sm
+          })}
+        >
+          <Icon
+            name="chevron-left"
+            type="font-awesome-5"
+            size={20}
+            color={theme.text}
+          />
+        </Pressable>
+      ),
+    });
+  }, [navigation, theme.text]);
 
   const fetchAgenda = useCallback(async () => {
     try {
@@ -491,12 +527,12 @@ export default function AgendaScreen() {
 
   const handleDeleteElement = (element: AgendaElement) => {
     Alert.alert(
-      "Delete Element",
-      `Are you sure you want to delete "${element.subject}"?`,
+      t('agenda.deleteElement'),
+      t('agenda.deleteElementConfirm').replace('{name}', element.subject),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t('agenda.cancel'), style: "cancel" },
         {
-          text: "Delete",
+          text: t('settings.delete'),
           style: "destructive",
           onPress: async () => {
             try {
@@ -635,7 +671,7 @@ export default function AgendaScreen() {
       )}
       <View style={[styles.elementMeta, { backgroundColor: theme.card }]}>
         <Text style={[styles.deadline, { color: theme.text }]}>
-          Due: {new Date(item.deadline).toLocaleDateString()}
+          {t('agenda.due')}: {new Date(item.deadline).toLocaleDateString()}
         </Text>
         <Text style={[styles.status, { color: theme.text }]}>{item.status}</Text>
       </View>
@@ -697,10 +733,10 @@ export default function AgendaScreen() {
         <FlatList
           data={section.elements}
           renderItem={renderElement}
-          keyExtractor={item => `element-${item.id}`}  // Update this line
+          keyExtractor={item => `element-${item.id}`}
           style={styles.elementsList}
           ListEmptyComponent={() => (
-            <Text style={styles.emptyText}>No elements in this section</Text>
+            <Text style={styles.emptyText}>{t('agenda.noElements')}</Text>
           )}
         />
       )}
@@ -711,17 +747,17 @@ export default function AgendaScreen() {
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.user || session.user.id !== creatorId) {
-      Alert.alert("Error", "Only the creator can delete an agenda");
+      Alert.alert(t('agenda.error'), "Only the creator can delete an agenda");
       return;
     }
   
     Alert.alert(
-      "Delete Agenda",
-      "This will permanently delete this agenda and all its contents. This action cannot be undone.",
+      t('agenda.deleteAgenda'),
+      t('agenda.deleteAgendaConfirm'),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t('agenda.cancel'), style: "cancel" },
         {
-          text: "Delete",
+          text: t('settings.delete'),
           style: "destructive",
           onPress: async () => {
             try {
@@ -752,12 +788,12 @@ export default function AgendaScreen() {
 
   const handleDeleteSection = (section) => {
     Alert.alert(
-      "Delete Section",
-      `Are you sure you want to delete "${section.name}"? This will also delete all elements in this section.`,
+      t('agenda.deleteSection'),
+      t('agenda.deleteSectionConfirm').replace('{name}', section.name),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t('agenda.cancel'), style: "cancel" },
         {
-          text: "Delete",
+          text: t('settings.delete'),
           style: "destructive",
           onPress: async () => {
             try {
@@ -818,7 +854,7 @@ export default function AgendaScreen() {
           </Text>
         </RNView>
         <Text style={[typography.caption, { color: theme.placeholder }]}>
-          {getRelativeTime(item.created_at)}
+          {getRelativeTime(item.created_at, t, language)}
         </Text>
       </RNView>
       <Text style={[typography.body, { color: theme.text }]}>
@@ -1011,7 +1047,7 @@ export default function AgendaScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <Text>Loading agenda...</Text>
+        <Text>{t('agenda.loading')}</Text>
       </View>
     );
   }
@@ -1019,7 +1055,7 @@ export default function AgendaScreen() {
   if (!agenda) {
     return (
       <View style={styles.container}>
-        <Text>Agenda not found</Text>
+        <Text>{t('agenda.notFound')}</Text>
       </View>
     );
   }
@@ -1037,7 +1073,7 @@ export default function AgendaScreen() {
             {isCreator ? (
               <RNView style={styles.headerActions}>
                 <Button
-                  title="Add Section"
+                  title={t('agenda.addSection')}
                   type="clear"
                   onPress={() => setShowSectionDialog(true)}
                 />
@@ -1054,7 +1090,7 @@ export default function AgendaScreen() {
               <RNView style={styles.headerActions}>
                 {isEditor && (
                   <Button
-                    title="Add Section"
+                    title={t('agenda.addSection')}
                     type="clear"
                     onPress={() => setShowSectionDialog(true)}
                   />
@@ -1078,7 +1114,7 @@ export default function AgendaScreen() {
             keyExtractor={item => `section-${item.id}`}  // Update this line
             scrollEnabled={false} // Important: disable scrolling on nested FlatList
             ListEmptyComponent={() => (
-              <Text style={styles.emptyText}>No sections yet</Text>
+              <Text style={styles.emptyText}>{t('agenda.noSections')}</Text>
             )}
           />
         </View>
@@ -1103,7 +1139,7 @@ export default function AgendaScreen() {
               containerStyle={{ marginRight: spacing.xs }}
             />
             <Text style={[typography.body, { color: theme.text }]}>
-              {`View Completed (${Object.keys(completedElements).length})`}
+              {t('agenda.viewCompleted').replace('{count}', Object.keys(completedElements).length.toString())}
             </Text>
           </Pressable>
         )}
@@ -1112,7 +1148,7 @@ export default function AgendaScreen() {
         <View style={[styles.membersSection, { marginTop: spacing.xl }]}>
           <RNView style={styles.sectionHeader}>
             <Text style={[typography.h3, { color: theme.text }]}>
-              Members ({members.length})
+              {t('agenda.members').replace('{count}', members.length.toString())}
             </Text>
             {isCreator && (
               <Icon
@@ -1186,10 +1222,10 @@ export default function AgendaScreen() {
         </View>
 
         <View style={styles.commentsSection}>
-          <Text style={[typography.h3, { color: theme.text }]}>Comments</Text>
+          <Text style={[typography.h3, { color: theme.text }]}>{t('agenda.comments')}</Text>
           <RNView style={styles.commentInputContainer}>
             <Input
-              placeholder="Add a comment..."
+              placeholder={t('agenda.addComment')}
               value={commentText}
               onChangeText={setCommentText}
               multiline
@@ -1214,7 +1250,7 @@ export default function AgendaScreen() {
           <View style={styles.commentsList}>
             {comments.length === 0 ? (
               <Text style={[typography.body, { color: theme.placeholder }]}>
-                No comments yet. Be the first to comment!
+                {t('agenda.noComments')}
               </Text>
             ) : (
               comments.map(item => (
@@ -1234,22 +1270,22 @@ export default function AgendaScreen() {
         overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
       >
         <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
-          <Text style={[typography.h3, { color: theme.text }]}>Add New Section</Text>
+          <Text style={[typography.h3, { color: theme.text }]}>{t('agenda.newSection')}</Text>
           <Input
-            placeholder="Section Name"
+            placeholder={t('agenda.newSection')}
             value={newSectionName}
             onChangeText={setNewSectionName}
             inputStyle={{ color: theme.text }}
           />
           <View style={[{ flexDirection: 'row', justifyContent: 'flex-end' }, { backgroundColor: theme.card }]}>
             <DialogButton onPress={() => setShowSectionDialog(false)}>
-              Cancel
+              {t('agenda.cancel')}
             </DialogButton>
             <DialogButton 
               onPress={addSection} 
               disabled={!newSectionName.trim()}
             >
-              Add
+              {t('agenda.add')}
             </DialogButton>
           </View>
         </View>
@@ -1262,22 +1298,22 @@ export default function AgendaScreen() {
         overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
       >
         <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
-          <Text style={[typography.h3, { color: theme.text }]}>Add New Element</Text>
+          <Text style={[typography.h3, { color: theme.text }]}>{t('agenda.addElement')}</Text>
           <Input
-            placeholder="Subject"
+            placeholder={t('agenda.elementSubject')}
             value={newElementData.subject}
             onChangeText={(text) => setNewElementData(prev => ({ ...prev, subject: text }))}
             inputStyle={{ color: theme.text }}
           />
           <Input
-            placeholder="Details (optional)"
+            placeholder={t('agenda.elementDetails')}
             value={newElementData.details}
             onChangeText={(text) => setNewElementData(prev => ({ ...prev, details: text }))}
             multiline
             inputStyle={{ color: theme.text }}
           />
           <Input
-            placeholder="Deadline (YYYY-MM-DD)"
+            placeholder={t('agenda.elementDeadline')}
             value={newElementData.deadline}
             onChangeText={(text) => setNewElementData(prev => ({ ...prev, deadline: text }))}
             keyboardType="numbers-and-punctuation"
@@ -1285,13 +1321,13 @@ export default function AgendaScreen() {
           />
           <View style={[{ flexDirection: 'row', justifyContent: 'flex-end' }, { backgroundColor: theme.card }]}>
             <DialogButton onPress={() => setShowElementDialog(false)}>
-              Cancel
+              {t('agenda.cancel')}
             </DialogButton>
             <DialogButton 
               onPress={addElement} 
               disabled={!newElementData.subject.trim() || !newElementData.deadline.trim()}
             >
-              Add
+              {t('agenda.add')}
             </DialogButton>
           </View>
         </View>

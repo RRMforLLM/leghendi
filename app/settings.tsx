@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { StyleSheet, Alert, ScrollView } from "react-native"
+import { StyleSheet, Alert, ScrollView, Pressable } from "react-native"
 import { View, Text } from "@/components/Themed"
 import { Button, Input } from "@rneui/themed"
 import { supabase } from "@/lib/supabase"
@@ -9,6 +9,8 @@ import { useColorScheme } from "@/components/useColorScheme"
 import { router } from "expo-router"
 import { useNetworkState } from '@/hooks/useNetworkState';
 import OfflineBanner from '@/components/OfflineBanner';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { SUPPORTED_LANGUAGES, Language } from '@/constants/Translations';
 
 export default function Settings() {
   const [loading, setLoading] = useState(true)
@@ -26,6 +28,7 @@ export default function Settings() {
   const colorScheme = useColorScheme()
   const colors = Colors[colorScheme]
   const isOnline = useNetworkState();
+  const { language, setLanguage, t } = useLanguage();
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -69,8 +72,8 @@ export default function Settings() {
             totalReactionsReceived: reactionsReceived.count || 0,
             totalReactionsSent: reactionsSent.count || 0,
             totalComments: commentsData.count || 0,
-            accountCreated: new Date(user.created_at).toLocaleDateString(),
-            lastActive: new Date(profileData.data.updated_at).toLocaleDateString(),
+            accountCreated: new Date(user.created_at).toLocaleDateString(language),
+            lastActive: new Date(profileData.data.updated_at).toLocaleDateString(language),
             credits: creditsData.data?.amount || 0
           })
         }
@@ -81,7 +84,7 @@ export default function Settings() {
       }
     }
     fetchProfile()
-  }, [])
+  }, [language])
 
   const updateProfile = async () => {
     try {
@@ -101,9 +104,9 @@ export default function Settings() {
         .upsert(updates)
 
       if (error) throw error
-      Alert.alert("Success", "Profile updated successfully!")
+      Alert.alert(t('settings.success'), t('settings.successMessage'))
     } catch (error) {
-      Alert.alert("Error", "Failed to update profile")
+      Alert.alert(t('settings.error'), t('settings.errorProfile'))
     } finally {
       setLoading(false)
     }
@@ -115,7 +118,7 @@ export default function Settings() {
       if (error) throw error
       // The root layout will handle the navigation and reload
     } catch (error) {
-      Alert.alert("Error", "Failed to sign out")
+      Alert.alert(t('settings.error'), t('settings.errorSignOut'))
     }
   }
 
@@ -126,15 +129,15 @@ export default function Settings() {
       if (userError) throw userError
 
       Alert.alert(
-        "Delete Account",
-        "This will permanently delete your account and all associated data. This action cannot be undone. Are you sure?",
+        t('settings.deleteConfirmTitle'),
+        t('settings.deleteConfirmMessage'),
         [
           {
-            text: "Cancel",
+            text: t('settings.cancel'),
             style: "cancel"
           },
           {
-            text: "Delete",
+            text: t('settings.delete'),
             style: "destructive",
             onPress: async () => {
               try {
@@ -155,7 +158,7 @@ export default function Settings() {
                 router.replace('/')
               } catch (error) {
                 console.error('Delete account error:', error)
-                Alert.alert('Error', 'Failed to delete account')
+                Alert.alert(t('settings.error'), t('settings.errorDelete'))
               }
             }
           }
@@ -163,7 +166,7 @@ export default function Settings() {
       )
     } catch (error) {
       console.error('Delete account error:', error)
-      Alert.alert('Error', 'Failed to delete account')
+      Alert.alert(t('settings.error'), t('settings.errorDelete'))
     } finally {
       setLoading(false)
     }
@@ -183,13 +186,33 @@ export default function Settings() {
         {!isOnline && <OfflineBanner />}
         <View style={styles.content}>
           <Text style={[typography.h2, { color: colors.text, marginBottom: spacing.lg }]}>
-            Account Settings
+            {t('settings.title')}
           </Text>
           
+          {/* Language Section */}
           <View style={styles.section}>
-            <Text style={[typography.h3, { color: colors.text }]}>Profile Information</Text>
+            <Text style={[typography.h3, { color: colors.text }]}>{t('settings.language')}</Text>
+            {Object.entries(SUPPORTED_LANGUAGES).map(([code, name]) => (
+              <Pressable
+                key={code}
+                style={[
+                  styles.languageOption,
+                  language === code && { backgroundColor: colors.tint + '20' }
+                ]}
+                onPress={() => setLanguage(code as Language)}
+              >
+                <Text style={[typography.body, { color: colors.text }]}>{name}</Text>
+                {language === code && (
+                  <Text style={[typography.body, { color: colors.tint }]}>✓</Text>
+                )}
+              </Pressable>
+            ))}
+          </View>
+
+          <View style={styles.section}>
+            <Text style={[typography.h3, { color: colors.text }]}>{t('settings.profile')}</Text>
             <Input
-              label="Email"
+              label={t('settings.email')}
               value={email}
               disabled
               containerStyle={styles.input}
@@ -198,7 +221,7 @@ export default function Settings() {
               disabledInputStyle={{ opacity: 0.7 }}
             />
             <Input
-              label="Username"
+              label={t('settings.username')}
               value={username}
               onChangeText={setUsername}
               containerStyle={styles.input}
@@ -206,7 +229,7 @@ export default function Settings() {
               labelStyle={{ color: colors.text }}
             />
             <Input
-              label="Description"
+              label={t('settings.description')}
               value={description}
               onChangeText={setDescription}
               multiline
@@ -218,35 +241,35 @@ export default function Settings() {
           </View>
 
           <View style={styles.section}>
-            <Text style={[typography.h3, { color: colors.text }]}>Statistics</Text>
+            <Text style={[typography.h3, { color: colors.text }]}>{t('settings.statistics')}</Text>
             <View style={styles.statRow}>
-              <Text style={[typography.body, { color: colors.text }]}>Account Created</Text>
+              <Text style={[typography.body, { color: colors.text }]}>{t('settings.accountCreated')}</Text>
               <Text style={[typography.body, { color: colors.text }]}>{statistics.accountCreated}</Text>
             </View>
             <View style={styles.statRow}>
-              <Text style={[typography.body, { color: colors.text }]}>Last Active</Text>
+              <Text style={[typography.body, { color: colors.text }]}>{t('settings.lastActive')}</Text>
               <Text style={[typography.body, { color: colors.text }]}>{statistics.lastActive}</Text>
             </View>
             <View style={styles.statRow}>
-              <Text style={[typography.body, { color: colors.text }]}>Total Reactions Received</Text>
+              <Text style={[typography.body, { color: colors.text }]}>{t('settings.totalReactionsReceived')}</Text>
               <Text style={[typography.body, { color: colors.text }]}>{statistics.totalReactionsReceived}</Text>
             </View>
             <View style={styles.statRow}>
-              <Text style={[typography.body, { color: colors.text }]}>Total Reactions Sent</Text>
+              <Text style={[typography.body, { color: colors.text }]}>{t('settings.totalReactionsSent')}</Text>
               <Text style={[typography.body, { color: colors.text }]}>{statistics.totalReactionsSent}</Text>
             </View>
             <View style={styles.statRow}>
-              <Text style={[typography.body, { color: colors.text }]}>Total Comments</Text>
+              <Text style={[typography.body, { color: colors.text }]}>{t('settings.totalComments')}</Text>
               <Text style={[typography.body, { color: colors.text }]}>{statistics.totalComments}</Text>
             </View>
             <View style={styles.statRow}>
-              <Text style={[typography.body, { color: colors.text }]}>Credits Available</Text>
+              <Text style={[typography.body, { color: colors.text }]}>{t('settings.creditsAvailable')}</Text>
               <Text style={[typography.body, { color: colors.text }]}>{statistics.credits}</Text>
             </View>
           </View>
           
           <Button
-            title="Save Changes"
+            title={t('settings.save')}
             onPress={updateProfile}
             disabled={loading}
             containerStyle={styles.button}
@@ -257,7 +280,7 @@ export default function Settings() {
           <View style={styles.divider} />
 
           <Button
-            title="Sign Out"
+            title={t('settings.signOut')}
             onPress={handleSignOut}
             containerStyle={[styles.button, styles.signOutButton]}
             buttonStyle={{ backgroundColor: colors.error }}
@@ -267,17 +290,17 @@ export default function Settings() {
 
         <View style={styles.dangerZone}>
           <Text style={[typography.h3, { color: colors.error, marginBottom: spacing.md }]}>
-            Danger Zone
+            {t('settings.dangerZone')}
           </Text>
           <Button
-            title="Delete Account"
+            title={t('settings.deleteAccount')}
             onPress={deleteAccount}
             containerStyle={[styles.button, styles.deleteButton]}
             buttonStyle={{ backgroundColor: colors.error }}
             titleStyle={{ color: colors.buttonText }}
           />
           <Text style={[typography.caption, { color: colors.placeholder, marginTop: spacing.xs }]}>
-            This action cannot be undone. All your data will be permanently deleted.
+            {t('settings.dangerZoneWarning')}
           </Text>
         </View>
       </View>
@@ -329,5 +352,14 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     marginBottom: spacing.xs,
+  },
+  languageOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: 8,
+    marginVertical: spacing.xs,
   },
 })

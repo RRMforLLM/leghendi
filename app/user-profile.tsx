@@ -12,6 +12,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useNetworkState } from '@/hooks/useNetworkState';
 import OfflineBanner from '@/components/OfflineBanner';
 import VibesDisplay from '@/components/VibesDisplay';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg";
 
@@ -38,6 +39,7 @@ interface Reaction {
 
 const UserProfileScreen = () => {
   const isOnline = useNetworkState();
+  const { t, language } = useLanguage(); // Add language here
 
   // Let's add type safety for our statistics
   interface ReactionStatistics {
@@ -154,12 +156,12 @@ const UserProfileScreen = () => {
     // Only check credits for paid reactions
     if (cost > 0 && currentUserCredits < cost) {
       Alert.alert(
-        "Insufficient Vibes",
-        `You need ${cost} Vibes to send this reaction. Would you like to get more?`,
+        t('userProfile.error.insufficientVibes'),
+        t('userProfile.error.insufficientVibesDesc').replace('{amount}', String(cost)),
         [
-          { text: "Cancel", style: "cancel" },
+          { text: t('settings.cancel'), style: "cancel" },
           { 
-            text: "Get Vibes",
+            text: t('userProfile.action.getVibes'),
             onPress: () => router.push('/store')
           }
         ]
@@ -420,10 +422,34 @@ const UserProfileScreen = () => {
     }
   };
 
+  const renderComment = ({ item }: { item: ProfileComment }) => (
+    <RNView style={[styles.commentContainer, { backgroundColor: theme.card }]}>
+      <RNView style={styles.commentHeader}>
+        <RNView style={styles.commentAuthor}>
+          <Avatar
+            size={24}
+            rounded
+            source={{ uri: item.author.avatar_url || DEFAULT_AVATAR }}
+            containerStyle={styles.commentAvatar}
+          />
+          <Text style={[typography.caption, { color: theme.text }]}>
+            {item.author.username}
+          </Text>
+        </RNView>
+        <Text style={[typography.caption, { color: theme.placeholder }]}>
+          {getRelativeTime(item.created_at, t, language)}
+        </Text>
+      </RNView>
+      <Text style={[typography.body, { color: theme.text }]}>
+        {item.text}
+      </Text>
+    </RNView>
+  );
+
   if (loading) {
     return (
       <View style={styles.container}>
-        <Text style={{ color: theme.text }}>Loading profile...</Text>
+        <Text style={{ color: theme.text }}>{t('userProfile.loading')}</Text>
       </View>
     );
   }
@@ -431,7 +457,7 @@ const UserProfileScreen = () => {
   if (!profile) {
     return (
       <View style={styles.container}>
-        <Text style={{ color: theme.text }}>Profile not found</Text>
+        <Text style={{ color: theme.text }}>{t('userProfile.notFound')}</Text>
       </View>
     );
   }
@@ -462,7 +488,7 @@ const UserProfileScreen = () => {
           
           <View style={styles.descriptionContainer}>
             <Text style={[typography.body, { color: theme.text, textAlign: 'center' }]}>
-              {profile.description || "No description"}
+              {profile.description || t('userProfile.noDescription')}
             </Text>
           </View>
           
@@ -522,12 +548,14 @@ const UserProfileScreen = () => {
         </View>
 
         <View style={styles.commentsSection}>
-          <Text style={[typography.h3, { color: theme.text }]}>Comments</Text>
+          <Text style={[typography.h3, { color: theme.text }]}>
+            {t('userProfile.comments')}
+          </Text>
           
           <RNView style={styles.commentInputContainer}>
             {currentUserId && (
               <Input
-                placeholder="Add a comment..."
+                placeholder={t('userProfile.addComment')}
                 value={commentText}
                 onChangeText={setCommentText}
                 multiline
@@ -562,7 +590,7 @@ const UserProfileScreen = () => {
                     </Text>
                   </RNView>
                   <Text style={[typography.caption, { color: theme.placeholder }]}>
-                    {getRelativeTime(comment.created_at)}
+                    {getRelativeTime(comment.created_at, t, language)}
                   </Text>
                 </RNView>
                 <Text style={[typography.body, { color: theme.text }]}>
@@ -572,7 +600,7 @@ const UserProfileScreen = () => {
             ))}
             {comments.length === 0 && (
               <Text style={[typography.body, { color: theme.placeholder }]}>
-                No comments yet. Be the first to comment!
+                {t('userProfile.noComments')}
               </Text>
             )}
           </View>

@@ -8,6 +8,8 @@ import 'react-native-reanimated';
 import { supabase } from '@/lib/supabase';
 import * as Updates from 'expo-updates';
 import { initializeStorage } from '@/utils/offlineStorage';
+import { LanguageProvider } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 import { useColorScheme } from '@/components/useColorScheme';
 
@@ -74,38 +76,43 @@ export default function RootLayout() {
     return null;
   }
 
-  return <RootLayoutNav />;
+  return (
+    <LanguageProvider>
+      <RootLayoutNav />
+    </LanguageProvider>
+  );
 }
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+  const { t } = useLanguage();
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ 
-          title: 'Settings',
+          title: t('modal.settings'),
           presentation: 'modal'
         }} />
         <Stack.Screen name="urgent" options={{ 
-          title: 'Urgent Items',
+          title: t('modal.urgent'),
           presentation: 'modal'
         }} />
         <Stack.Screen name="user-profile" options={{ 
-          title: 'Profile',
+          title: t('modal.profile'),
           presentation: 'modal'
         }} />
         <Stack.Screen name="completed" options={{ 
-          title: 'Completed Items',
+          title: t('modal.completed'),
           presentation: 'modal'
         }} />
         <Stack.Screen name="members-management" options={{ 
-          title: 'Manage Members',
+          title: t('modal.members'),
           presentation: 'modal'
         }} />
         <Stack.Screen name="store" options={{
-          title: 'Store',
+          title: t('modal.store'),
           presentation: 'modal'
         }} />
       </Stack>
