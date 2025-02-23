@@ -109,6 +109,7 @@ type TranslationKey =
   | 'agenda.noSections'
   | 'agenda.due'
   | 'agenda.header'
+  | 'agenda.errorLeave'
   | 'time.now'
   | 'time.seconds'
   | 'time.minutes'
@@ -121,7 +122,36 @@ type TranslationKey =
   | 'members.member'
   | 'members.promote'
   | 'members.demote'
-  | 'members.loading';
+  | 'members.loading'
+  | 'home.welcome'
+  | 'home.create'
+  | 'home.join'
+  | 'home.agendas'
+  | 'home.noAgendas'
+  | 'home.createAgenda'
+  | 'home.joinAgenda'
+  | 'home.createAgendaTitle'
+  | 'home.agendaName'
+  | 'home.joinAgendaTitle'
+  | 'home.agendaCode'
+  | 'home.loading'
+  | 'home.atype'
+  | 'home.validCode'
+  | 'home.invalidCode'
+  | 'home.error.create'
+  | 'home.error.join'
+  | 'home.error.fetch'
+  | 'home.error.nameTooLong'
+  | 'home.error.invalidChars'
+  | 'home.error.alreadyOwner'
+  | 'home.error.privateKey'
+  | 'home.error.alreadyMember'
+  | 'home.success.joined'
+  | 'home.success.created'
+  | 'agenda.error.sectionNameTooLong'
+  | 'agenda.error.sectionNameInvalid'
+  | 'agenda.error.elementSubjectTooLong'
+  | 'agenda.error.elementSubjectInvalid';
 
 export const SUPPORTED_LANGUAGES = {
   en: 'English',
@@ -196,7 +226,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'userProfile.error.insufficientVibes': 'Insufficient Vibes',
     'userProfile.error.insufficientVibesDesc': 'You need {amount} Vibes to send this reaction. Would you like to get more?',
     'userProfile.action.getVibes': 'Get Vibes',
-    'userProfile.action.viewAgenda': 'View Agenda',
+    'userProfile.action.viewAgenda': 'View',
     'store.comingSoon': 'Coming Soon',
     'store.comingSoonDesc': 'Payments will be available in a future update!',
     'store.error': 'Error',
@@ -231,7 +261,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'agenda.deleteElementConfirm': 'Are you sure you want to delete "{name}"?',
     'agenda.deleteAgenda': 'Delete Agenda',
     'agenda.deleteAgendaConfirm': 'This will permanently delete this agenda and all its contents. This action cannot be undone.',
-    'agenda.leaveAgenda': 'Leave Agenda',
+    'agenda.leaveAgenda': 'Leave',
     'agenda.leaveAgendaConfirm': 'Are you sure you want to leave this agenda? This will remove all your data from this agenda.',
     'agenda.members': 'Members ({count})',
     'agenda.comments': 'Comments',
@@ -243,6 +273,11 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'agenda.noSections': 'No sections yet',
     'agenda.due': 'Due',
     'agenda.header': 'Agenda',
+    'agenda.errorLeave': 'Failed to leave agenda',
+    'agenda.error.sectionNameTooLong': 'Section name cannot exceed 15 characters',
+    'agenda.error.sectionNameInvalid': 'Section name can only contain letters, numbers, and spaces',
+    'agenda.error.elementSubjectTooLong': 'Element subject cannot exceed 15 characters',
+    'agenda.error.elementSubjectInvalid': 'Element subject can only contain letters, numbers, and spaces',
     'time.now': 'Just now',
     'time.seconds': '{n}s ago',
     'time.minutes': '{n}m ago',
@@ -256,6 +291,31 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'members.promote': 'Make Editor',
     'members.demote': 'Demote',
     'members.loading': 'Loading members...',
+    'home.welcome': 'Welcome',
+    'home.create': 'Create',
+    'home.join': 'Join',
+    'home.agendas': 'Your Agendas',
+    'home.noAgendas': 'No agendas yet',
+    'home.createAgenda': 'Create Agenda',
+    'home.joinAgenda': 'Join Agenda',
+    'home.createAgendaTitle': 'Create New Agenda',
+    'home.agendaName': 'Agenda Name',
+    'home.joinAgendaTitle': 'Join an Agenda',
+    'home.agendaCode': 'Key',
+    'home.validCode': 'Valid code',
+    'home.invalidCode': 'Invalid code',
+    'home.error.create': 'Failed to create agenda',
+    'home.error.join': 'Failed to join agenda',
+    'home.error.fetch': 'Failed to load agendas',
+    'home.loading': 'Loading...',
+    'home.atype': 'Make Public',
+    'home.error.nameTooLong': 'Agenda name cannot exceed 15 characters',
+    'home.error.invalidChars': 'Agenda name can only contain letters, numbers, and spaces',
+    'home.error.alreadyOwner': "You're already the owner of this agenda",
+    'home.error.privateKey': "This agenda's key is private",
+    'home.error.alreadyMember': "You're already a member of this agenda",
+    'home.success.joined': 'Successfully joined agenda "{name}"!',
+    'home.success.created': 'Agenda created successfully!',
   },
   es: {
     'settings.title': 'Ajustes de Cuenta',
@@ -321,7 +381,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'userProfile.error.insufficientVibes': 'Vibes Insuficientes',
     'userProfile.error.insufficientVibesDesc': 'Necesitas {amount} Vibes para enviar esta reacción. ¿Quieres conseguir más?',
     'userProfile.action.getVibes': 'Obtener Vibes',
-    'userProfile.action.viewAgenda': 'Ver Agenda',
+    'userProfile.action.viewAgenda': 'Ver',
     'store.comingSoon': 'Próximamente',
     'store.comingSoonDesc': '¡Los pagos estarán disponibles en una actualización futura!',
     'store.error': 'Error',
@@ -356,7 +416,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'agenda.deleteElementConfirm': '¿Estás seguro de que quieres eliminar "{name}"?',
     'agenda.deleteAgenda': 'Eliminar Agenda',
     'agenda.deleteAgendaConfirm': 'Esto eliminará permanentemente esta agenda y todo su contenido. Esta acción no se puede deshacer.',
-    'agenda.leaveAgenda': 'Salir de la Agenda',
+    'agenda.leaveAgenda': 'Salir',
     'agenda.leaveAgendaConfirm': '¿Estás seguro de que quieres salir de esta agenda? Esto eliminará todos tus datos de esta agenda.',
     'agenda.members': 'Miembros ({count})',
     'agenda.comments': 'Comentarios',
@@ -368,6 +428,11 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'agenda.noSections': 'Sin secciones',
     'agenda.due': 'Fecha',
     'agenda.header': 'Agenda',
+    'agenda.errorLeave': 'Error al salir de la agenda',
+    'agenda.error.sectionNameTooLong': 'El nombre de la sección no puede exceder 15 caracteres',
+    'agenda.error.sectionNameInvalid': 'El nombre solo puede contener letras, números y espacios',
+    'agenda.error.elementSubjectTooLong': 'El asunto del elemento no puede exceder 15 caracteres',
+    'agenda.error.elementSubjectInvalid': 'El asunto solo puede contener letras, números y espacios',
     'time.now': 'Ahora',
     'time.seconds': 'Hace {n}s',
     'time.minutes': 'Hace {n}m',
@@ -381,6 +446,31 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'members.promote': 'Hacer Editor',
     'members.demote': 'Degradar',
     'members.loading': 'Cargando miembros...',
+    'home.welcome': 'Bienvenido',
+    'home.create': 'Crear',
+    'home.join': 'Unirse',
+    'home.agendas': 'Tus Agendas',
+    'home.noAgendas': 'Aún no hay agendas',
+    'home.createAgenda': 'Crear Agenda',
+    'home.joinAgenda': 'Unirse a Agenda',
+    'home.createAgendaTitle': 'Crear Nueva Agenda',
+    'home.agendaName': 'Nombre de la Agenda',
+    'home.joinAgendaTitle': 'Unirse a una Agenda',
+    'home.agendaCode': 'Llave',
+    'home.validCode': 'Código válido',
+    'home.invalidCode': 'Código inválido',
+    'home.error.create': 'Error al crear la agenda',
+    'home.error.join': 'Error al unirse a la agenda',
+    'home.error.fetch': 'Error al cargar las agendas',
+    'home.loading': 'Cargando...',
+    'home.atype': 'Hacer Pública',
+    'home.error.nameTooLong': 'El nombre de la agenda no puede exceder 15 caracteres',
+    'home.error.invalidChars': 'El nombre solo puede contener letras, números y espacios',
+    'home.error.alreadyOwner': 'Ya eres el propietario de esta agenda',
+    'home.error.privateKey': 'La llave de esta agenda es privada',
+    'home.error.alreadyMember': 'Ya eres miembro de esta agenda',
+    'home.success.joined': '¡Te has unido exitosamente a la agenda "{name}"!',
+    'home.success.created': '¡Agenda creada exitosamente!',
   },
   fr: {
     'settings.title': 'Paramètres du Compte',
@@ -446,7 +536,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'userProfile.error.insufficientVibes': 'Vibes Insuffisants',
     'userProfile.error.insufficientVibesDesc': 'Vous avez besoin de {amount} Vibes pour envoyer cette réaction. Voulez-vous en obtenir plus ?',
     'userProfile.action.getVibes': 'Obtenir des Vibes',
-    'userProfile.action.viewAgenda': 'Voir l\'Agenda',
+    'userProfile.action.viewAgenda': 'Voir',
     'store.comingSoon': 'Bientôt Disponible',
     'store.comingSoonDesc': 'Les paiements seront disponibles dans une future mise à jour !',
     'store.error': 'Erreur',
@@ -481,7 +571,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'agenda.deleteElementConfirm': 'Êtes-vous sûr de vouloir supprimer "{name}" ?',
     'agenda.deleteAgenda': 'Supprimer Agenda',
     'agenda.deleteAgendaConfirm': 'Cela supprimera définitivement cet agenda et tout son contenu. Cette action ne peut pas être annulée.',
-    'agenda.leaveAgenda': 'Quitter l\'Agenda',
+    'agenda.leaveAgenda': 'Quitter',
     'agenda.leaveAgendaConfirm': 'Êtes-vous sûr de vouloir quitter cet agenda ? Cela supprimera toutes vos données de cet agenda.',
     'agenda.members': 'Membres ({count})',
     'agenda.comments': 'Commentaires',
@@ -493,6 +583,11 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'agenda.noSections': 'Aucune section',
     'agenda.due': 'Pour le',
     'agenda.header': 'Agenda',
+    'agenda.errorLeave': 'Échec pour quitter l\'agenda',
+    'agenda.error.sectionNameTooLong': 'Le nom de la section ne peut pas dépasser 15 caractères',
+    'agenda.error.sectionNameInvalid': 'Le nom ne peut contenir que des lettres, des chiffres et des espaces',
+    'agenda.error.elementSubjectTooLong': 'Le sujet de l\'élément ne peut pas dépasser 15 caractères',
+    'agenda.error.elementSubjectInvalid': 'Le sujet ne peut contenir que des lettres, des chiffres et des espaces',
     'time.now': 'À l\'instant',
     'time.seconds': 'Il y a {n}s',
     'time.minutes': 'Il y a {n}m',
@@ -506,5 +601,30 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'members.promote': 'Promouvoir',
     'members.demote': 'Rétrograder',
     'members.loading': 'Chargement des membres...',
+    'home.welcome': 'Bienvenue',
+    'home.create': 'Créer',
+    'home.join': 'Rejoindre',
+    'home.agendas': 'Vos Agendas',
+    'home.noAgendas': 'Pas encore d\'agendas',
+    'home.createAgenda': 'Créer un Agenda',
+    'home.joinAgenda': 'Rejoindre Agenda',
+    'home.createAgendaTitle': 'Créer un Nouvel Agenda',
+    'home.agendaName': 'Nom de l\'Agenda',
+    'home.joinAgendaTitle': 'Rejoindre un Agenda',
+    'home.agendaCode': 'Clé',
+    'home.validCode': 'Code valide',
+    'home.invalidCode': 'Code invalide',
+    'home.error.create': 'Échec de la création de l\'agenda',
+    'home.error.join': 'Échec pour rejoindre l\'agenda',
+    'home.error.fetch': 'Échec du chargement des agendas',
+    'home.loading': 'Chargement...',
+    'home.atype': 'Rendre Publique',
+    'home.error.nameTooLong': "Le nom de l'agenda ne peut pas dépasser 15 caractères",
+    'home.error.invalidChars': 'Le nom ne peut contenir que des lettres, des chiffres et des espaces',
+    'home.error.alreadyOwner': 'Vous êtes déjà le propriétaire de cet agenda',
+    'home.error.privateKey': 'La clé de cet agenda est privée',
+    'home.error.alreadyMember': 'Vous êtes déjà membre de cet agenda',
+    'home.success.joined': 'Vous avez rejoint l\'agenda "{name}" avec succès !',
+    'home.success.created': 'Agenda créé avec succès !',
   }
 };

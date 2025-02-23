@@ -442,13 +442,13 @@ export default function AgendaScreen() {
     // Validate section name
     const cleanName = newSectionName.trim();
     if (cleanName.length > 15) {
-      Alert.alert("Error", "Section name cannot exceed 15 characters");
+      Alert.alert(t('agenda.error'), t('agenda.error.sectionNameTooLong'));
       return;
     }
     
     // Check for special characters
     if (!/^[a-zA-Z0-9\s]+$/.test(cleanName)) {
-      Alert.alert("Error", "Section name can only contain letters, numbers, and spaces");
+      Alert.alert(t('agenda.error'), t('agenda.error.sectionNameInvalid'));
       return;
     }
 
@@ -476,13 +476,13 @@ export default function AgendaScreen() {
     // Validate element subject
     const cleanSubject = newElementData.subject.trim();
     if (cleanSubject.length > 15) {
-      Alert.alert("Error", "Element subject cannot exceed 15 characters");
+      Alert.alert(t('agenda.error'), t('agenda.error.elementSubjectTooLong'));
       return;
     }
     
     // Check for special characters in subject
     if (!/^[a-zA-Z0-9\s]+$/.test(cleanSubject)) {
-      Alert.alert("Error", "Element subject can only contain letters, numbers, and spaces");
+      Alert.alert(t('agenda.error'), t('agenda.error.elementSubjectInvalid'));
       return;
     }
 
@@ -673,7 +673,6 @@ export default function AgendaScreen() {
         <Text style={[styles.deadline, { color: theme.text }]}>
           {t('agenda.due')}: {new Date(item.deadline).toLocaleDateString()}
         </Text>
-        <Text style={[styles.status, { color: theme.text }]}>{item.status}</Text>
       </View>
     </View>
   );
@@ -966,77 +965,38 @@ export default function AgendaScreen() {
     if (!session?.user?.id) return;
 
     Alert.alert(
-      "Leave Agenda",
-      "Are you sure you want to leave this agenda? This will remove all your data from this agenda.",
+      t('agenda.leaveAgenda'),
+      t('agenda.leaveAgendaConfirm'),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t('agenda.cancel'), style: "cancel" },
         {
-          text: "Leave",
+          text: t('agenda.leaveAgenda'),
           style: "destructive",
           onPress: async () => {
             try {
-              // First get all section IDs for this agenda
-              const { data: sections } = await supabase
-                .from("Agenda Section")
-                .select('id')
+              // Just remove from Agenda Member - everything else cascades
+              const { error } = await supabase
+                .from("Agenda Member")
+                .delete()
+                .eq('user_id', session.user.id)
                 .eq('agenda_id', id);
 
-              // Then get all element IDs from these sections
-              const { data: elements } = await supabase
-                .from("Agenda Element")
-                .select('id')
-                .in('section_id', sections?.map(s => s.id) || []);
+              if (error) throw error;
 
-              // Now remove all user data using the element IDs we found
-              await Promise.all([
-                // Remove from members
-                supabase
-                  .from("Agenda Member")
-                  .delete()
-                  .eq('user_id', session.user.id)
-                  .eq('agenda_id', id),
-                // Remove from editors
-                supabase
-                  .from("Agenda Editor")
-                  .delete()
-                  .eq('user_id', session.user.id)
-                  .eq('agenda_id', id),
-                // Remove completed elements
-                supabase
-                  .from("Completed Element")
-                  .delete()
-                  .eq('user_id', session.user.id)
-                  .eq('agenda_id', id),
-                // Remove urgent elements
-                supabase
-                  .from("Urgent Element")
-                  .delete()
-                  .eq('user_id', session.user.id)
-                  .in('element_id', elements?.map(e => e.id) || []),
-                // Remove comments
-                supabase
-                  .from("Agenda Comment")
-                  .delete()
-                  .eq('author_id', session.user.id)
-                  .eq('agenda_id', id)
-              ]);
-
+              // Update local cache
               try {
-                // Update local cache by removing this agenda
                 const cachedData = await getData(KEYS.AGENDAS) || [];
                 const updatedAgendas = cachedData.filter(a => a.id !== id);
                 await storeData(KEYS.AGENDAS, updatedAgendas);
-                
-                // Also remove the agenda's specific cache
                 await storeAgendaData(id as string, null);
               } catch (storageError) {
-                console.log('Cache update error:', storageError); // Continue with navigation even if cache update fails
+                console.log('Cache update error:', storageError);
               }
 
               router.replace("/");
             } catch (error) {
               console.error("Leave agenda error:", error);
-              Alert.alert("Error", "Failed to leave agenda");
+              Alert.alert(t('agenda.error'), t('agenda.errorLeave'));
             }
           }
         }

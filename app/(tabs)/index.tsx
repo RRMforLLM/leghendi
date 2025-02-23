@@ -15,6 +15,7 @@ import { storeData, getData, KEYS } from '@/utils/offlineStorage';
 import OfflineBanner from '@/components/OfflineBanner';
 import VibesDisplay from '@/components/VibesDisplay';
 import { useCredits } from '@/hooks/useCredits';
+import { useLanguage } from '@/contexts/LanguageContext'; // Add this import
 
 const DialogButton = ({ onPress, disabled = false, children }: {
   onPress: () => void;
@@ -31,6 +32,7 @@ const DialogButton = ({ onPress, disabled = false, children }: {
 );
 
 export default function HomeScreen() {
+  const { t, language } = useLanguage(); // Add language here
   const colorScheme = useColorScheme()
   const theme = Colors[colorScheme ?? 'light'];
   const [agendas, setAgendas] = useState<Agenda[]>([])
@@ -365,13 +367,13 @@ export default function HomeScreen() {
   
     // Validate agenda name
     if (trimmedName.length > 15) {
-      Alert.alert("Error", "Agenda name cannot exceed 15 characters");
+      Alert.alert(t('settings.error'), t('home.error.nameTooLong'));
       return;
     }
     
     // Check for special characters
     if (!/^[a-zA-Z0-9\s]+$/.test(trimmedName)) {
-      Alert.alert("Error", "Agenda name can only contain letters, numbers, and spaces");
+      Alert.alert(t('settings.error'), t('home.error.invalidChars'));
       return;
     }
     
@@ -414,13 +416,13 @@ export default function HomeScreen() {
 
       // Check if it's own agenda
       if (agenda.creator_id === session.user.id) {
-        Alert.alert("Error", "You're already the owner of this agenda")
+        Alert.alert(t('settings.error'), t('home.error.alreadyOwner'));
         return
       }
 
       // If the key is not visible and user is not the creator, reject
       if (!agenda.key_visible) {
-        Alert.alert("Error", "This agenda's key is private")
+        Alert.alert(t('settings.error'), t('home.error.privateKey'));
         return
       }
 
@@ -433,7 +435,7 @@ export default function HomeScreen() {
         .maybeSingle()
 
       if (existingMember) {
-        Alert.alert("Error", "You're already a member of this agenda")
+        Alert.alert(t('settings.error'), t('home.error.alreadyMember'));
         return
       }
 
@@ -451,13 +453,13 @@ export default function HomeScreen() {
       await fetchAgendas()
       setShowJoinDialog(false)
       setJoinAgendaData({ name: '', key: '' })
-      Alert.alert("Success", `Joined agenda "${agenda.name}"!`)
+      Alert.alert(t('settings.success'), t('home.success.joined').replace('{name}', agenda.name));
 
     } catch (error) {
       console.error('Join error:', error)
       Alert.alert(
-        "Error", 
-        "Failed to join agenda. Please verify the credentials."
+        t('settings.error'), 
+        t('home.error.join')
       )
     }
   }
@@ -490,13 +492,13 @@ export default function HomeScreen() {
     // Validate agenda name
     const cleanName = newAgendaData.name.trim();
     if (cleanName.length > 15) {
-      Alert.alert("Error", "Agenda name cannot exceed 15 characters");
+      Alert.alert(t('settings.error'), t('home.error.nameTooLong'));
       return;
     }
     
     // Check for special characters
     if (!/^[a-zA-Z0-9\s]+$/.test(cleanName)) {
-      Alert.alert("Error", "Agenda name can only contain letters, numbers, and spaces");
+      Alert.alert(t('settings.error'), t('home.error.invalidChars'));
       return;
     }
     
@@ -517,10 +519,10 @@ export default function HomeScreen() {
       setShowCreateDialog(false)
       setNewAgendaData({ name: '', key: '', key_visible: true })
       fetchAgendas()
-      Alert.alert("Success", "Agenda created successfully!")
+      Alert.alert(t('settings.success'), t('home.success.created'));
     } catch (error) {
       console.error('Create agenda error:', error)
-      Alert.alert("Error", "Failed to create agenda")
+      Alert.alert(t('settings.error'), t('home.error.create'));
     }
   }
 
@@ -528,10 +530,12 @@ export default function HomeScreen() {
     <View style={[styles.card, { backgroundColor: theme.card }]}>
       <Text style={[typography.h3, { color: theme.text }]}>{item.name || "Untitled"}</Text>
       {item.key_visible && (
-        <Text style={[typography.caption, { color: theme.text }]}>Key: {item.key}</Text>
+        <Text style={[typography.caption, { color: theme.text }]}>
+          {t('home.agendaCode')}: {item.key}
+        </Text>
       )}
       <Button
-        title="View"
+        title={t('userProfile.action.viewAgenda')}
         type="clear"
         titleStyle={{ color: theme.tint }}
         onPress={() => router.push(`/agenda/${item.id}`)}
@@ -542,14 +546,14 @@ export default function HomeScreen() {
   const renderUrgentItem = ({ item }: { item: AgendaElement }) => (
     <View style={[styles.urgentCardBase, { 
       backgroundColor: theme.card,
-      borderLeftColor: Colors.light.error, // Move this to a constant since it doesn't change
+      borderLeftColor: Colors.light.error,
     }]}>
       <Text style={[typography.h3, { color: theme.text }]}>{item.subject}</Text>
       <Text style={[typography.caption, { color: theme.placeholder }]}>
-        {item.agendaName} • Due: {new Date(item.deadline).toLocaleDateString()}
+        {item.agendaName} • {t('agenda.due')}: {new Date(item.deadline).toLocaleDateString(language)}
       </Text>
       <Button
-        title="View Agenda"
+        title={t('userProfile.action.viewAgenda')}
         type="clear"
         titleStyle={{ color: theme.tint }}
         onPress={() => router.push(`/agenda/${item.section.agenda.id}`)}
@@ -675,10 +679,10 @@ export default function HomeScreen() {
         {/* Your Agendas section */}
         <View style={styles.section}>
           {loading ? (
-            <Text style={{ color: theme.text }}>Loading agendas...</Text>
+            <Text style={{ color: theme.text }}>{t('home.loading')}</Text>
           ) : agendas.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Text style={{ color: theme.text }}>No agendas found</Text>
+              <Text style={{ color: theme.text }}>{t('home.noAgendas')}</Text>
             </View>
           ) : (
             <FlatList
@@ -694,14 +698,14 @@ export default function HomeScreen() {
         <View style={[styles.section, styles.bottomSection]}>
           <View style={styles.buttonGroup}>
             <Button
-              title="Create Agenda"
+              title={t('home.createAgenda')}
               onPress={() => setShowCreateDialog(true)}
               containerStyle={styles.button}
               buttonStyle={{ backgroundColor: theme.button }}
               titleStyle={{ color: theme.buttonText }}
             />
             <Button
-              title="Join Agenda"
+              title={t('home.joinAgenda')}
               type="outline"
               onPress={() => setShowJoinDialog(true)}
               containerStyle={styles.button}
@@ -718,21 +722,23 @@ export default function HomeScreen() {
         overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
       >
         <View style={[styles.dialogContent, , { backgroundColor: theme.card }]}>
-          <Text style={[typography.h3, { color: theme.text }]}>Create New Agenda</Text>
+          <Text style={[typography.h3, { color: theme.text }]}>
+            {t('home.createAgendaTitle')}
+          </Text>
           <Input
-            placeholder="Agenda Name"
+            placeholder={t('home.agendaName')}
             value={newAgendaData.name}
             onChangeText={(text) => setNewAgendaData(prev => ({ ...prev, name: text }))}
             inputStyle={{ color: theme.text }}
           />
           <Input
-            placeholder="Custom Key (optional)"
+            placeholder={t('home.agendaCode')}
             value={newAgendaData.key}
             onChangeText={(text) => setNewAgendaData(prev => ({ ...prev, key: text }))}
             inputStyle={{ color: theme.text }}
           />
           <View style={[styles.switchContainer, { backgroundColor: theme.card }]}>
-            <Text style={{ color: theme.text }}>Make key visible</Text>
+            <Text style={{ color: theme.text }}>{t('home.atype')}</Text>
             <Switch
               value={newAgendaData.key_visible}
               onValueChange={(value) => setNewAgendaData(prev => ({ ...prev, key_visible: value }))}
@@ -742,13 +748,13 @@ export default function HomeScreen() {
           </View>
           <View style={[{ flexDirection: 'row', justifyContent: 'flex-end' }, { backgroundColor: theme.card }]}>
             <DialogButton onPress={() => setShowCreateDialog(false)}>
-              Cancel
+              {t('agenda.cancel')}
             </DialogButton>
             <DialogButton 
               onPress={handleCreateAgenda}
               disabled={!newAgendaData.name.trim()}
             >
-              Create
+              {t('home.create')}
             </DialogButton>
           </View>
         </View>
@@ -760,28 +766,30 @@ export default function HomeScreen() {
         overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
       >
         <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
-          <Text style={[typography.h3, { color: theme.text }]}>Join New Agenda</Text>
+          <Text style={[typography.h3, { color: theme.text }]}>
+            {t('home.joinAgendaTitle')}
+          </Text>
           <Input
-            placeholder="Agenda Name"
+            placeholder={t('home.agendaName')}
             value={joinAgendaData.name}
             onChangeText={(text) => setJoinAgendaData(prev => ({ ...prev, name: text }))}
             inputStyle={{ color: theme.text }}
           />
           <Input
-            placeholder="Agenda Key"
+            placeholder={t('home.agendaCode')}
             value={joinAgendaData.key}
             onChangeText={(text) => setJoinAgendaData(prev => ({ ...prev, key: text }))}
             inputStyle={{ color: theme.text }}
           />
           <View style={[{ flexDirection: 'row', justifyContent: 'flex-end' }, { backgroundColor: theme.card }]}>
             <DialogButton onPress={() => setShowJoinDialog(false)}>
-              Cancel
+              {t('agenda.cancel')}
             </DialogButton>
             <DialogButton 
               onPress={handleJoinAgenda}
               disabled={!joinAgendaData.name.trim() || !joinAgendaData.key.trim()}
             >
-              Join
+              {t('home.join')}
             </DialogButton>
           </View>
         </View>
