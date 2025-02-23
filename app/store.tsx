@@ -1,9 +1,8 @@
-import { StyleSheet, ScrollView, Alert, Pressable } from 'react-native';
+import { StyleSheet, ScrollView, Alert, Pressable, Image } from 'react-native';
 import { View, Text } from '@/components/Themed';
 import { typography, spacing } from '@/constants/Typography';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
-import { Icon } from '@rneui/themed';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -92,13 +91,21 @@ export default function StoreScreen() {
                 </Text>
               </View>
               <View style={[styles.vibesRow, { backgroundColor: 'transparent' }]}>
-                <Icon
-                  name="stars"
-                  type="material"
-                  color={theme.text}
-                  size={20}
+                <Image
+                  source={{ uri: 'https://hmrvdkweceanxnuyuorq.supabase.co/storage/v1/object/public/utilities/Vibes-Icon.png' }}
+                  style={styles.icon}
                 />
-                <Text style={[typography.h2, { color: theme.text }]}>
+                <Text 
+                  style={[
+                    typography.h2, 
+                    { 
+                      color: theme.text,
+                      includeFontPadding: false,
+                      padding: 0,
+                      margin: 0,
+                    }
+                  ]}
+                >
                   {bundle.vibes}
                 </Text>
               </View>
@@ -151,9 +158,10 @@ const styles = StyleSheet.create({
   },
   vibesRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'baseline', // Changed from center to baseline
     gap: spacing.xs,
     marginVertical: spacing.sm,
+    backgroundColor: 'transparent',
   },
   popularBadge: {
     position: 'absolute',
@@ -171,5 +179,11 @@ const styles = StyleSheet.create({
   backButton: {
     padding: spacing.xs,
     backgroundColor: 'transparent',
+  },
+  icon: {
+    width: 24,
+    height: 24,
+    resizeMode: 'contain',
+    transform: [{ translateY: 4 }], // Fine-tune icon position relative to text
   },
 });

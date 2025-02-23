@@ -44,7 +44,18 @@ export default function RainingIcons() {
           toValue: icon.finalY,
           duration: 3000, // Longer duration
           useNativeDriver: true,
-          easing: Easing.ease // Use built-in ease function instead
+          easing: (t) => {
+            // Custom easing function that starts normal and slows down at the end
+            const slowdownPoint = 0.7; // Start slowing down at 70% of the animation
+            if (t < slowdownPoint) {
+              // Linear motion for the first 70%
+              return t / slowdownPoint;
+            } else {
+              // Ease out cubic for the last 30%
+              const remaining = (t - slowdownPoint) / (1 - slowdownPoint);
+              return slowdownPoint + (1 - Math.pow(1 - remaining, 3)) * (1 - slowdownPoint);
+            }
+          }
         })
       )
     );
