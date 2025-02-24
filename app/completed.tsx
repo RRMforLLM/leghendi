@@ -10,6 +10,7 @@ import { useNetworkState } from '@/hooks/useNetworkState';
 import { storeData, getData, KEYS } from '@/utils/offlineStorage';
 import OfflineBanner from '@/components/OfflineBanner';
 import { useState, useEffect } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext'; // Add this import
 
 interface CompletedItem {
   id: number;
@@ -21,8 +22,9 @@ interface CompletedItem {
 }
 
 export default function CompletedScreen() {
+  const { language, t } = useLanguage(); // Add useLanguage hook
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme];
+  const theme = Colors[colorScheme ?? 'light'];
   const isOnline = useNetworkState();
   const { items } = useLocalSearchParams();
   const [completedItems, setCompletedItems] = useState<CompletedItem[]>([]);
@@ -86,17 +88,17 @@ export default function CompletedScreen() {
       style={({ pressed }) => [
         styles.completedCard,
         { 
-          backgroundColor: colors.card,
+          backgroundColor: theme.card,
           opacity: pressed ? 0.7 : 1
         }
       ]}
     >
-      <Text style={[typography.h3, { color: colors.text }]}>{item.subject}</Text>
-      <Text style={[typography.caption, { color: colors.placeholder }]}>
-        {item.agendaName} • Due: {new Date(item.deadline).toLocaleDateString()}
+      <Text style={[typography.h3, { color: theme.text }]}>{item.subject}</Text>
+      <Text style={[typography.caption, { color: theme.placeholder }]}>
+        {item.agendaName} • {t('agenda.due')}: {new Date(item.deadline).toLocaleDateString(language)}
       </Text>
-      <Text style={[typography.caption, { color: colors.tint, marginTop: spacing.xs }]}>
-        Tap to uncomplete
+      <Text style={[typography.caption, { color: theme.tint, marginTop: spacing.xs }]}>
+        {t('completed.tapToUncomplete')}
       </Text>
     </Pressable>
   );

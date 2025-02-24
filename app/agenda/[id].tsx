@@ -14,6 +14,7 @@ import { useNetworkState } from '@/hooks/useNetworkState';
 import { storeAgendaData, getAgendaData, KEYS, storeData, getData } from '@/utils/offlineStorage';
 import OfflineBanner from '@/components/OfflineBanner';
 import { useLanguage } from '@/contexts/LanguageContext';
+import DatePickerInput from '@/components/DatePickerInput';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg"
 
@@ -1272,11 +1273,10 @@ export default function AgendaScreen() {
             multiline
             inputStyle={{ color: theme.text }}
           />
-          <Input
-            placeholder={t('agenda.elementDeadline')}
+          <DatePickerInput
             value={newElementData.deadline}
-            onChangeText={(text) => setNewElementData(prev => ({ ...prev, deadline: text }))}
-            keyboardType="numbers-and-punctuation"
+            onChange={(date) => setNewElementData(prev => ({ ...prev, deadline: date }))}
+            placeholder={t('agenda.elementDeadline')}
             inputStyle={{ color: theme.text }}
           />
           <View style={[{ flexDirection: 'row', justifyContent: 'flex-end' }, { backgroundColor: theme.card }]}>
@@ -1285,7 +1285,7 @@ export default function AgendaScreen() {
             </DialogButton>
             <DialogButton 
               onPress={addElement} 
-              disabled={!newElementData.subject.trim() || !newElementData.deadline.trim()}
+              disabled={!newElementData.subject.trim() || !newElementData.deadline}
             >
               {t('agenda.add')}
             </DialogButton>

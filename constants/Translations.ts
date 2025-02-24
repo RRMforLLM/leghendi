@@ -151,7 +151,8 @@ type TranslationKey =
   | 'agenda.error.sectionNameTooLong'
   | 'agenda.error.sectionNameInvalid'
   | 'agenda.error.elementSubjectTooLong'
-  | 'agenda.error.elementSubjectInvalid';
+  | 'agenda.error.elementSubjectInvalid'
+  | 'completed.tapToUncomplete';
 
 export const SUPPORTED_LANGUAGES = {
   en: 'English',
@@ -316,6 +317,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'home.error.alreadyMember': "You're already a member of this agenda",
     'home.success.joined': 'Successfully joined agenda "{name}"!',
     'home.success.created': 'Agenda created successfully!',
+    'completed.tapToUncomplete': 'Tap to uncomplete',
   },
   es: {
     'settings.title': 'Ajustes de Cuenta',
@@ -471,6 +473,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'home.error.alreadyMember': 'Ya eres miembro de esta agenda',
     'home.success.joined': '¡Te has unido exitosamente a la agenda "{name}"!',
     'home.success.created': '¡Agenda creada exitosamente!',
+    'completed.tapToUncomplete': 'Toca para desmarcar',
   },
   fr: {
     'settings.title': 'Paramètres du Compte',
@@ -626,5 +629,6 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'home.error.alreadyMember': 'Vous êtes déjà membre de cet agenda',
     'home.success.joined': 'Vous avez rejoint l\'agenda "{name}" avec succès !',
     'home.success.created': 'Agenda créé avec succès !',
+    'completed.tapToUncomplete': 'Appuyez pour décocher',
   }
 };
