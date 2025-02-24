@@ -2,9 +2,11 @@ import { View, Text, StyleSheet, Animated } from 'react-native';
 import { useState, useEffect } from 'react';
 import { spacing } from '@/constants/Typography';
 import Colors from '@/constants/Colors';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function OfflineBanner() {
   const [slideAnim] = useState(new Animated.Value(-50));
+  const { t } = useLanguage();
 
   useEffect(() => {
     Animated.spring(slideAnim, {
@@ -24,7 +26,7 @@ export default function OfflineBanner() {
         }
       ]}
     >
-      <Text style={styles.text}>You're offline</Text>
+      <Text style={styles.text}>{t('common.offline')}</Text>
     </Animated.View>
   );
 }

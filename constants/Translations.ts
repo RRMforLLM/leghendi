@@ -156,7 +156,8 @@ type TranslationKey =
   | 'settings.theme'
   | 'settings.theme.light'
   | 'settings.theme.dark'
-  | 'settings.theme.system';
+  | 'settings.theme.system'
+  | 'common.offline';
 
 export const SUPPORTED_LANGUAGES = {
   en: 'English',
@@ -326,6 +327,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'settings.theme.light': 'Light',
     'settings.theme.dark': 'Dark',
     'settings.theme.system': 'System',
+    'common.offline': "You're offline",
   },
   es: {
     'settings.title': 'Ajustes de Cuenta',
@@ -486,6 +488,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'settings.theme.light': 'Claro',
     'settings.theme.dark': 'Oscuro',
     'settings.theme.system': 'Sistema',
+    'common.offline': 'Estás desconectado',
   },
   fr: {
     'settings.title': 'Paramètres du Compte',
@@ -646,5 +649,6 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'settings.theme.light': 'Clair',
     'settings.theme.dark': 'Sombre',
     'settings.theme.system': 'Système',
+    'common.offline': 'Vous êtes hors ligne',
   }
 };
