@@ -152,7 +152,11 @@ type TranslationKey =
   | 'agenda.error.sectionNameInvalid'
   | 'agenda.error.elementSubjectTooLong'
   | 'agenda.error.elementSubjectInvalid'
-  | 'completed.tapToUncomplete';
+  | 'completed.tapToUncomplete'
+  | 'settings.theme'
+  | 'settings.theme.light'
+  | 'settings.theme.dark'
+  | 'settings.theme.system';
 
 export const SUPPORTED_LANGUAGES = {
   en: 'English',
@@ -318,6 +322,10 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'home.success.joined': 'Successfully joined agenda "{name}"!',
     'home.success.created': 'Agenda created successfully!',
     'completed.tapToUncomplete': 'Tap to uncomplete',
+    'settings.theme': 'Theme',
+    'settings.theme.light': 'Light',
+    'settings.theme.dark': 'Dark',
+    'settings.theme.system': 'System',
   },
   es: {
     'settings.title': 'Ajustes de Cuenta',
@@ -474,6 +482,10 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'home.success.joined': '¡Te has unido exitosamente a la agenda "{name}"!',
     'home.success.created': '¡Agenda creada exitosamente!',
     'completed.tapToUncomplete': 'Toca para desmarcar',
+    'settings.theme': 'Tema',
+    'settings.theme.light': 'Claro',
+    'settings.theme.dark': 'Oscuro',
+    'settings.theme.system': 'Sistema',
   },
   fr: {
     'settings.title': 'Paramètres du Compte',
@@ -630,5 +642,9 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'home.success.joined': 'Vous avez rejoint l\'agenda "{name}" avec succès !',
     'home.success.created': 'Agenda créé avec succès !',
     'completed.tapToUncomplete': 'Appuyez pour décocher',
+    'settings.theme': 'Thème',
+    'settings.theme.light': 'Clair',
+    'settings.theme.dark': 'Sombre',
+    'settings.theme.system': 'Système',
   }
 };

@@ -1,5 +1,5 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack, useRouter } from 'expo-router';  // Add useRouter here
 import * as SplashScreen from 'expo-splash-screen';
@@ -10,8 +10,9 @@ import * as Updates from 'expo-updates';
 import { initializeStorage } from '@/utils/offlineStorage';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 
-import { useColorScheme } from '@/components/useColorScheme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -77,18 +78,20 @@ export default function RootLayout() {
   }
 
   return (
-    <LanguageProvider>
-      <RootLayoutNav />
-    </LanguageProvider>
+    <ThemeProvider>
+      <LanguageProvider>
+        <RootLayoutNav />
+      </LanguageProvider>
+    </ThemeProvider>
   );
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  const { colorScheme } = useTheme(); // Replace useColorScheme with useTheme
   const { t } = useLanguage();
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <NavigationThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ 
@@ -116,6 +119,6 @@ function RootLayoutNav() {
           presentation: 'modal'
         }} />
       </Stack>
-    </ThemeProvider>
+    </NavigationThemeProvider>
   );
 }

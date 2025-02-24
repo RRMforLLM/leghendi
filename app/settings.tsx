@@ -11,6 +11,7 @@ import { useNetworkState } from '@/hooks/useNetworkState';
 import OfflineBanner from '@/components/OfflineBanner';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { SUPPORTED_LANGUAGES, Language } from '@/constants/Translations';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function Settings() {
   const [loading, setLoading] = useState(true)
@@ -25,10 +26,12 @@ export default function Settings() {
     lastActive: '',
     credits: 0
   })
+
   const colorScheme = useColorScheme()
   const colors = Colors[colorScheme]
   const isOnline = useNetworkState();
   const { language, setLanguage, t } = useLanguage();
+  const { themeMode, setThemeMode } = useTheme();
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -36,7 +39,6 @@ export default function Settings() {
         setLoading(true)
         const { data: { user }, error } = await supabase.auth.getUser()
         if (error) throw error
-
         // Fetch profile and additional statistics
         const [profileData, reactionsReceived, reactionsSent, commentsData, creditsData] = 
           await Promise.all([
@@ -63,7 +65,6 @@ export default function Settings() {
               .eq("user_id", user?.id)
               .single()
           ])
-
         if (profileData.data) {
           setUsername(profileData.data.username)
           setDescription(profileData.data.description || '')
@@ -91,18 +92,15 @@ export default function Settings() {
       setLoading(true)
       const { data: { user }, error: userError } = await supabase.auth.getUser()
       if (userError) throw userError
-
       const updates = {
         id: user.id,
         username,
         description,
         updated_at: new Date().toISOString(),
       }
-
       const { error } = await supabase
         .from("Profile")
         .upsert(updates)
-
       if (error) throw error
       Alert.alert(t('settings.success'), t('settings.successMessage'))
     } catch (error) {
@@ -127,7 +125,6 @@ export default function Settings() {
       setLoading(true)
       const { data: { user }, error: userError } = await supabase.auth.getUser()
       if (userError) throw userError
-
       Alert.alert(
         t('settings.deleteConfirmTitle'),
         t('settings.deleteConfirmMessage'),
@@ -143,16 +140,13 @@ export default function Settings() {
               try {
                 const { data: { session }, error: sessionError } = await supabase.auth.getSession()
                 if (sessionError) throw sessionError
-
                 // Use supabase functions directly instead of raw fetch
                 const { data, error: functionError } = await supabase.functions.invoke('delete-account', {
                   method: 'POST',
                 })
-
                 if (functionError) {
                   throw functionError
                 }
-
                 // Sign out and redirect
                 await supabase.auth.signOut()
                 router.replace('/')
@@ -209,8 +203,30 @@ export default function Settings() {
             ))}
           </View>
 
+          {/* Theme Section */}
           <View style={styles.section}>
-            <Text style={[typography.h3, { color: colors.text }]}>{t('settings.profile')}</Text>
+            <Text style={[typography.h3, { color: colors.text }]}>{t('settings.theme')}</Text>
+            {(['light', 'dark', 'system'] as const).map((mode) => (
+              <Pressable
+                key={mode}
+                style={[
+                  styles.languageOption,
+                  themeMode === mode && { backgroundColor: colors.tint + '20' }
+                ]}
+                onPress={() => setThemeMode(mode)}
+              >
+                <Text style={[typography.body, { color: colors.text }]}>
+                  {t(`settings.theme.${mode}`)}
+                </Text>
+                {themeMode === mode && (
+                  <Text style={[typography.body, { color: colors.tint }]}>✓</Text>
+                )}
+              </Pressable>
+            ))}
+          </View>
+
+          {/* Profile Section */}
+          <View style={styles.section}>
             <Input
               label={t('settings.email')}
               value={email}
@@ -240,6 +256,7 @@ export default function Settings() {
             />
           </View>
 
+          {/* Statistics Section */}
           <View style={styles.section}>
             <Text style={[typography.h3, { color: colors.text }]}>{t('settings.statistics')}</Text>
             <View style={styles.statRow}>
@@ -342,6 +359,18 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
   },
+  languageOption: {
+    marginVertical: spacing.xs,
+    borderRadius: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexDirection: 'row',
+  },
+  deleteButton: {
+    marginBottom: spacing.xs,
+  },
   dangerZone: {
     marginTop: spacing.xl * 2,
     padding: spacing.lg,
@@ -349,17 +378,5 @@ const styles = StyleSheet.create({
     borderColor: '#ff0000',
     borderRadius: 8,
     opacity: 0.8,
-  },
-  deleteButton: {
-    marginBottom: spacing.xs,
-  },
-  languageOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: 8,
-    marginVertical: spacing.xs,
   },
 })
