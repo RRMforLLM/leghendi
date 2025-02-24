@@ -118,6 +118,10 @@ function RootLayoutNav() {
           title: t('modal.store'),
           presentation: 'modal'
         }} />
+        <Stack.Screen name="calendar" options={{
+          title: t('modal.calendar'),
+          presentation: 'modal'
+        }} />
       </Stack>
     </NavigationThemeProvider>
   );

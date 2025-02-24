@@ -78,6 +78,7 @@ type TranslationKey =
   | 'modal.completed'
   | 'modal.members'
   | 'modal.store'
+  | 'modal.calendar'
   | 'tabs.home'
   | 'tabs.feed'
   | 'tabs.profile'
@@ -134,8 +135,6 @@ type TranslationKey =
   | 'home.agendaName'
   | 'home.joinAgendaTitle'
   | 'home.agendaCode'
-  | 'home.loading'
-  | 'home.atype'
   | 'home.validCode'
   | 'home.invalidCode'
   | 'home.error.create'
@@ -157,7 +156,32 @@ type TranslationKey =
   | 'settings.theme.light'
   | 'settings.theme.dark'
   | 'settings.theme.system'
-  | 'common.offline';
+  | 'common.offline'
+  | 'calendar.header'
+  | 'calendar.noEvents'
+  | 'calendar.days.sun'
+  | 'calendar.days.mon'
+  | 'calendar.days.tue'
+  | 'calendar.days.wed'
+  | 'calendar.days.thu'
+  | 'calendar.days.fri'
+  | 'calendar.days.sat'
+  | 'calendar.allSections'
+  | 'calendar.noEventsInSection'
+  | 'calendar.weekView'
+  | 'calendar.monthView'
+  | 'calendar.months.jan'
+  | 'calendar.months.feb'
+  | 'calendar.months.mar'
+  | 'calendar.months.apr'
+  | 'calendar.months.may'
+  | 'calendar.months.jun'
+  | 'calendar.months.jul'
+  | 'calendar.months.aug'
+  | 'calendar.months.sep'
+  | 'calendar.months.oct'
+  | 'calendar.months.nov'
+  | 'calendar.months.dec';
 
 export const SUPPORTED_LANGUAGES = {
   en: 'English',
@@ -248,12 +272,13 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'modal.completed': 'Completed Items',
     'modal.members': 'Manage Members',
     'modal.store': 'Store',
+    'modal.calendar': 'Calendar',
     'tabs.home': 'Home',
     'tabs.feed': 'Feed',
     'tabs.profile': 'Profile',
     'agenda.loading': 'Loading agenda...',
     'agenda.notFound': 'Agenda not found',
-    'agenda.addSection': 'Add Section',
+    'agenda.addSection': 'Add',
     'agenda.newSection': 'New Section',
     'agenda.cancel': 'Cancel',
     'agenda.add': 'Add',
@@ -328,6 +353,31 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'settings.theme.dark': 'Dark',
     'settings.theme.system': 'System',
     'common.offline': "You're offline",
+    'calendar.header': 'Calendar View',
+    'calendar.noEvents': 'No events on this day',
+    'calendar.days.sun': 'Sun',
+    'calendar.days.mon': 'Mon',
+    'calendar.days.tue': 'Tue',
+    'calendar.days.wed': 'Wed',
+    'calendar.days.thu': 'Thu',
+    'calendar.days.fri': 'Fri',
+    'calendar.days.sat': 'Sat',
+    'calendar.allSections': 'All Sections',
+    'calendar.noEventsInSection': 'No events in this section',
+    'calendar.weekView': 'Week',
+    'calendar.monthView': 'Month',
+    'calendar.months.jan': 'January',
+    'calendar.months.feb': 'February',
+    'calendar.months.mar': 'March',
+    'calendar.months.apr': 'April',
+    'calendar.months.may': 'May',
+    'calendar.months.jun': 'June',
+    'calendar.months.jul': 'July',
+    'calendar.months.aug': 'August',
+    'calendar.months.sep': 'September',
+    'calendar.months.oct': 'October',
+    'calendar.months.nov': 'November',
+    'calendar.months.dec': 'December',
   },
   es: {
     'settings.title': 'Ajustes de Cuenta',
@@ -409,12 +459,13 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'modal.completed': 'Elementos Completados',
     'modal.members': 'Administrar Miembros',
     'modal.store': 'Tienda',
+    'modal.calendar': 'Calendario',
     'tabs.home': 'Inicio',
     'tabs.feed': 'Feed',
     'tabs.profile': 'Perfil',
     'agenda.loading': 'Cargando agenda...',
     'agenda.notFound': 'Agenda no encontrada',
-    'agenda.addSection': 'Añadir Sección',
+    'agenda.addSection': 'Añadir',
     'agenda.newSection': 'Nueva Sección',
     'agenda.cancel': 'Cancelar',
     'agenda.add': 'Añadir',
@@ -489,6 +540,31 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'settings.theme.dark': 'Oscuro',
     'settings.theme.system': 'Sistema',
     'common.offline': 'Estás desconectado',
+    'calendar.header': 'Vista de Calendario',
+    'calendar.noEvents': 'No hay eventos este día',
+    'calendar.days.sun': 'Dom',
+    'calendar.days.mon': 'Lun',
+    'calendar.days.tue': 'Mar',
+    'calendar.days.wed': 'Mié',
+    'calendar.days.thu': 'Jue',
+    'calendar.days.fri': 'Vie',
+    'calendar.days.sat': 'Sáb',
+    'calendar.allSections': 'Todas las Secciones',
+    'calendar.noEventsInSection': 'No hay eventos en esta sección',
+    'calendar.weekView': 'Semana',
+    'calendar.monthView': 'Mes',
+    'calendar.months.jan': 'Enero',
+    'calendar.months.feb': 'Febrero',
+    'calendar.months.mar': 'Marzo',
+    'calendar.months.apr': 'Abril',
+    'calendar.months.may': 'Mayo',
+    'calendar.months.jun': 'Junio',
+    'calendar.months.jul': 'Julio',
+    'calendar.months.aug': 'Agosto',
+    'calendar.months.sep': 'Septiembre',
+    'calendar.months.oct': 'Octubre',
+    'calendar.months.nov': 'Noviembre',
+    'calendar.months.dec': 'Diciembre',
   },
   fr: {
     'settings.title': 'Paramètres du Compte',
@@ -570,12 +646,13 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'modal.completed': 'Éléments Terminés',
     'modal.members': 'Gérer les Membres',
     'modal.store': 'Boutique',
+    'modal.calendar': 'Calendrier',
     'tabs.home': 'Accueil',
     'tabs.feed': 'Flux',
     'tabs.profile': 'Profil',
     'agenda.loading': 'Chargement de l\'agenda...',
     'agenda.notFound': 'Agenda non trouvé',
-    'agenda.addSection': 'Ajouter Section',
+    'agenda.addSection': 'Ajouter',
     'agenda.newSection': 'Nouvelle Section',
     'agenda.cancel': 'Annuler',
     'agenda.add': 'Ajouter',
@@ -650,5 +727,30 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'settings.theme.dark': 'Sombre',
     'settings.theme.system': 'Système',
     'common.offline': 'Vous êtes hors ligne',
+    'calendar.header': 'Vue Calendrier',
+    'calendar.noEvents': 'Pas d\'événements ce jour',
+    'calendar.days.sun': 'Dim',
+    'calendar.days.mon': 'Lun',
+    'calendar.days.tue': 'Mar',
+    'calendar.days.wed': 'Mer',
+    'calendar.days.thu': 'Jeu',
+    'calendar.days.fri': 'Ven',
+    'calendar.days.sat': 'Sam',
+    'calendar.allSections': 'Toutes les Sections',
+    'calendar.noEventsInSection': 'Pas d\'événements dans cette section',
+    'calendar.weekView': 'Semaine',
+    'calendar.monthView': 'Mois',
+    'calendar.months.jan': 'Janvier',
+    'calendar.months.feb': 'Février',
+    'calendar.months.mar': 'Mars',
+    'calendar.months.apr': 'Avril',
+    'calendar.months.may': 'Mai',
+    'calendar.months.jun': 'Juin',
+    'calendar.months.jul': 'Juillet',
+    'calendar.months.aug': 'Août',
+    'calendar.months.sep': 'Septembre',
+    'calendar.months.oct': 'Octobre',
+    'calendar.months.nov': 'Novembre',
+    'calendar.months.dec': 'Décembre',
   }
 };

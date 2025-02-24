@@ -694,13 +694,15 @@ export default function AgendaScreen() {
           marginBottom: collapsedSections[section.id] ? 0 : spacing.sm 
         }
       ]}>
-        <RNView style={styles.sectionTitleContainer}>
+        <Pressable 
+          onPress={() => toggleSection(section.id)}
+          style={styles.sectionTitleContainer}
+        >
           <Icon
             name={collapsedSections[section.id] ? 'chevron-right' : 'chevron-down'}
             type="font-awesome-5"
             size={14}
             color={theme.text}
-            onPress={() => toggleSection(section.id)}
             containerStyle={styles.collapseIcon}
           />
           <Text 
@@ -710,7 +712,7 @@ export default function AgendaScreen() {
           >
             {section.name}
           </Text>
-        </RNView>
+        </Pressable>
         {(isCreator || isEditor) && (
           <RNView style={styles.sectionActions}>
             <Button
@@ -1005,6 +1007,34 @@ export default function AgendaScreen() {
     );
   };
 
+  const renderCalendarButton = () => (
+    <Icon
+      name="calendar-week"
+      type="font-awesome-5"
+      size={16}
+      color={theme.text}
+      onPress={() => {
+        // Prepare elements data for calendar
+        const elements = agenda?.sections.flatMap(section => 
+          section.elements.map(element => ({
+            ...element,
+            isUrgent: urgentElements[element.id],
+            sectionId: section.id,     // Add these
+            sectionName: section.name  // two lines
+          }))
+        ).filter(element => !completedElements[element.id]) || [];
+
+        router.push({
+          pathname: "/calendar",
+          params: { 
+            elements: encodeURIComponent(JSON.stringify(elements))
+          }
+        });
+      }}
+      containerStyle={{ marginHorizontal: spacing.sm }}
+    />
+  );
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -1038,6 +1068,7 @@ export default function AgendaScreen() {
                   type="clear"
                   onPress={() => setShowSectionDialog(true)}
                 />
+                {renderCalendarButton()}
                 <Icon
                   name="trash"
                   type="font-awesome-5"
@@ -1056,6 +1087,7 @@ export default function AgendaScreen() {
                     onPress={() => setShowSectionDialog(true)}
                   />
                 )}
+                {renderCalendarButton()}
                 <Icon
                   name="sign-out-alt"
                   type="font-awesome-5"
@@ -1329,7 +1361,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    height: '100%', // Add this
+    height: '100%',
+    cursor: 'pointer', // This helps indicate clickability on web
   },
   elementsList: {
     marginLeft: spacing.sm,
@@ -1482,10 +1515,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     height: '100%', // Add this
+    cursor: 'pointer', // This helps indicate clickability on web
   },
   collapseIcon: {
     marginRight: spacing.sm,
-    padding: spacing.xs,
   },
   membersSection: {
     width: '100%',
