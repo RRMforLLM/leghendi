@@ -1,7 +1,7 @@
 import { StyleSheet, ScrollView, Platform, Alert, Animated, TouchableWithoutFeedback, View as RNView } from 'react-native';
 import { View, Text } from '@/components/Themed';
 import { useLocalSearchParams, router } from 'expo-router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Avatar, Icon, Input } from '@rneui/themed';
 import Colors from '@/constants/Colors';
@@ -13,6 +13,8 @@ import { useNetworkState } from '@/hooks/useNetworkState';
 import OfflineBanner from '@/components/OfflineBanner';
 import VibesDisplay from '@/components/VibesDisplay';
 import { useLanguage } from '@/contexts/LanguageContext';
+import RainingIcons from '@/components/RainingIcons';  // Add this import at the top
+import ReactionRain from '@/components/ReactionRain'; // Add this import
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg";
 
@@ -72,6 +74,9 @@ const UserProfileScreen = () => {
   const [sendingReaction, setSendingReaction] = useState(false);
   const [userCredits, setUserCredits] = useState(0);
   const [currentUserCredits, setCurrentUserCredits] = useState(0);
+  const [showRainingAnimation, setShowRainingAnimation] = useState<'hug' | 'heart' | 'kiss' | null>(null);
+  const [activeAnimations, setActiveAnimations] = useState<Array<{ id: number; type: 'hug' | 'heart' | 'kiss' }>>([]);
+  const animationIdCounter = useRef(0);
 
   // Add a type-safe mapping
   const reactionTypeToStatKey = {
@@ -148,6 +153,15 @@ const UserProfileScreen = () => {
     ]).start();
   };
 
+  const addReactionAnimation = (type: 'hug' | 'heart' | 'kiss') => {
+    const id = animationIdCounter.current++;
+    setActiveAnimations(prev => [...prev, { id, type }]);
+  };
+
+  const removeReactionAnimation = (id: number) => {
+    setActiveAnimations(prev => prev.filter(anim => anim.id !== id));
+  };
+
   const handleReactionWithAnimation = async (type: 'hug' | 'heart' | 'kiss') => {
     if (!currentUserId || sendingReaction) return; // Check authentication first
     
@@ -215,6 +229,7 @@ const UserProfileScreen = () => {
               ...prev,
               [statKey]: prev[statKey] + 1
             }));
+            addReactionAnimation(type);
           }
         }
       } else {
@@ -247,6 +262,7 @@ const UserProfileScreen = () => {
           ...prev,
           [statKey]: prev[statKey] + 1
         }));
+        addReactionAnimation(type);
       }
     } catch (error) {
       console.error('Reaction error:', error);
@@ -464,6 +480,13 @@ const UserProfileScreen = () => {
 
   return (
     <View style={styles.container}>
+      {activeAnimations.map(animation => (
+        <ReactionRain
+          key={animation.id}
+          type={animation.type}
+          onAnimationComplete={() => removeReactionAnimation(animation.id)}
+        />
+      ))}
       {!isOnline && <OfflineBanner />}
       <View style={styles.headerRow}>
         <VibesDisplay amount={currentUserCredits} />
@@ -519,7 +542,7 @@ const UserProfileScreen = () => {
                   <Icon
                     name="heart"
                     type="font-awesome"
-                    color={'#FF3B30'}
+                    color={userReactions.some(r => r.type === 'heart') ? '#FF3B30' : theme.text}
                     size={30}
                     style={styles.iconStyle}
                   />
@@ -536,7 +559,7 @@ const UserProfileScreen = () => {
                   <Icon
                     name="kiss-wink-heart"
                     type="font-awesome-5"
-                    color={'#FF2D55'}
+                    color={userReactions.some(r => r.type === 'kiss') ? '#FF2D55' : theme.text}
                     size={30}
                     style={styles.iconStyle}
                   />
