@@ -1041,6 +1041,25 @@ export default function AgendaScreen() {
     />
   );
 
+  const toggleComments = async () => {
+    if (!isCreator || !agenda) return;
+    
+    try {
+      const { error } = await supabase
+        .from('Agenda')
+        .update({ comments: !agenda.comments })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      // Update local state
+      setAgenda(prev => prev ? { ...prev, comments: !prev.comments } : null);
+    } catch (error) {
+      console.error('Toggle comments error:', error);
+      Alert.alert(t('settings.error'), t('agenda.error.toggleComments'));
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -1221,44 +1240,66 @@ export default function AgendaScreen() {
         </View>
 
         <View style={styles.commentsSection}>
-          <Text style={[typography.h3, { color: theme.text }]}>{t('agenda.comments')}</Text>
-          <RNView style={styles.commentInputContainer}>
-            <Input
-              placeholder={t('agenda.addComment')}
-              value={commentText}
-              onChangeText={setCommentText}
-              multiline
-              containerStyle={styles.commentInput}
-              inputStyle={{ color: theme.text }}
-              rightIcon={
-                <Icon
-                  name="send"
-                  type="font-awesome"
-                  color={commentText.trim() ? theme.text : theme.placeholder}
-                  size={20}
-                  onPress={() => {
-                    if (session?.user?.id && commentText.trim()) {
-                      postComment()
-                    }
-                  }}
-                  style={{ opacity: commentText.trim() ? 1 : 0.5 }}
-                />
-              }
-            />
-          </RNView>
-          <View style={styles.commentsList}>
-            {comments.length === 0 ? (
-              <Text style={[typography.body, { color: theme.placeholder }]}>
-                {t('agenda.noComments')}
-              </Text>
-            ) : (
-              comments.map(item => (
-                <View key={item.id.toString()}>
-                  {renderComment({ item })}
-                </View>
-              ))
+          <View style={styles.commentsSectionHeader}>
+            <Text style={[typography.h3, { color: theme.text }]}>
+              {t('agenda.comments')}
+            </Text>
+            {isCreator && (
+              <Icon
+                name={agenda.comments ? "comment-dots" : "comment-slash"} // Changed these icon names
+                type="font-awesome-5"
+                size={20}
+                color={agenda.comments ? theme.tint : theme.placeholder}
+                onPress={toggleComments}
+              />
             )}
           </View>
+          
+          {agenda.comments ? (
+            <>
+              <RNView style={styles.commentInputContainer}>
+                <Input
+                  placeholder={t('agenda.addComment')}
+                  value={commentText}
+                  onChangeText={setCommentText}
+                  multiline
+                  containerStyle={styles.commentInput}
+                  inputStyle={{ color: theme.text }}
+                  rightIcon={
+                    <Icon
+                      name="send"
+                      type="font-awesome"
+                      color={commentText.trim() ? theme.text : theme.placeholder}
+                      size={20}
+                      onPress={() => {
+                        if (session?.user?.id && commentText.trim()) {
+                          postComment()
+                        }
+                      }}
+                      style={{ opacity: commentText.trim() ? 1 : 0.5 }}
+                    />
+                  }
+                />
+              </RNView>
+              <View style={styles.commentsList}>
+                {comments.length === 0 ? (
+                  <Text style={[typography.body, { color: theme.placeholder }]}>
+                    {t('agenda.noComments')}
+                  </Text>
+                ) : (
+                  comments.map(item => (
+                    <View key={item.id.toString()}>
+                      {renderComment({ item })}
+                    </View>
+                  ))
+                )}
+              </View>
+            </>
+          ) : (
+            <Text style={[typography.body, { color: theme.placeholder }]}>
+              {t('agenda.commentsDisabled')}
+            </Text>
+          )}
         </View>
       </ScrollView>
 
@@ -1577,5 +1618,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  commentsSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
 });

@@ -564,6 +564,12 @@ interface AccountProps {
   };
 }
 
+// Add profileState type
+interface ProfileState {
+  comments: boolean;
+  // Add other profile fields as needed
+}
+
 function Account({ 
   session, 
   signOut,
@@ -593,6 +599,9 @@ function Account({
   const [newUsername, setNewUsername] = useState(username)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [newDescription, setNewDescription] = useState(description)
+
+  // Add profile state
+  const [profile, setProfile] = useState<ProfileState>({ comments: true });
 
   const updateUsername = async () => {
     if (!session?.user?.id || !newUsername.trim()) return
@@ -688,6 +697,48 @@ function Account({
 
     // Cleanup interval on unmount
     return () => clearInterval(pollInterval);
+  }, [session?.user?.id]);
+
+  const toggleComments = async () => {
+    if (!session?.user?.id) return;
+    
+    try {
+      const { error } = await supabase
+        .from('Profile')
+        .update({ comments: !profile.comments })
+        .eq('id', session.user.id);
+
+      if (error) throw error;
+      
+      // Update local state
+      setProfile(prev => ({ ...prev, comments: !prev.comments }));
+    } catch (error) {
+      console.error('Toggle comments error:', error);
+      Alert.alert(t('settings.error'), t('profile.error.toggleComments'));
+    }
+  };
+
+  // Add this effect to fetch initial profile state
+  useEffect(() => {
+    const fetchProfileState = async () => {
+      if (!session?.user?.id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('Profile')
+          .select('comments')
+          .eq('id', session.user.id)
+          .single();
+
+        if (error) throw error;
+        
+        setProfile(prev => ({ ...prev, ...data }));
+      } catch (error) {
+        console.error('Error fetching profile state:', error);
+      }
+    };
+
+    fetchProfileState();
   }, [session?.user?.id]);
 
   return (
@@ -831,63 +882,82 @@ function Account({
           </RNView>
 
           <View style={styles.commentsSection}>
-            <Text style={[typography.h3, { color: theme.text }]}>{translations.comments}</Text>
-            
-            <RNView style={styles.commentInputContainer}>
-              <Input
-                placeholder={translations.addComment}
-                value={commentText}
-                onChangeText={setCommentText}
-                multiline
-                containerStyle={styles.commentInput}
-                inputStyle={{ color: theme.text }}
-                rightIcon={
-                  <Icon
-                    name="send"
-                    type="font-awesome"
-                    color={commentText.trim() ? theme.text : theme.placeholder}
-                    size={20}
-                    onPress={() => {
-                      if (session?.user?.id && commentText.trim()) {
-                        onPostComment(session.user.id, commentText);
-                      }
-                    }}
-                    style={{ opacity: commentText.trim() ? 1 : 0.5 }}
-                  />
-                }
+            <View style={styles.commentsSectionHeader}>
+              <Text style={[typography.h3, { color: theme.text }]}>
+                {translations.comments}
+              </Text>
+              <Icon
+                name={profile.comments ? "comment-dots" : "comment-slash"} // Changed these icon names
+                type="font-awesome-5"
+                size={20}
+                color={profile.comments ? theme.tint : theme.placeholder}
+                onPress={toggleComments}
               />
-            </RNView>
-
-            <View style={styles.commentsList}>
-              {comments.map((comment) => (
-                <View key={comment.id.toString()} style={[styles.commentContainer, { backgroundColor: theme.card }]}>
-                  <RNView style={styles.commentHeader}>
-                    <RNView style={styles.commentAuthor}>
-                      <Avatar
-                        size={24}
-                        rounded
-                        source={{ uri: comment.author.avatar_url || DEFAULT_AVATAR }}
-                        containerStyle={styles.commentAvatar}
-                      />
-                      <Text style={[typography.caption, { color: theme.text }]}>
-                        {comment.author.username}
-                      </Text>
-                    </RNView>
-                    <Text style={[typography.caption, { color: theme.placeholder }]}>
-                      {getRelativeTime(comment.created_at, t, language)}
-                    </Text>
-                  </RNView>
-                  <Text style={[typography.body, { color: theme.text }]}>
-                    {comment.text}
-                  </Text>
-                </View>
-              ))}
-              {comments.length === 0 && (
-                <Text style={[typography.body, { color: theme.placeholder }]}>
-                  {translations.noComments}
-                </Text>
-              )}
             </View>
+            
+            {profile.comments ? (
+              <>
+                <RNView style={styles.commentInputContainer}>
+                  <Input
+                    placeholder={translations.addComment}
+                    value={commentText}
+                    onChangeText={setCommentText}
+                    multiline
+                    containerStyle={styles.commentInput}
+                    inputStyle={{ color: theme.text }}
+                    rightIcon={
+                      <Icon
+                        name="send"
+                        type="font-awesome"
+                        color={commentText.trim() ? theme.text : theme.placeholder}
+                        size={20}
+                        onPress={() => {
+                          if (session?.user?.id && commentText.trim()) {
+                            onPostComment(session.user.id, commentText);
+                          }
+                        }}
+                        style={{ opacity: commentText.trim() ? 1 : 0.5 }}
+                      />
+                    }
+                  />
+                </RNView>
+
+                <View style={styles.commentsList}>
+                  {comments.map((comment) => (
+                    <View key={comment.id.toString()} style={[styles.commentContainer, { backgroundColor: theme.card }]}>
+                      <RNView style={styles.commentHeader}>
+                        <RNView style={styles.commentAuthor}>
+                          <Avatar
+                            size={24}
+                            rounded
+                            source={{ uri: comment.author.avatar_url || DEFAULT_AVATAR }}
+                            containerStyle={styles.commentAvatar}
+                          />
+                          <Text style={[typography.caption, { color: theme.text }]}>
+                            {comment.author.username}
+                          </Text>
+                        </RNView>
+                        <Text style={[typography.caption, { color: theme.placeholder }]}>
+                          {getRelativeTime(comment.created_at, t, language)}
+                        </Text>
+                      </RNView>
+                      <Text style={[typography.body, { color: theme.text }]}>
+                        {comment.text}
+                      </Text>
+                    </View>
+                  ))}
+                  {comments.length === 0 && (
+                    <Text style={[typography.body, { color: theme.placeholder }]}>
+                      {translations.noComments}
+                    </Text>
+                  )}
+                </View>
+              </>
+            ) : (
+              <Text style={[typography.body, { color: theme.placeholder }]}>
+                {t('profile.commentsDisabled')}
+              </Text>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -1032,5 +1102,12 @@ const styles = StyleSheet.create({
   iconStyle: {
     backgroundColor: 'transparent',
     overflow: 'hidden',
+  },
+  commentsSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
 })

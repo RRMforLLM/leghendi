@@ -555,4 +555,74 @@ ADD CONSTRAINT "no_self_reactions"
 -- Make sure RLS is enabled for Reaction table
 ALTER TABLE "Reaction" ENABLE ROW LEVEL SECURITY;
 
+-- Add default value for comments column
+ALTER TABLE "Profile" 
+ALTER COLUMN comments SET DEFAULT true;
+
+ALTER TABLE "Agenda" 
+ALTER COLUMN comments SET DEFAULT true;
+
+-- Fix the comments toggle policies
+CREATE POLICY "users_can_toggle_own_profile_comments" ON "Profile"
+FOR UPDATE USING (
+    auth.uid() = id
+)
+WITH CHECK (
+    auth.uid() = id AND
+    (
+        -- Only allow updating the 'comments' column
+        comments IS NOT NULL
+    )
+);
+
+CREATE POLICY "users_can_toggle_own_agenda_comments" ON "Agenda"
+FOR UPDATE USING (
+    auth.uid() = creator_id
+)
+WITH CHECK (
+    auth.uid() = creator_id AND
+    (
+        -- Only allow updating the 'comments' column
+        comments IS NOT NULL
+    )
+);
+
+-- Add comment visibility policies
+CREATE POLICY "profile_comments_visibility" ON "Profile Comment"
+FOR SELECT USING (
+    EXISTS (
+        SELECT 1 FROM "Profile"
+        WHERE id = profile_id
+        AND comments = true
+    )
+);
+
+CREATE POLICY "agenda_comments_visibility" ON "Agenda Comment"
+FOR SELECT USING (
+    EXISTS (
+        SELECT 1 FROM "Agenda"
+        WHERE id = agenda_id
+        AND comments = true
+    )
+);
+
+-- Add comment creation policies
+CREATE POLICY "profile_comments_creation" ON "Profile Comment"
+FOR INSERT WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM "Profile"
+        WHERE id = profile_id
+        AND comments = true
+    )
+);
+
+CREATE POLICY "agenda_comments_creation" ON "Agenda Comment"
+FOR INSERT WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM "Agenda"
+        WHERE id = agenda_id
+        AND comments = true
+    )
+);
+
 COMMIT;

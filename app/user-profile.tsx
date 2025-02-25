@@ -310,7 +310,7 @@ const UserProfileScreen = () => {
       const [profileData, reactionsData, userReactionsData, commentsData, creditsData] = await Promise.all([
         supabase
           .from("Profile")
-          .select("*")
+          .select("username, avatar_url, description, comments") // Add comments field
           .eq("id", id)
           .single(),
         // Get total counts per reaction type
@@ -575,58 +575,66 @@ const UserProfileScreen = () => {
             {t('userProfile.comments')}
           </Text>
           
-          <RNView style={styles.commentInputContainer}>
-            {currentUserId && (
-              <Input
-                placeholder={t('userProfile.addComment')}
-                value={commentText}
-                onChangeText={setCommentText}
-                multiline
-                containerStyle={styles.commentInput}
-                inputStyle={{ color: theme.text }}
-                rightIcon={
-                  <Icon
-                    name="send"
-                    type="font-awesome"
-                    color={commentText.trim() ? theme.text : theme.placeholder}
-                    size={20}
-                    onPress={postComment}
+          {profile?.comments ? (
+            <>
+              <RNView style={styles.commentInputContainer}>
+                {currentUserId && (
+                  <Input
+                    placeholder={t('userProfile.addComment')}
+                    value={commentText}
+                    onChangeText={setCommentText}
+                    multiline
+                    containerStyle={styles.commentInput}
+                    inputStyle={{ color: theme.text }}
+                    rightIcon={
+                      <Icon
+                        name="send"
+                        type="font-awesome"
+                        color={commentText.trim() ? theme.text : theme.placeholder}
+                        size={20}
+                        onPress={postComment}
+                      />
+                    }
                   />
-                }
-              />
-            )}
-          </RNView>
+                )}
+              </RNView>
 
-          <View style={styles.commentsList}>
-            {comments.map((comment) => (
-              <View key={comment.id.toString()} style={[styles.commentCard, { backgroundColor: theme.card }]}>
-                <RNView style={styles.commentHeader}>
-                  <RNView style={styles.commentAuthor}>
-                    <Avatar
-                      size={24}
-                      rounded
-                      source={{ uri: comment.author.avatar_url || DEFAULT_AVATAR }}
-                      containerStyle={styles.commentAvatar}
-                    />
-                    <Text style={[typography.caption, { color: theme.text }]}>
-                      {comment.author.username}
+              <View style={styles.commentsList}>
+                {comments.map((comment) => (
+                  <View key={comment.id.toString()} style={[styles.commentCard, { backgroundColor: theme.card }]}>
+                    <RNView style={styles.commentHeader}>
+                      <RNView style={styles.commentAuthor}>
+                        <Avatar
+                          size={24}
+                          rounded
+                          source={{ uri: comment.author.avatar_url || DEFAULT_AVATAR }}
+                          containerStyle={styles.commentAvatar}
+                        />
+                        <Text style={[typography.caption, { color: theme.text }]}>
+                          {comment.author.username}
+                        </Text>
+                      </RNView>
+                      <Text style={[typography.caption, { color: theme.placeholder }]}>
+                        {getRelativeTime(comment.created_at, t, language)}
+                      </Text>
+                    </RNView>
+                    <Text style={[typography.body, { color: theme.text }]}>
+                      {comment.text}
                     </Text>
-                  </RNView>
-                  <Text style={[typography.caption, { color: theme.placeholder }]}>
-                    {getRelativeTime(comment.created_at, t, language)}
+                  </View>
+                ))}
+                {comments.length === 0 && (
+                  <Text style={[typography.body, { color: theme.placeholder }]}>
+                    {t('userProfile.noComments')}
                   </Text>
-                </RNView>
-                <Text style={[typography.body, { color: theme.text }]}>
-                  {comment.text}
-                </Text>
+                )}
               </View>
-            ))}
-            {comments.length === 0 && (
-              <Text style={[typography.body, { color: theme.placeholder }]}>
-                {t('userProfile.noComments')}
-              </Text>
-            )}
-          </View>
+            </>
+          ) : (
+            <Text style={[typography.body, { color: theme.placeholder }]}>
+              {t('userProfile.commentsDisabled')}
+            </Text>
+          )}
         </View>
       </ScrollView>
     </View>
