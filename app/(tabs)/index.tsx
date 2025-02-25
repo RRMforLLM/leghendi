@@ -57,6 +57,14 @@ const ElementDetailsDialog = ({ element, isVisible, onClose, theme, t, language 
   );
 };
 
+const sortElementsByUrgency = (elements: AgendaElement[]) => {
+  return [...elements].sort((a, b) => {
+    if (a.isUrgent && !b.isUrgent) return -1;
+    if (!a.isUrgent && b.isUrgent) return 1;
+    return 0;
+  });
+};
+
 const DayElementsDialog = ({ elements, isVisible, onClose, onElementPress, theme, t, colorScheme, language }) => (
   <Dialog
     isVisible={isVisible}
@@ -68,7 +76,7 @@ const DayElementsDialog = ({ elements, isVisible, onClose, onElementPress, theme
         {elements[0] && new Date(elements[0].deadline).toLocaleDateString(language)}
       </Text>
       <ScrollView style={styles.dayDialogScroll}>
-        {elements.map((element, index) => (
+        {sortElementsByUrgency(elements).map((element, index) => (
           <Pressable
             key={`${element.id}-${index}`}
             onPress={() => onElementPress(element)}
@@ -774,6 +782,7 @@ export default function HomeScreen() {
   const renderCalendarDay = (date: Date) => {
     const dateKey = date.toDateString();
     const dayElements = elementsByDay[dateKey] || [];
+    const sortedElements = sortElementsByUrgency(dayElements);
     const isToday = new Date().toDateString() === dateKey;
     const MAX_VISIBLE_ELEMENTS = 3; // Keep truncation
   
@@ -801,7 +810,7 @@ export default function HomeScreen() {
           {date.getDate()}
         </Text>
         <ScrollView style={styles.elementsContainer}>
-          {dayElements.slice(0, MAX_VISIBLE_ELEMENTS).map((element, index) => (
+          {sortedElements.slice(0, MAX_VISIBLE_ELEMENTS).map((element, index) => (
             <Pressable 
               key={`${element.id}-${index}`}
               onPress={() => setSelectedElement(element)}
@@ -831,7 +840,7 @@ export default function HomeScreen() {
               </Text>
             </Pressable>
           ))}
-          {dayElements.length > MAX_VISIBLE_ELEMENTS && (
+          {sortedElements.length > MAX_VISIBLE_ELEMENTS && (
             <View style={styles.moreContainer}>
               <Text style={[styles.moreText, { color: theme.placeholder }]}>
                 +{dayElements.length - MAX_VISIBLE_ELEMENTS}
@@ -1184,8 +1193,49 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   dialogContent: {
-    paddingHorizontal: spacing.sm,
-    paddingBottom: spacing.sm,
+    padding: spacing.md,
+  },
+  dialogTitle: {
+    ...typography.h2,
+    marginBottom: spacing.md,
+  },
+  dialogDetails: {
+    ...typography.body,
+    marginBottom: spacing.md,
+  },
+  dialogDeadline: {
+    ...typography.caption,
+  },
+  dayDialog: {
+    width: '90%',
+    borderRadius: 12,
+    padding: spacing.md,
+    maxHeight: '80%',
+  },
+  dayDialogScroll: {
+    maxHeight: 300,
+  },
+  dayDialogElement: {
+    padding: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: 8,
+    marginBottom: spacing.xs,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  dayDialogElementText: {
+    ...typography.caption,
+    fontSize: 12,
+  },
+  elementTextContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 12,
+    padding: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
   urgentListContent: {
     marginTop: spacing.sm,

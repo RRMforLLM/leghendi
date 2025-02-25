@@ -59,29 +59,32 @@ const DayElementsDialog = ({ elements, isVisible, onClose, onElementPress, theme
         {new Date(elements[0]?.deadline).toLocaleDateString(language)}
       </Text>
       <ScrollView style={styles.dayDialogScroll}>
-        {elements.map((element, index) => (
+        {sortElementsByUrgency(elements).map((element, index) => (
           <Pressable
             key={`${element.id}-${index}`}
             onPress={() => onElementPress(element)}
             style={({ pressed }) => [
               styles.dayDialogElement,
-              element.isUrgent && { backgroundColor: Colors[colorScheme ?? 'light'].error + '20' },
+              { backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)' },
+              element.isUrgent && {
+                backgroundColor: Colors[colorScheme ?? 'light'].error + '20',
+                borderLeftWidth: 2,
+                borderLeftColor: Colors[colorScheme ?? 'light'].error
+              },
               { opacity: pressed ? 0.7 : 1 }
             ]}
           >
-            <View style={styles.elementTextContainer}>
-              <Text
-                style={[
-                  styles.dayDialogElementText,
-                  { color: theme.text },
-                  element.isUrgent && { color: Colors[colorScheme ?? 'light'].error }
-                ]}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {element.subject}
-              </Text>
-            </View>
+            <Text
+              style={[
+                styles.dayDialogElementText,
+                { color: theme.text },
+                element.isUrgent && { color: Colors[colorScheme ?? 'light'].error }
+              ]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {element.subject}
+            </Text>
           </Pressable>
         ))}
       </ScrollView>
@@ -99,6 +102,14 @@ const getWeekDates = (date: Date) => {
     dates.push(new Date(newDate));
   }
   return dates;
+};
+
+const sortElementsByUrgency = (elements: CalendarElement[]) => {
+  return [...elements].sort((a, b) => {
+    if (a.isUrgent && !b.isUrgent) return -1;
+    if (!a.isUrgent && b.isUrgent) return 1;
+    return 0;
+  });
 };
 
 export default function CalendarScreen() {
@@ -286,7 +297,7 @@ export default function CalendarScreen() {
   const renderDay = (date: Date) => {
     const dateKey = date.toDateString();
     const dayElements = elementsByDay[dateKey] || [];
-    const filteredElements = getFilteredElements(dayElements);
+    const filteredElements = sortElementsByUrgency(getFilteredElements(dayElements));
     const isToday = new Date().toDateString() === dateKey;
 
     return (

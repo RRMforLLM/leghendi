@@ -1,6 +1,7 @@
 {/*
   TODOS:
   - Match the date format in the elements to the language's
+  - Toggle comments section (creator only)
 */}
 
 import { useEffect, useState, useCallback } from 'react';
