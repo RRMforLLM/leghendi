@@ -784,7 +784,7 @@ export default function HomeScreen() {
     const dayElements = elementsByDay[dateKey] || [];
     const sortedElements = sortElementsByUrgency(dayElements);
     const isToday = new Date().toDateString() === dateKey;
-    const MAX_VISIBLE_ELEMENTS = 3; // Keep truncation
+    const MAX_VISIBLE_ELEMENTS = 2; // Keep truncation
   
     return (
       <Pressable
@@ -841,9 +841,9 @@ export default function HomeScreen() {
             </Pressable>
           ))}
           {sortedElements.length > MAX_VISIBLE_ELEMENTS && (
-            <View style={styles.moreContainer}>
-              <Text style={[styles.moreText, { color: theme.placeholder }]}>
-                +{dayElements.length - MAX_VISIBLE_ELEMENTS}
+            <View style={[styles.moreContainer, { backgroundColor: theme.tint }]}>
+              <Text style={[styles.moreText, { color: colorScheme === 'dark' ? 'black' : 'white' }]}>
+                +{sortedElements.length - MAX_VISIBLE_ELEMENTS}
               </Text>
             </View>
           )}
@@ -1319,11 +1319,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
-    height: 180, // Fixed height to match calendar.tsx
+    height: 204, // Fixed height to match calendar.tsx
   },
   dayContainer: {
     width: 120,
-    height: 150,
+    height: 170,
     borderRadius: 12,
     padding: spacing.sm,
     shadowColor: "#000",
@@ -1358,13 +1358,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   moreContainer: {
+    alignSelf: 'center',
+    marginTop: spacing.xs,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: spacing.xs,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
+    elevation: 2,
   },
   moreText: {
     ...typography.caption,
     fontSize: 10,
-    opacity: 0.7,
+    fontWeight: '600',
   },
   dayDialog: {
     width: '90%',

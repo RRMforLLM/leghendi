@@ -299,6 +299,7 @@ export default function CalendarScreen() {
     const dayElements = elementsByDay[dateKey] || [];
     const filteredElements = sortElementsByUrgency(getFilteredElements(dayElements));
     const isToday = new Date().toDateString() === dateKey;
+    const MAX_VISIBLE_ELEMENTS = 12;
 
     return (
       <Pressable
@@ -308,6 +309,12 @@ export default function CalendarScreen() {
           { backgroundColor: theme.card },
           isToday && { borderColor: theme.tint, borderWidth: 1 }
         ]}
+        onPress={() => {
+          if (filteredElements.length > 0) {
+            setSelectedDayElements(filteredElements);
+            setShowDayDialog(true);
+          }
+        }}
       >
         <Text style={[styles.dayHeader, { color: theme.text }]}>
           {getDayName(date)}
@@ -315,7 +322,7 @@ export default function CalendarScreen() {
           {date.getDate()}
         </Text>
         <ScrollView style={styles.elementsContainer}>
-          {filteredElements.map((element, index) => (
+          {filteredElements.slice(0, MAX_VISIBLE_ELEMENTS).map((element, index) => (
             <Pressable 
               key={`${element.id}-${index}`}
               onPress={() => setSelectedElement(element)}
@@ -345,6 +352,13 @@ export default function CalendarScreen() {
               </Text>
             </Pressable>
           ))}
+          {filteredElements.length > MAX_VISIBLE_ELEMENTS && (
+            <View style={[styles.moreContainer, { backgroundColor: theme.tint }]}>
+              <Text style={[styles.moreText, { color: colorScheme === 'dark' ? 'black' : 'white' }]}>
+                +{filteredElements.length - MAX_VISIBLE_ELEMENTS}
+              </Text>
+            </View>
+          )}
           {filteredElements.length === 0 && dayElements.length > 0 && (
             <Text style={[styles.emptyText, { color: theme.placeholder }]}>
               {t('calendar.noEventsInSection')}
@@ -691,5 +705,24 @@ const styles = StyleSheet.create({
   navIcon: {
     padding: spacing.sm,
     borderRadius: 8,
+  },
+  moreContainer: {
+    alignSelf: 'center',
+    marginTop: spacing.xs,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
+    elevation: 2,
+  },
+  moreText: {
+    ...typography.caption,
+    fontSize: 10,
+    fontWeight: '600',
   },
 });

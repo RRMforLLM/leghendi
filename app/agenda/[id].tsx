@@ -678,7 +678,7 @@ export default function AgendaScreen() {
       )}
       <View style={[styles.elementMeta, { backgroundColor: theme.card }]}>
         <Text style={[styles.deadline, { color: theme.text }]}>
-          {t('agenda.due')}: {new Date(item.deadline).toLocaleDateString()}
+          {t('agenda.due')}: {new Date(item.deadline).toLocaleDateString(language)}
         </Text>
       </View>
     </View>
