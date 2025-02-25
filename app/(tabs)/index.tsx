@@ -1,9 +1,9 @@
-import { StyleSheet, FlatList, RefreshControl, Alert, Switch, Pressable, ScrollView } from "react-native"
+import { StyleSheet, FlatList, RefreshControl, Alert, Switch, Pressable, ScrollView, Clipboard } from "react-native"
 import { View, Text } from "@/components/Themed"
 import { useEffect, useState, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
 import type { Agenda, AgendaElement } from "@/types"
-import { Button, Input, Dialog } from "@rneui/themed"
+import { Button, Input, Dialog, Icon } from "@rneui/themed" // Add Icon to imports
 import { router, Link } from "expo-router"
 import type { Session } from "@supabase/supabase-js"
 import Colors from "@/constants/Colors"
@@ -712,9 +712,27 @@ export default function HomeScreen() {
     <View style={[styles.card, { backgroundColor: theme.card }]}>
       <Text style={[typography.h3, { color: theme.text }]}>{item.name || "Untitled"}</Text>
       {item.key_visible && (
-        <Text style={[typography.caption, { color: theme.text }]}>
-          {t('home.agendaCode')}: {item.key}
-        </Text>
+        <Pressable 
+          onPress={() => {
+            Clipboard.setString(item.key);
+            Alert.alert(t('settings.success'), t('home.keyCopied'));
+          }}
+          style={({ pressed }) => [
+            styles.keyContainer,
+            { opacity: pressed ? 0.5 : 1 }
+          ]}
+        >
+          <Text style={[typography.caption, { color: theme.text }]}>
+            {t('home.agendaCode')}: {item.key}
+          </Text>
+          <Icon
+            name="copy"
+            type="font-awesome-5"
+            size={12}
+            color={theme.placeholder}
+            style={styles.copyIcon}
+          />
+        </Pressable>
       )}
       <Button
         title={t('userProfile.action.viewAgenda')}
@@ -1456,5 +1474,14 @@ const styles = StyleSheet.create({
   viewAgendaButton: {
     marginTop: spacing.md,
     alignSelf: 'flex-end',
+  },
+  keyContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+  },
+  copyIcon: {
+    marginLeft: spacing.xs,
   },
 })

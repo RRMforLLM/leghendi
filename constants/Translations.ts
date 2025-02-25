@@ -189,7 +189,8 @@ type TranslationKey =
   | 'home.loginRequired'
   | 'home.goToLogin'
   | 'profile.commentsDisabled'
-  | 'agenda.commentsDisabled';
+  | 'agenda.commentsDisabled'
+  | 'home.keyCopied';
 
 export const SUPPORTED_LANGUAGES = {
   en: 'English',
@@ -358,6 +359,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'home.error.alreadyMember': "You're already a member of this agenda",
     'home.success.joined': 'Successfully joined agenda "{name}"!',
     'home.success.created': 'Agenda created successfully!',
+    'home.keyCopied': 'Agenda key copied to clipboard',
     'completed.tapToUncomplete': 'Tap to uncomplete',
     'settings.theme': 'Theme',
     'settings.theme.light': 'Light',
@@ -551,6 +553,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'home.error.alreadyMember': 'Ya eres miembro de esta agenda',
     'home.success.joined': '¡Te has unido exitosamente a la agenda "{name}"!',
     'home.success.created': '¡Agenda creada exitosamente!',
+    'home.keyCopied': 'Clave de agenda copiada al portapapeles',
     'completed.tapToUncomplete': 'Toca para desmarcar',
     'settings.theme': 'Tema',
     'settings.theme.light': 'Claro',
@@ -744,6 +747,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'home.error.alreadyMember': 'Vous êtes déjà membre de cet agenda',
     'home.success.joined': 'Vous avez rejoint l\'agenda "{name}" avec succès !',
     'home.success.created': 'Agenda créé avec succès !',
+    'home.keyCopied': 'Clé d\'agenda copiée dans le presse-papiers',
     'completed.tapToUncomplete': 'Appuyez pour décocher',
     'settings.theme': 'Thème',
     'settings.theme.light': 'Clair',
