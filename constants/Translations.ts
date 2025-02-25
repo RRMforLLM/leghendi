@@ -170,7 +170,6 @@ type TranslationKey =
   | 'calendar.days.fri'
   | 'calendar.days.sat'
   | 'calendar.allSections'
-  | 'calendar.noEventsInSection'
   | 'calendar.weekView'
   | 'calendar.monthView'
   | 'calendar.months.jan'
@@ -376,7 +375,6 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'calendar.days.fri': 'Fri',
     'calendar.days.sat': 'Sat',
     'calendar.allSections': 'All Sections',
-    'calendar.noEventsInSection': 'No events in this section',
     'calendar.weekView': 'Week',
     'calendar.monthView': 'Month',
     'calendar.months.jan': 'January',
@@ -570,7 +568,6 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'calendar.days.fri': 'Vie',
     'calendar.days.sat': 'Sáb',
     'calendar.allSections': 'Todas las Secciones',
-    'calendar.noEventsInSection': 'No hay eventos en esta sección',
     'calendar.weekView': 'Semana',
     'calendar.monthView': 'Mes',
     'calendar.months.jan': 'Enero',
@@ -764,7 +761,6 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'calendar.days.fri': 'Ven',
     'calendar.days.sat': 'Sam',
     'calendar.allSections': 'Toutes les Sections',
-    'calendar.noEventsInSection': 'Pas d\'événements dans cette section',
     'calendar.weekView': 'Semaine',
     'calendar.monthView': 'Mois',
     'calendar.months.jan': 'Janvier',
