@@ -96,34 +96,31 @@ export default function AgendaScreen() {
     navigation.setOptions({
       title: t('agenda.header'),
       headerBackTitle: t('tabs.home'),
-      headerTitleStyle: {
-        ...Platform.select({
-          android: {
-            marginLeft: 'auto',  // This will center the title on Android
-            marginRight: 'auto'
-          }
-        })
-      },
-      // Keep the custom back button
-      headerLeft: () => (
-        <Pressable 
-          onPress={() => navigation.goBack()}
-          style={({ pressed }) => ({ 
-            opacity: pressed ? 0.7 : 1,
-            // Add proper padding for touch target
-            padding: spacing.sm
-          })}
-        >
-          <Icon
-            name="chevron-left"
-            type="font-awesome-5"
-            size={20}
-            color={theme.text}
-          />
-        </Pressable>
-      ),
+      // Remove the custom headerTitleStyle that was causing the misalignment
+      
+      // Replace the custom back button with proper headerLeft configuration
+      headerLeft: Platform.select({
+        ios: undefined, // Use default iOS back button
+        android: () => (
+          <Pressable 
+            onPress={() => navigation.goBack()}
+            style={({ pressed }) => ({
+              opacity: pressed ? 0.7 : 1,
+              padding: spacing.sm,
+              marginLeft: spacing.xs // Add some margin on Android
+            })}
+          >
+            <Icon
+              name="arrow-back"
+              type="material"
+              size={24}
+              color={theme.text}
+            />
+          </Pressable>
+        )
+      })
     });
-  }, [navigation, theme.text]);
+  }, [navigation, theme.text, t]);
 
   const fetchAgenda = useCallback(async () => {
     try {
