@@ -1246,7 +1246,7 @@ export default function AgendaScreen() {
             </Text>
             {isCreator && (
               <Icon
-                name={agenda.comments ? "comment-dots" : "comment-slash"} // Changed these icon names
+                name="comments"
                 type="font-awesome-5"
                 size={20}
                 color={agenda.comments ? theme.tint : theme.placeholder}
@@ -1296,7 +1296,7 @@ export default function AgendaScreen() {
               </View>
             </>
           ) : (
-            <Text style={[typography.body, { color: theme.placeholder }]}>
+            <Text style={[styles.disabledMessage, { color: theme.placeholder }]}>
               {t('agenda.commentsDisabled')}
             </Text>
           )}
@@ -1625,5 +1625,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing.md,
     paddingHorizontal: spacing.sm,
+  },
+  disabledMessage: {
+    ...typography.body,
+    textAlign: 'center',
+    paddingVertical: spacing.md,
+    fontStyle: 'italic',
   },
 });

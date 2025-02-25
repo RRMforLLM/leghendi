@@ -186,7 +186,9 @@ type TranslationKey =
   | 'calendar.months.dec'
   | 'home.notLoggedIn'
   | 'home.loginRequired'
-  | 'home.goToLogin';
+  | 'home.goToLogin'
+  | 'profile.commentsDisabled'
+  | 'agenda.commentsDisabled';
 
 export const SUPPORTED_LANGUAGES = {
   en: 'English',
@@ -245,6 +247,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'profile.error.signOut': 'Failed to sign out. Please try again.',
     'profile.error.image': 'Failed to pick image',
     'profile.error.fields': 'Please fill in all fields',
+    'profile.commentsDisabled': 'Comments are disabled for this profile',
     'feed.loading': 'Loading feed...',
     'userList.loading': 'Loading users...',
     'userList.noUsers': 'No users found',
@@ -303,6 +306,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'agenda.comments': 'Comments',
     'agenda.addComment': 'Add a comment...',
     'agenda.noComments': 'No comments yet. Be the first to comment!',
+    'agenda.commentsDisabled': 'Comments are disabled for this agenda',
     'agenda.error': 'Error',
     'agenda.noElements': 'No elements in this section',
     'agenda.viewCompleted': 'View Completed ({count})',
@@ -435,6 +439,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'profile.error.signOut': 'Error al cerrar sesión. Inténtalo de nuevo.',
     'profile.error.image': 'Error al seleccionar imagen',
     'profile.error.fields': 'Por favor completa todos los campos',
+    'profile.commentsDisabled': 'Los comentarios están desactivados para este perfil',
     'feed.loading': 'Cargando feed...',
     'userList.loading': 'Cargando usuarios...',
     'userList.noUsers': 'No se encontraron usuarios',
@@ -493,6 +498,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'agenda.comments': 'Comentarios',
     'agenda.addComment': 'Añadir un comentario...',
     'agenda.noComments': '¡Aún no hay comentarios. Sé el primero en comentar!',
+    'agenda.commentsDisabled': 'Los comentarios están desactivados para esta agenda',
     'agenda.error': 'Error',
     'agenda.noElements': 'No hay elementos en esta sección',
     'agenda.viewCompleted': 'Ver Completados ({count})',
@@ -625,6 +631,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'profile.error.signOut': 'Échec de la déconnexion. Veuillez réessayer.',
     'profile.error.image': 'Échec de la sélection de l\'image',
     'profile.error.fields': 'Veuillez remplir tous les champs',
+    'profile.commentsDisabled': 'Les commentaires sont désactivés pour ce profil',
     'feed.loading': 'Chargement du fil...',
     'userList.loading': 'Chargement des utilisateurs...',
     'userList.noUsers': 'Aucun utilisateur trouvé',
@@ -683,6 +690,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'agenda.comments': 'Commentaires',
     'agenda.addComment': 'Ajouter un commentaire...',
     'agenda.noComments': 'Pas encore de commentaires. Soyez le premier à commenter !',
+    'agenda.commentsDisabled': 'Les commentaires sont désactivés pour cet agenda',
     'agenda.error': 'Erreur',
     'agenda.noElements': 'Aucun élément dans cette section',
     'agenda.viewCompleted': 'Voir Terminés ({count})',

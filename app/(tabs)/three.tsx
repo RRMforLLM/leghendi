@@ -892,7 +892,7 @@ function Account({
                 {translations.comments}
               </Text>
               <Icon
-                name={profile.comments ? "comment-dots" : "comment-slash"} // Changed these icon names
+                name="comments"
                 type="font-awesome-5"
                 size={20}
                 color={profile.comments ? theme.tint : theme.placeholder}
@@ -959,7 +959,7 @@ function Account({
                 </View>
               </>
             ) : (
-              <Text style={[typography.body, { color: theme.placeholder }]}>
+              <Text style={[styles.disabledMessage, { color: theme.placeholder }]}>
                 {t('profile.commentsDisabled')}
               </Text>
             )}
@@ -1119,5 +1119,11 @@ const styles = StyleSheet.create({
     width: '100%',
     padding: spacing.lg,
     flex: 1,
+  },
+  disabledMessage: {
+    ...typography.body,
+    textAlign: 'center',
+    paddingVertical: spacing.md,
+    fontStyle: 'italic',
   },
 })
