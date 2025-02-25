@@ -1,12 +1,11 @@
 import React from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Tabs } from 'expo-router';
-import { Pressable } from 'react-native';
+import { Platform } from 'react-native';
 
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
-import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
@@ -26,6 +25,19 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: useClientOnlyValue(false, true),
+        headerTitleStyle: {
+          ...Platform.select({
+            android: {
+              marginLeft: 'auto',  // Center the title on Android
+              marginRight: 'auto'
+            }
+          })
+        },
+        // Add consistent header styling
+        headerStyle: {
+          height: Platform.OS === 'ios' ? 96 : 64, // Taller on iOS
+        },
+        headerTitleAlign: 'center', // Center on all platforms
       }}>
       <Tabs.Screen
         name="index"
