@@ -458,51 +458,56 @@ export default function ProfileScreen() {
   if (!session) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <View style={styles.inputContainer}>
-          <Text style={[typography.h2, { color: theme.text, marginBottom: spacing.lg }]}>
-            {isSignUp ? t('profile.createAccount') : t('profile.welcomeBack')}
-          </Text>
-          <Input
-            label={t('profile.email')}
-            leftIcon={{ type: "font-awesome", name: "envelope", color: theme.text }}
-            onChangeText={setEmail}
-            value={email}
-            placeholder="email@address.com"
-            autoCapitalize="none"
-            containerStyle={styles.input}
-            inputStyle={{ color: theme.text }}
-            placeholderTextColor={theme.placeholder}
-          />
-          <Input
-            label={t('profile.password')}
-            leftIcon={{ type: "font-awesome", name: "lock", color: theme.text }}
-            onChangeText={setPassword}
-            value={password}
-            secureTextEntry={true}
-            placeholder="Password"
-            autoCapitalize="none"
-            containerStyle={styles.input}
-            inputStyle={{ color: theme.text }}
-            placeholderTextColor={theme.placeholder}
-          />
-          <Button
-            title={isSignUp ? t('profile.signUp') : t('profile.signIn')}
-            disabled={authLoading}
-            onPress={isSignUp ? signUpWithEmail : signInWithEmail}
-            containerStyle={styles.button}
-            buttonStyle={{ backgroundColor: theme.button }}
-            titleStyle={{ color: theme.buttonText }}
-          />
-          <Button
-            title={isSignUp ? t('profile.switchToSignIn') : t('profile.switchToSignUp')}
-            type="clear"
-            onPress={() => setIsSignUp(!isSignUp)}
-            containerStyle={styles.switchButton}
-            titleStyle={{ color: theme.text }}
-          />
-        </View>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.authContainer}>
+            <Text style={[typography.h2, { color: theme.text, marginBottom: spacing.lg }]}>
+              {isSignUp ? t('profile.createAccount') : t('profile.welcomeBack')}
+            </Text>
+            <Input
+              label={t('profile.email')}
+              leftIcon={{ type: "font-awesome", name: "envelope", color: theme.text }}
+              onChangeText={setEmail}
+              value={email}
+              placeholder="email@address.com"
+              autoCapitalize="none"
+              containerStyle={[styles.input, { marginBottom: spacing.sm }]}
+              inputStyle={{ color: theme.text }}
+              placeholderTextColor={theme.placeholder}
+            />
+            <Input
+              label={t('profile.password')}
+              leftIcon={{ type: "font-awesome", name: "lock", color: theme.text }}
+              onChangeText={setPassword}
+              value={password}
+              secureTextEntry={true}
+              placeholder="Password"
+              autoCapitalize="none"
+              containerStyle={[styles.input, { marginBottom: spacing.lg }]}
+              inputStyle={{ color: theme.text }}
+              placeholderTextColor={theme.placeholder}
+            />
+            <Button
+              title={isSignUp ? t('profile.signUp') : t('profile.signIn')}
+              disabled={authLoading}
+              onPress={isSignUp ? signUpWithEmail : signInWithEmail}
+              containerStyle={[styles.button, { marginBottom: spacing.md }]}
+              buttonStyle={{ backgroundColor: theme.button }}
+              titleStyle={{ color: theme.buttonText }}
+            />
+            <Button
+              title={isSignUp ? t('profile.switchToSignIn') : t('profile.switchToSignUp')}
+              type="clear"
+              onPress={() => setIsSignUp(!isSignUp)}
+              containerStyle={styles.switchButton}
+              titleStyle={{ color: theme.text }}
+            />
+          </View>
+        </ScrollView>
       </View>
-    )
+    );
   }
 
   return <Account 
@@ -1109,5 +1114,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing.md,
     paddingHorizontal: spacing.sm,
+  },
+  authContainer: {
+    width: '100%',
+    padding: spacing.lg,
+    flex: 1,
   },
 })

@@ -183,7 +183,10 @@ type TranslationKey =
   | 'calendar.months.sep'
   | 'calendar.months.oct'
   | 'calendar.months.nov'
-  | 'calendar.months.dec';
+  | 'calendar.months.dec'
+  | 'home.notLoggedIn'
+  | 'home.loginRequired'
+  | 'home.goToLogin';
 
 export const SUPPORTED_LANGUAGES = {
   en: 'English',
@@ -380,6 +383,9 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'calendar.months.oct': 'October',
     'calendar.months.nov': 'November',
     'calendar.months.dec': 'December',
+    'home.notLoggedIn': 'Welcome to Aghendi',
+    'home.loginRequired': 'Please sign in to view and manage your agendas',
+    'home.goToLogin': 'Go to Login',
   },
   es: {
     'settings.title': 'Ajustes de Cuenta',
@@ -567,6 +573,9 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'calendar.months.oct': 'Octubre',
     'calendar.months.nov': 'Noviembre',
     'calendar.months.dec': 'Diciembre',
+    'home.notLoggedIn': 'Bienvenido a Aghendi',
+    'home.loginRequired': 'Por favor inicia sesión para ver y administrar tus agendas',
+    'home.goToLogin': 'Ir a Iniciar Sesión',
   },
   fr: {
     'settings.title': 'Paramètres du Compte',
@@ -754,5 +763,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'calendar.months.oct': 'Octobre',
     'calendar.months.nov': 'Novembre',
     'calendar.months.dec': 'Décembre',
+    'home.notLoggedIn': 'Bienvenue sur Aghendi',
+    'home.loginRequired': 'Veuillez vous connecter pour voir et gérer vos agendas',
+    'home.goToLogin': 'Aller à la Connexion',
   }
 };

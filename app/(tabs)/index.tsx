@@ -865,6 +865,34 @@ export default function HomeScreen() {
     return dates;
   };
 
+  if (!session) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={styles.welcomeContainer}>
+          <Text style={[typography.h1, { color: theme.text, marginBottom: spacing.lg }]}>
+            {t('home.notLoggedIn')}
+          </Text>
+          <Text style={[typography.body, { 
+            color: theme.placeholder, 
+            textAlign: 'center',
+            marginBottom: spacing.xl,
+            paddingHorizontal: spacing.lg,
+            maxWidth: 500
+          }]}>
+            {t('home.loginRequired')}
+          </Text>
+          <Button
+            title={t('home.goToLogin')}
+            onPress={() => router.push('/three')}
+            containerStyle={styles.loginButton}
+            buttonStyle={{ backgroundColor: theme.button, paddingHorizontal: spacing.xl }}
+            titleStyle={{ color: theme.buttonText }}
+          />
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {!isOnline && <OfflineBanner />}
@@ -1398,5 +1426,19 @@ const styles = StyleSheet.create({
   },
   dayDialogElementText: {
     ...typography.body,
+  },
+  welcomeContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: '20%', // Offset it slightly up from center
+  },
+  loginButton: {
+    minWidth: 200,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
 })
