@@ -1383,13 +1383,18 @@ const styles = StyleSheet.create({
     maxHeight: '80%',
   },
   dayDialogScroll: {
-    maxHeight: '80%', // This ensures dialog content is scrollable and doesn't overflow
+    maxHeight: 300,
   },
   dayDialogElement: {
     padding: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius: 12,
+    borderRadius: 8,
     marginBottom: spacing.xs,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   dayDialogElementText: {
     ...typography.body,
