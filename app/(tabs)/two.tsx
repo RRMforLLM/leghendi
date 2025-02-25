@@ -156,7 +156,7 @@ export default function TabTwoScreen() {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {!isOnline && <OfflineBanner />}
       <View style={styles.headerRow}>
-        <VibesDisplay amount={credits} />
+        {currentUserId && <VibesDisplay amount={credits} />}
       </View>
       <FlatList
         data={users}
