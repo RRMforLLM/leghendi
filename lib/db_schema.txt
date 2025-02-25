@@ -5,6 +5,7 @@ public schema:
 - name // varchar
 - key // varchar
 - key_visible // bool
+- comments // bool
 - creator_id // Foreign Key: auth.users.id
 - created_at // timestamptz
 
@@ -54,6 +55,7 @@ public schema:
 - username // text
 - avatar_url // text
 - description // text
+- comments // bool
 - updated_at // timestamptz
 
 "Profile Comment"

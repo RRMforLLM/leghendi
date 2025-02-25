@@ -1,3 +1,8 @@
+{/*
+  TODOS:
+  - Match the date format in the elements to the language's
+*/}
+
 import { useEffect, useState, useCallback } from 'react';
 import { StyleSheet, FlatList, View as RNView, ScrollView, Pressable, Alert, Platform, Modal } from 'react-native';
 import { View, Text } from '@/components/Themed';

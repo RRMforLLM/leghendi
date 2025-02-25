@@ -31,6 +31,76 @@ const DialogButton = ({ onPress, disabled = false, children }: {
   />
 );
 
+const ElementDetailsDialog = ({ element, isVisible, onClose, theme, t, language }) => {
+  if (!element) return null;
+  
+  return (
+    <Dialog
+      isVisible={isVisible}
+      onBackdropPress={onClose}
+      overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
+    >
+      <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
+        <Text style={[styles.dialogTitle, { color: theme.text }]}>
+          {element.subject}
+        </Text>
+        {element.details && (
+          <Text style={[styles.dialogDetails, { color: theme.text }]}>
+            {element.details}
+          </Text>
+        )}
+        <Text style={[styles.dialogDeadline, { color: theme.placeholder }]}>
+          {t('agenda.due')}: {new Date(element.deadline).toLocaleDateString(language)}
+        </Text>
+      </View>
+    </Dialog>
+  );
+};
+
+const DayElementsDialog = ({ elements, isVisible, onClose, onElementPress, theme, t, colorScheme, language }) => (
+  <Dialog
+    isVisible={isVisible}
+    onBackdropPress={onClose}
+    overlayStyle={[styles.dayDialog, { backgroundColor: theme.card }]}
+  >
+    <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
+      <Text style={[styles.dialogTitle, { color: theme.text }]}>
+        {elements[0] && new Date(elements[0].deadline).toLocaleDateString(language)}
+      </Text>
+      <ScrollView style={styles.dayDialogScroll}>
+        {elements.map((element, index) => (
+          <Pressable
+            key={`${element.id}-${index}`}
+            onPress={() => onElementPress(element)}
+            style={({ pressed }) => [
+              styles.dayDialogElement,
+              { backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)' },
+              element.isUrgent && {
+                backgroundColor: Colors[colorScheme ?? 'light'].error + '20',
+                borderLeftWidth: 2,
+                borderLeftColor: Colors[colorScheme ?? 'light'].error
+              },
+              { opacity: pressed ? 0.7 : 1 }
+            ]}
+          >
+            <Text
+              style={[
+                styles.dayDialogElementText,
+                { color: theme.text },
+                element.isUrgent && { color: Colors[colorScheme ?? 'light'].error }
+              ]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {element.subject}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+    </View>
+  </Dialog>
+);
+
 export default function HomeScreen() {
   const { t, language } = useLanguage(); // Add language here
   const colorScheme = useColorScheme()
@@ -55,6 +125,11 @@ export default function HomeScreen() {
   })
   const isOnline = useNetworkState();
   const { credits, setCredits, fetchCredits } = useCredits();
+  const [currentWeek, setCurrentWeek] = useState<Date[]>([]);
+  const [elementsByDay, setElementsByDay] = useState<{[key: string]: AgendaElement[]}>({});
+  const [selectedDayElements, setSelectedDayElements] = useState<AgendaElement[]>([]);
+  const [showDayDialog, setShowDayDialog] = useState(false);
+  const [selectedElement, setSelectedElement] = useState<AgendaElement | null>(null);
 
   const resetState = useCallback(() => {
     setAgendas([])
@@ -227,12 +302,99 @@ export default function HomeScreen() {
 
     try {
       if (!isOnline) {
+        // ...existing offline handling...
         const cachedElements = await getData(KEYS.AGENDA_ELEMENTS);
         const cachedCompleted = await getData(KEYS.COMPLETED_ELEMENTS);
         if (cachedElements) setAgendaElements(cachedElements);
         if (cachedCompleted) setCompletedElements(cachedCompleted);
         return;
       }
+
+      // First get all agendas user has access to
+      const [{ data: memberAgendas }, { data: ownedAgendas }] = await Promise.all([
+        supabase
+          .from('Agenda Member')
+          .select('agenda_id')
+          .eq('user_id', userSession.user.id),
+        supabase
+          .from('Agenda')
+          .select('id')
+          .eq('creator_id', userSession.user.id)
+      ]);
+
+      const allAgendaIds = [
+        ...(memberAgendas?.map(m => m.agenda_id) || []),
+        ...(ownedAgendas?.map(a => a.id) || [])
+      ];
+
+      // Then get all sections from these agendas
+      const { data: sections } = await supabase
+        .from('Agenda Section')
+        .select(`
+          id,
+          name,
+          agenda:Agenda (
+            id,
+            name
+          )
+        `)
+        .in('agenda_id', allAgendaIds);
+
+      if (!sections?.length) return;
+
+      // Get completed elements to filter them out
+      const { data: completed } = await supabase
+        .from('Completed Element')
+        .select('element_id')
+        .eq('user_id', userSession.user.id);
+
+      const completedIds = new Set(completed?.map(c => c.element_id) || []);
+
+      // Fetch all elements from these sections that aren't completed
+      const { data: elements } = await supabase
+        .from('Agenda Element')
+        .select('*')
+        .in('section_id', sections.map(s => s.id));
+
+      // First get urgent elements to know which elements are urgent
+      const { data: urgentData } = await supabase
+        .from('Urgent Element')
+        .select('element_id')
+        .eq('user_id', userSession.user.id);
+
+      const urgentIds = new Set(urgentData?.map(u => u.element_id) || []);
+
+      // Organize elements by day, excluding completed ones
+      const organized: {[key: string]: AgendaElement[]} = {};
+      elements?.forEach(element => {
+        // Skip completed elements
+        if (completedIds.has(element.id)) return;
+        
+        const dateKey = new Date(element.deadline).toDateString();
+        if (!organized[dateKey]) {
+          organized[dateKey] = [];
+        }
+
+        // Find the section this element belongs to
+        const section = sections.find(s => s.id === element.section_id);
+        if (!section) return;
+
+        organized[dateKey].push({
+          ...element,
+          section: {
+            id: section.id,
+            name: section.name,
+            agenda: section.agenda
+          },
+          sectionId: section.id,
+          sectionName: section.name,
+          agendaName: section.agenda.name,
+          isUrgent: urgentIds.has(element.id) // Add this line
+        });
+      });
+
+      setElementsByDay(organized);
+      setCurrentWeek(getWeekDates(new Date()));
 
       // Fetch urgent elements for this user
       const { data: urgentElements, error: urgentError } = await supabase
@@ -261,14 +423,14 @@ export default function HomeScreen() {
       if (urgentError) throw urgentError;
 
       // Filter out any null elements and map to the element structure
-      const elements = urgentElements
-        ?.filter(ue => ue.element) // Filter out null elements
+      const urgentItems = urgentElements // Changed variable name here
+        ?.filter(ue => ue.element)
         .map(ue => ({
           ...ue.element,
-          agendaName: ue.element.section.agenda.name // Add agenda name for display
+          agendaName: ue.element.section.agenda.name
         }));
 
-      setAgendaElements(elements || []);
+      setAgendaElements(urgentItems || []); // Updated variable name here
 
       // Add this after fetching urgent elements in fetchAgendaElements
       const { data: completedElements, error: completedError } = await supabase
@@ -309,7 +471,7 @@ export default function HomeScreen() {
 
       // Cache the fetched data
       await Promise.all([
-        storeData(KEYS.AGENDA_ELEMENTS, elements || []),
+        storeData(KEYS.AGENDA_ELEMENTS, urgentItems || []), // Updated variable name here
         storeData(KEYS.COMPLETED_ELEMENTS, completedItems || [])
       ]);
     } catch (error) {
@@ -604,9 +766,95 @@ export default function HomeScreen() {
     );
   };
 
-  if (!session || !session.user) {
-    return null // Will redirect via useEffect
-  }
+  // Add this effect to initialize the week
+  useEffect(() => {
+    setCurrentWeek(getWeekDates(new Date()));
+  }, []);
+
+  const renderCalendarDay = (date: Date) => {
+    const dateKey = date.toDateString();
+    const dayElements = elementsByDay[dateKey] || [];
+    const isToday = new Date().toDateString() === dateKey;
+    const MAX_VISIBLE_ELEMENTS = 3; // Keep truncation
+  
+    return (
+      <Pressable
+        key={dateKey}
+        onPress={() => {
+          if (dayElements.length > 0) {
+            setSelectedDayElements(dayElements);
+            setShowDayDialog(true);
+          }
+        }}
+        style={({ pressed }) => [
+          styles.dayContainer,
+          { 
+            backgroundColor: theme.card,
+            opacity: pressed ? 0.7 : 1
+          },
+          isToday && { borderColor: theme.tint, borderWidth: 1 }
+        ]}
+      >
+        <Text style={[styles.dayHeader, { color: theme.text }]}>
+          {t(`calendar.days.${['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][date.getDay()]}`)}
+          {'\n'}
+          {date.getDate()}
+        </Text>
+        <ScrollView style={styles.elementsContainer}>
+          {dayElements.slice(0, MAX_VISIBLE_ELEMENTS).map((element, index) => (
+            <Pressable 
+              key={`${element.id}-${index}`}
+              onPress={() => setSelectedElement(element)}
+              style={({ pressed }) => [
+                styles.elementItem,
+                { 
+                  backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)',
+                  opacity: pressed ? 0.7 : 1 
+                },
+                element.isUrgent && {
+                  backgroundColor: Colors[colorScheme ?? 'light'].error + '20',
+                  borderLeftWidth: 2,
+                  borderLeftColor: Colors[colorScheme ?? 'light'].error
+                }
+              ]}
+            >
+              <Text 
+                style={[
+                  styles.elementText,
+                  { color: theme.text },
+                  element.isUrgent && { color: Colors[colorScheme ?? 'light'].error }
+                ]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {element.subject}
+              </Text>
+            </Pressable>
+          ))}
+          {dayElements.length > MAX_VISIBLE_ELEMENTS && (
+            <View style={styles.moreContainer}>
+              <Text style={[styles.moreText, { color: theme.placeholder }]}>
+                +{dayElements.length - MAX_VISIBLE_ELEMENTS}
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      </Pressable>
+    );
+  };
+
+  // Add this function right after state declarations
+  const getWeekDates = (date: Date) => {
+    const startOfWeek = new Date(date);
+    startOfWeek.setDate(date.getDate() - date.getDay());
+    const dates = [];
+    for (let i = 0; i < 7; i++) {
+      const newDate = new Date(startOfWeek);
+      newDate.setDate(startOfWeek.getDate() + i);
+      dates.push(new Date(newDate));
+    }
+    return dates;
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -714,6 +962,20 @@ export default function HomeScreen() {
             />
           </View>
         </View>
+
+        {/* Add mini calendar just before the dialogs */}
+        <View style={styles.miniCalendar}>
+          <Text style={[typography.h3, { color: theme.text, marginBottom: spacing.sm }]}>
+            {t('calendar.weekView')}
+          </Text>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.miniWeekContainer}
+          >
+            {currentWeek.map(date => renderCalendarDay(date))}
+          </ScrollView>
+        </View>
       </ScrollView>
 
       <Dialog
@@ -794,6 +1056,29 @@ export default function HomeScreen() {
           </View>
         </View>
       </Dialog>
+
+      <DayElementsDialog
+        elements={selectedDayElements}
+        isVisible={showDayDialog}
+        onClose={() => setShowDayDialog(false)}
+        onElementPress={(element) => {
+          setSelectedElement(element);
+          setShowDayDialog(false);
+        }}
+        theme={theme}
+        t={t}
+        colorScheme={colorScheme}
+        language={language}
+      />
+
+      <ElementDetailsDialog
+        element={selectedElement}
+        isVisible={!!selectedElement}
+        onClose={() => setSelectedElement(null)}
+        theme={theme}
+        t={t}
+        language={language}
+      />
     </View>
   )
 }
@@ -973,5 +1258,80 @@ const styles = StyleSheet.create({
   },
   bottomSection: {
     marginBottom: spacing.xl,
+  },
+  miniCalendar: {
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+    marginTop: 'auto', // Push to bottom
+  },
+  miniWeekContainer: {
+    flexDirection: 'row',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    height: 180, // Fixed height to match calendar.tsx
+  },
+  dayContainer: {
+    width: 120,
+    height: 150,
+    borderRadius: 12,
+    padding: spacing.sm,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    marginHorizontal: 2,
+  },
+  dayHeader: {
+    ...typography.h4,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  elementsContainer: {
+    flex: 1,
+    overflow: 'hidden',
+  },
+  elementItem: {
+    padding: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: 8,
+    marginBottom: spacing.xs,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  elementText: {
+    ...typography.caption,
+    fontSize: 12,
+  },
+  moreContainer: {
+    alignItems: 'center',
+    paddingTop: spacing.xs,
+  },
+  moreText: {
+    ...typography.caption,
+    fontSize: 10,
+    opacity: 0.7,
+  },
+  dayDialog: {
+    width: '90%',
+    borderRadius: 12,
+    padding: spacing.md,
+    maxHeight: '80%',
+  },
+  dayDialogScroll: {
+    maxHeight: '80%', // This ensures dialog content is scrollable and doesn't overflow
+  },
+  dayDialogElement: {
+    padding: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: 12,
+    marginBottom: spacing.xs,
+  },
+  dayDialogElementText: {
+    ...typography.body,
   },
 })

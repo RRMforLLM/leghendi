@@ -290,11 +290,14 @@ export default function CalendarScreen() {
     const isToday = new Date().toDateString() === dateKey;
 
     return (
-      <View key={dateKey} style={[
-        styles.dayContainer,
-        { backgroundColor: theme.card },
-        isToday && { borderColor: theme.tint, borderWidth: 1 }
-      ]}>
+      <Pressable
+        key={dateKey}
+        style={[
+          styles.dayContainer,
+          { backgroundColor: theme.card },
+          isToday && { borderColor: theme.tint, borderWidth: 1 }
+        ]}
+      >
         <Text style={[styles.dayHeader, { color: theme.text }]}>
           {getDayName(date)}
           {'\n'}
@@ -307,23 +310,28 @@ export default function CalendarScreen() {
               onPress={() => setSelectedElement(element)}
               style={({ pressed }) => [
                 styles.elementItem,
-                element.isUrgent && { backgroundColor: Colors[colorScheme ?? 'light'].error + '20' },
-                { opacity: pressed ? 0.7 : 1 }
+                { 
+                  backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)',
+                  opacity: pressed ? 0.7 : 1 
+                },
+                element.isUrgent && {
+                  backgroundColor: Colors[colorScheme ?? 'light'].error + '20',
+                  borderLeftWidth: 2,
+                  borderLeftColor: Colors[colorScheme ?? 'light'].error
+                }
               ]}
             >
-              <View style={styles.elementTextContainer}>
-                <Text 
-                  style={[
-                    styles.elementText,
-                    { color: theme.text },
-                    element.isUrgent && { color: Colors[colorScheme ?? 'light'].error }
-                  ]}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >
-                  {element.subject}
-                </Text>
-              </View>
+              <Text 
+                style={[
+                  styles.elementText,
+                  { color: theme.text },
+                  element.isUrgent && { color: Colors[colorScheme ?? 'light'].error }
+                ]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {element.subject}
+              </Text>
             </Pressable>
           ))}
           {filteredElements.length === 0 && dayElements.length > 0 && (
@@ -332,7 +340,7 @@ export default function CalendarScreen() {
             </Text>
           )}
         </ScrollView>
-      </View>
+      </Pressable>
     );
   };
 
@@ -522,9 +530,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   elementItem: {
-    padding: spacing.xs,
+    padding: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: 8,
     marginBottom: spacing.xs,
-    borderRadius: 12, // Increased from 6 to 12 for softer look
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   elementTextContainer: {
     flex: 1,
@@ -535,6 +549,7 @@ const styles = StyleSheet.create({
   },
   elementText: {
     ...typography.caption,
+    fontSize: 12,
   },
   dialog: {
     width: '90%',
@@ -636,13 +651,19 @@ const styles = StyleSheet.create({
     maxHeight: 300,
   },
   dayDialogElement: {
+    padding: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: 8,
     marginBottom: spacing.xs,
-    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   dayDialogElementText: {
-    ...typography.body,
-    padding: spacing.sm, // Add padding to text
-    paddingHorizontal: spacing.md, // Add more horizontal padding
+    ...typography.caption,
+    fontSize: 12,
   },
   periodNavigation: {
     flexDirection: 'row',

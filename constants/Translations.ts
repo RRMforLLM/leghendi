@@ -140,6 +140,8 @@ type TranslationKey =
   | 'home.error.create'
   | 'home.error.join'
   | 'home.error.fetch'
+  | 'home.loading'
+  | 'home.atype'
   | 'home.error.nameTooLong'
   | 'home.error.invalidChars'
   | 'home.error.alreadyOwner'
