@@ -124,6 +124,7 @@ type TranslationKey =
   | 'members.promote'
   | 'members.demote'
   | 'members.loading'
+  | 'home.viewAgenda'
   | 'home.welcome'
   | 'home.create'
   | 'home.join'
@@ -331,6 +332,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'members.promote': 'Make Editor',
     'members.demote': 'Demote',
     'members.loading': 'Loading members...',
+    'home.viewAgenda': 'View in Agenda',
     'home.welcome': 'Welcome',
     'home.create': 'Create',
     'home.join': 'Join',
@@ -523,6 +525,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'members.promote': 'Hacer Editor',
     'members.demote': 'Degradar',
     'members.loading': 'Cargando miembros...',
+    'home.viewAgenda': 'Ver en Agenda',
     'home.welcome': 'Bienvenido',
     'home.create': 'Crear',
     'home.join': 'Unirse',
@@ -715,6 +718,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'members.promote': 'Promouvoir',
     'members.demote': 'Rétrograder',
     'members.loading': 'Chargement des membres...',
+    'home.viewAgenda': 'Voir dans l\'Agenda',
     'home.welcome': 'Bienvenue',
     'home.create': 'Créer',
     'home.join': 'Rejoindre',

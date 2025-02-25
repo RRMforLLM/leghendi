@@ -55,7 +55,7 @@ const ElementDetailsDialog = ({ element, isVisible, onClose, theme, t, language 
         
         {/* Add this button */}
         <Button
-          title={t('userProfile.action.viewAgenda')}
+          title={t('home.viewAgenda')}
           type="clear"
           titleStyle={{ color: theme.tint }}
           containerStyle={styles.viewAgendaButton}
@@ -735,7 +735,7 @@ export default function HomeScreen() {
         {item.agendaName} • {t('agenda.due')}: {new Date(item.deadline).toLocaleDateString(language)}
       </Text>
       <Button
-        title={t('userProfile.action.viewAgenda')}
+        title={t('home.viewAgenda')}
         type="clear"
         titleStyle={{ color: theme.tint }}
         onPress={() => router.push(`/agenda/${item.section.agenda.id}`)}

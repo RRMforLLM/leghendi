@@ -489,7 +489,7 @@ const UserProfileScreen = () => {
       ))}
       {!isOnline && <OfflineBanner />}
       <View style={styles.headerRow}>
-        <VibesDisplay amount={currentUserCredits} />
+        {currentUserId && <VibesDisplay amount={currentUserCredits} />}
       </View>
       <ScrollView 
         style={styles.content}
