@@ -52,6 +52,18 @@ const ElementDetailsDialog = ({ element, isVisible, onClose, theme, t, language 
         <Text style={[styles.dialogDeadline, { color: theme.placeholder }]}>
           {t('agenda.due')}: {new Date(element.deadline).toLocaleDateString(language)}
         </Text>
+        
+        {/* Add this button */}
+        <Button
+          title={t('userProfile.action.viewAgenda')}
+          type="clear"
+          titleStyle={{ color: theme.tint }}
+          containerStyle={styles.viewAgendaButton}
+          onPress={() => {
+            onClose();
+            router.push(`/agenda/${element.section.agenda.id}`);
+          }}
+        />
       </View>
     </Dialog>
   );
@@ -1440,5 +1452,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  viewAgendaButton: {
+    marginTop: spacing.md,
+    alignSelf: 'flex-end',
   },
 })
