@@ -359,11 +359,6 @@ export default function CalendarScreen() {
               </Text>
             </View>
           )}
-          {filteredElements.length === 0 && dayElements.length > 0 && (
-            <Text style={[styles.emptyText, { color: theme.placeholder }]}>
-              {t('calendar.noEventsInSection')}
-            </Text>
-          )}
         </ScrollView>
       </Pressable>
     );
