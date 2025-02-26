@@ -92,6 +92,10 @@ export default function AgendaScreen() {
   const [showCompletedButton, setShowCompletedButton] = useState(false);
   const [isEditor, setIsEditor] = useState(false);
 
+  // Add this to the top level of the component
+  const [showEditElementDialog, setShowEditElementDialog] = useState(false);
+  const [editingElement, setEditingElement] = useState<AgendaElement | null>(null);
+
   useEffect(() => {
     navigation.setOptions({
       title: t('agenda.header'),
@@ -627,6 +631,32 @@ export default function AgendaScreen() {
     }
   };
 
+  // Add this function inside the component
+  const handleEditElement = async () => {
+    if (!editingElement) return;
+  
+    try {
+      const { error } = await supabase
+        .from("Agenda Element")
+        .update({
+          subject: editingElement.subject,
+          details: editingElement.details,
+          deadline: editingElement.deadline,
+        })
+        .eq('id', editingElement.id);
+  
+      if (error) throw error;
+      
+      setShowEditElementDialog(false);
+      setEditingElement(null);
+      await fetchAgenda();
+    } catch (error) {
+      console.error('Edit element error:', error);
+      Alert.alert(t('agenda.error'), t('agenda.errorEditElement'));
+    }
+  };
+
+  // Modify the renderElement function to add the edit icon
   const renderElement = ({ item }: { item: AgendaElement }) => (
     <View style={[styles.elementCard, { backgroundColor: theme.card }]}>
       <View style={[styles.elementHeader, { backgroundColor: theme.card }]}>
@@ -639,6 +669,20 @@ export default function AgendaScreen() {
             {item.subject}
           </Text>
           <View style={[styles.elementActions, { backgroundColor: theme.card }]}>
+            {(isCreator || isEditor) && (
+              <Icon
+                name="edit"
+                type="font-awesome-5"
+                size={14}
+                color={theme.text}
+                onPress={() => {
+                  setEditingElement(item);
+                  setShowEditElementDialog(true);
+                }}
+                containerStyle={styles.actionIcon}
+                hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+              />
+            )}
             <Icon
               name="exclamation"
               type="font-awesome-5"
@@ -1364,6 +1408,53 @@ export default function AgendaScreen() {
               disabled={!newElementData.subject.trim() || !newElementData.deadline}
             >
               {t('agenda.add')}
+            </DialogButton>
+          </View>
+        </View>
+      </Dialog>
+
+      {/* Edit Element Dialog */}
+      <Dialog
+        isVisible={showEditElementDialog}
+        onBackdropPress={() => {
+          setShowEditElementDialog(false);
+          setEditingElement(null);
+        }} 
+        overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
+      >
+        <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
+          <Text style={[typography.h3, { color: theme.text }]}>{t('agenda.editElement')}</Text>
+          <Input
+            placeholder={t('agenda.elementSubject')}
+            value={editingElement?.subject}
+            onChangeText={(text) => setEditingElement(prev => prev ? { ...prev, subject: text } : null)}
+            inputStyle={{ color: theme.text }}
+          />
+          <Input
+            placeholder={t('agenda.elementDetails')}
+            value={editingElement?.details}
+            onChangeText={(text) => setEditingElement(prev => prev ? { ...prev, details: text } : null)}
+            multiline
+            inputStyle={{ color: theme.text }}
+          />
+          <DatePickerInput
+            value={editingElement?.deadline}
+            onChange={(date) => setEditingElement(prev => prev ? { ...prev, deadline: date } : null)}
+            placeholder={t('agenda.elementDeadline')}
+            inputStyle={{ color: theme.text }}
+          />
+          <View style={[{ flexDirection: 'row', justifyContent: 'flex-end' }, { backgroundColor: theme.card }]}>
+            <DialogButton onPress={() => {
+              setShowEditElementDialog(false);
+              setEditingElement(null);
+            }}>
+              {t('agenda.cancel')}
+            </DialogButton>
+            <DialogButton 
+              onPress={handleEditElement} 
+              disabled={!editingElement?.subject?.trim() || !editingElement?.deadline}
+            >
+              {t('agenda.save')}
             </DialogButton>
           </View>
         </View>

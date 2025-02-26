@@ -111,6 +111,9 @@ type TranslationKey =
   | 'agenda.due'
   | 'agenda.header'
   | 'agenda.errorLeave'
+  | 'agenda.editElement'
+  | 'agenda.save'
+  | 'agenda.errorEditElement'
   | 'time.now'
   | 'time.seconds'
   | 'time.minutes'
@@ -319,6 +322,9 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'agenda.error.sectionNameInvalid': 'Section name can only contain letters, numbers, and spaces',
     'agenda.error.elementSubjectTooLong': 'Element subject cannot exceed 15 characters',
     'agenda.error.elementSubjectInvalid': 'Element subject can only contain letters, numbers, and spaces',
+    'agenda.editElement': 'Edit Element',
+    'agenda.save': 'Save',
+    'agenda.errorEditElement': 'Failed to edit element',
     'time.now': 'Just now',
     'time.seconds': '{n}s ago',
     'time.minutes': '{n}m ago',
@@ -512,6 +518,9 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'agenda.error.sectionNameInvalid': 'El nombre solo puede contener letras, números y espacios',
     'agenda.error.elementSubjectTooLong': 'El asunto del elemento no puede exceder 15 caracteres',
     'agenda.error.elementSubjectInvalid': 'El asunto solo puede contener letras, números y espacios',
+    'agenda.editElement': 'Editar Elemento',
+    'agenda.save': 'Guardar',
+    'agenda.errorEditElement': 'Error al editar el elemento',
     'time.now': 'Ahora',
     'time.seconds': 'Hace {n}s',
     'time.minutes': 'Hace {n}m',
@@ -705,6 +714,9 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'agenda.error.sectionNameInvalid': 'Le nom ne peut contenir que des lettres, des chiffres et des espaces',
     'agenda.error.elementSubjectTooLong': 'Le sujet de l\'élément ne peut pas dépasser 15 caractères',
     'agenda.error.elementSubjectInvalid': 'Le sujet ne peut contenir que des lettres, des chiffres et des espaces',
+    'agenda.editElement': 'Modifier Élément',
+    'agenda.save': 'Enregistrer',
+    'agenda.errorEditElement': 'Échec pour modifier l\'élément',
     'time.now': 'À l\'instant',
     'time.seconds': 'Il y a {n}s',
     'time.minutes': 'Il y a {n}m',

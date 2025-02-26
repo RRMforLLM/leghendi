@@ -71,7 +71,6 @@ public schema:
 - sender_id // Foreign Key: auth.users.id
 - recipient_id // Foreign Key: auth.users.id
 - paid // bool
-- payment_id // varchar
 - created_at // timestamptz
 
 "User Credit"
