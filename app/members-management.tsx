@@ -102,73 +102,92 @@ export default function MembersManagementScreen() {
     try {
       switch (action) {
         case 'remove':
-          // First get all sections for this agenda
-          const { data: sections } = await supabase
-            .from("Agenda Section")
-            .select('id')
-            .eq('agenda_id', agendaId);
+          Alert.alert(
+            t('settings.delete'),
+            t('agenda.deleteMemberConfirm'),
+            [
+              { text: t('agenda.cancel'), style: "cancel" },
+              {
+                text: t('settings.delete'),
+                style: "destructive",
+                onPress: async () => {
+                  try {
+                    // First get all sections for this agenda
+                    const { data: sections } = await supabase
+                      .from("Agenda Section")
+                      .select('id')
+                      .eq('agenda_id', agendaId);
 
-          if (!sections) throw new Error('No sections found');
+                    if (!sections) throw new Error('No sections found');
 
-          // Then get all elements from these sections
-          const { data: elements } = await supabase
-            .from("Agenda Element")
-            .select('id')
-            .in('section_id', sections.map(s => s.id));
+                    // Then get all elements from these sections
+                    const { data: elements } = await supabase
+                      .from("Agenda Element")
+                      .select('id')
+                      .in('section_id', sections.map(s => s.id));
 
-          const elementIds = elements?.map(e => e.id) || [];
+                    const elementIds = elements?.map(e => e.id) || [];
 
-          // Clean up ALL of the user's data from this agenda in parallel
-          await Promise.all([
-            // Remove from members table
-            supabase
-              .from('Agenda Member')
-              .delete()
-              .eq('user_id', memberId)
-              .eq('agenda_id', agendaId),
-            // Remove from editors table
-            supabase
-              .from('Agenda Editor')
-              .delete()
-              .eq('user_id', memberId)
-              .eq('agenda_id', agendaId),
-            // Remove ALL their completed elements for this agenda
-            supabase
-              .from('Completed Element')
-              .delete()
-              .eq('user_id', memberId)
-              .eq('agenda_id', agendaId),
-            // Remove ALL their urgent elements for this agenda
-            supabase
-              .from('Urgent Element')
-              .delete()
-              .eq('user_id', memberId)
-              .eq('agenda_id', agendaId),
-            // Remove ALL their comments on this agenda
-            supabase
-              .from('Agenda Comment')
-              .delete()
-              .eq('author_id', memberId)
-              .eq('agenda_id', agendaId)
-          ]);
+                    // Clean up ALL of the user's data from this agenda in parallel
+                    await Promise.all([
+                      supabase
+                        .from('Agenda Member')
+                        .delete()
+                        .eq('user_id', memberId)
+                        .eq('agenda_id', agendaId),
+                      supabase
+                        .from('Agenda Editor')
+                        .delete()
+                        .eq('user_id', memberId)
+                        .eq('agenda_id', agendaId),
+                      supabase
+                        .from('Completed Element')
+                        .delete()
+                        .eq('user_id', memberId)
+                        .eq('agenda_id', agendaId),
+                      supabase
+                        .from('Urgent Element')
+                        .delete()
+                        .eq('user_id', memberId)
+                        .eq('agenda_id', agendaId),
+                      supabase
+                        .from('Agenda Comment')
+                        .delete()
+                        .eq('author_id', memberId)
+                        .eq('agenda_id', agendaId)
+                    ]);
+
+                    await fetchMembers();
+                  } catch (error) {
+                    console.error('Remove member error:', error);
+                    Alert.alert('Error', 'Failed to remove member');
+                  }
+                }
+              }
+            ]
+          );
           break;
 
         case 'promote':
-          await supabase
+          const { error: promoteError } = await supabase
             .from('Agenda Editor')
             .insert({ user_id: memberId, agenda_id: agendaId });
+          
+          if (promoteError) throw promoteError;
+          await fetchMembers(); // Refresh the member list
           break;
 
         case 'demote':
-          await supabase
+          const { error: demoteError } = await supabase
             .from('Agenda Editor')
             .delete()
             .eq('user_id', memberId)
             .eq('agenda_id', agendaId);
+          
+          if (demoteError) throw demoteError;
+          await fetchMembers(); // Refresh the member list
           break;
       }
-
-      await fetchMembers();
     } catch (error) {
       console.error('Member action error:', error);
       Alert.alert('Error', 'Failed to update member status');

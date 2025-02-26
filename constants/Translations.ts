@@ -192,7 +192,8 @@ type TranslationKey =
   | 'home.goToLogin'
   | 'profile.commentsDisabled'
   | 'agenda.commentsDisabled'
-  | 'home.keyCopied';
+  | 'home.keyCopied'
+  | 'agenda.deleteMemberConfirm';
 
 export const SUPPORTED_LANGUAGES = {
   en: 'English',
@@ -325,6 +326,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'agenda.editElement': 'Edit Element',
     'agenda.save': 'Save',
     'agenda.errorEditElement': 'Failed to edit element',
+    'agenda.deleteMemberConfirm': 'Are you sure you want to remove this member? This will delete all their data from this agenda.',
     'time.now': 'Just now',
     'time.seconds': '{n}s ago',
     'time.minutes': '{n}m ago',
@@ -521,6 +523,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'agenda.editElement': 'Editar Elemento',
     'agenda.save': 'Guardar',
     'agenda.errorEditElement': 'Error al editar el elemento',
+    'agenda.deleteMemberConfirm': '¿Estás seguro de que quieres eliminar a este miembro? Esto eliminará todos sus datos de esta agenda.',
     'time.now': 'Ahora',
     'time.seconds': 'Hace {n}s',
     'time.minutes': 'Hace {n}m',
@@ -717,6 +720,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'agenda.editElement': 'Modifier Élément',
     'agenda.save': 'Enregistrer',
     'agenda.errorEditElement': 'Échec pour modifier l\'élément',
+    'agenda.deleteMemberConfirm': 'Êtes-vous sûr de vouloir supprimer ce membre ? Cela supprimera toutes ses données de cet agenda.',
     'time.now': 'À l\'instant',
     'time.seconds': 'Il y a {n}s',
     'time.minutes': 'Il y a {n}m',
