@@ -1540,7 +1540,7 @@ const styles = StyleSheet.create({
   },
   elementDetails: {
     ...typography.body,
-    marginBottom: spacing.sm,
+    marginBottom: 1,
     opacity: 0.7,
   },
   elementMeta: {
