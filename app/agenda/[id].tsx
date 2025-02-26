@@ -21,6 +21,7 @@ import { storeAgendaData, getAgendaData, KEYS, storeData, getData } from '@/util
 import OfflineBanner from '@/components/OfflineBanner';
 import { useLanguage } from '@/contexts/LanguageContext';
 import DatePickerInput from '@/components/DatePickerInput';
+import TruncatedComment from '@/components/TruncatedComment';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg"
 
@@ -906,11 +907,9 @@ export default function AgendaScreen() {
           {getRelativeTime(item.created_at, t, language)}
         </Text>
       </RNView>
-      <Text style={[typography.body, { color: theme.text }]}>
-        {item.text}
-      </Text>
+      <TruncatedComment text={item.text} />
     </RNView>
-  )
+  );
 
   const navigateToCompleted = useCallback(async () => {
     try {

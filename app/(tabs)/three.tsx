@@ -18,6 +18,7 @@ import VibesDisplay from '@/components/VibesDisplay';
 import { useCredits } from '@/hooks/useCredits';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLanguage } from '@/contexts/LanguageContext';
+import TruncatedComment from '@/components/TruncatedComment';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg" // Default avatar URL
 
@@ -946,9 +947,7 @@ function Account({
                           {getRelativeTime(comment.created_at, t, language)}
                         </Text>
                       </RNView>
-                      <Text style={[typography.body, { color: theme.text }]}>
-                        {comment.text}
-                      </Text>
+                      <TruncatedComment text={comment.text} />
                     </View>
                   ))}
                   {comments.length === 0 && (

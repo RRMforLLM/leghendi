@@ -193,7 +193,9 @@ type TranslationKey =
   | 'profile.commentsDisabled'
   | 'agenda.commentsDisabled'
   | 'home.keyCopied'
-  | 'agenda.deleteMemberConfirm';
+  | 'agenda.deleteMemberConfirm'
+  | 'comments.readMore'
+  | 'comments.showLess';
 
 export const SUPPORTED_LANGUAGES = {
   en: 'English',
@@ -400,6 +402,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'home.notLoggedIn': 'Welcome to Aghendi',
     'home.loginRequired': 'Please sign in to view and manage your agendas',
     'home.goToLogin': 'Go to Login',
+    'comments.readMore': 'Read more',
+    'comments.showLess': 'Show less',
   },
   es: {
     'settings.title': 'Ajustes de Cuenta',
@@ -597,6 +601,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'home.notLoggedIn': 'Bienvenido a Aghendi',
     'home.loginRequired': 'Por favor inicia sesión para ver y administrar tus agendas',
     'home.goToLogin': 'Ir a Iniciar Sesión',
+    'comments.readMore': 'Leer más',
+    'comments.showLess': 'Ver menos',
   },
   fr: {
     'settings.title': 'Paramètres du Compte',
@@ -794,5 +800,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'home.notLoggedIn': 'Bienvenue sur Aghendi',
     'home.loginRequired': 'Veuillez vous connecter pour voir et gérer vos agendas',
     'home.goToLogin': 'Aller à la Connexion',
+    'comments.readMore': 'Lire la suite',
+    'comments.showLess': 'Voir moins',
   }
 };

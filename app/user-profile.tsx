@@ -15,6 +15,7 @@ import VibesDisplay from '@/components/VibesDisplay';
 import { useLanguage } from '@/contexts/LanguageContext';
 import RainingIcons from '@/components/RainingIcons';  // Add this import at the top
 import ReactionRain from '@/components/ReactionRain'; // Add this import
+import TruncatedComment from '@/components/TruncatedComment';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg";
 
@@ -456,9 +457,7 @@ const UserProfileScreen = () => {
           {getRelativeTime(item.created_at, t, language)}
         </Text>
       </RNView>
-      <Text style={[typography.body, { color: theme.text }]}>
-        {item.text}
-      </Text>
+      <TruncatedComment text={item.text} />
     </RNView>
   );
 
@@ -618,9 +617,7 @@ const UserProfileScreen = () => {
                         {getRelativeTime(comment.created_at, t, language)}
                       </Text>
                     </RNView>
-                    <Text style={[typography.body, { color: theme.text }]}>
-                      {comment.text}
-                    </Text>
+                    <TruncatedComment text={comment.text} />
                   </View>
                 ))}
                 {comments.length === 0 && (
