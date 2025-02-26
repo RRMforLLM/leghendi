@@ -21,7 +21,7 @@ import { storeAgendaData, getAgendaData, KEYS, storeData, getData } from '@/util
 import OfflineBanner from '@/components/OfflineBanner';
 import { useLanguage } from '@/contexts/LanguageContext';
 import DatePickerInput from '@/components/DatePickerInput';
-import TruncatedComment from '@/components/TruncatedComment';
+import TruncatedText from '@/components/TruncatedText';  // Update import
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg"
 
@@ -716,7 +716,10 @@ export default function AgendaScreen() {
         )}
       </View>
       {item.details && (
-        <Text style={[styles.elementDetails, { color: theme.text }]}>{item.details}</Text>
+        <TruncatedText 
+          text={item.details} 
+          textStyle={[styles.elementDetails, { color: theme.text }]}
+        />
       )}
       <View style={[styles.elementMeta, { backgroundColor: theme.card }]}>
         <Text style={[styles.deadline, { color: theme.text }]}>
@@ -907,7 +910,7 @@ export default function AgendaScreen() {
           {getRelativeTime(item.created_at, t, language)}
         </Text>
       </RNView>
-      <TruncatedComment text={item.text} />
+      <TruncatedText text={item.text} />
     </RNView>
   );
 
