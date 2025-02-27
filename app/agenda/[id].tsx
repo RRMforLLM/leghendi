@@ -89,6 +89,7 @@ export default function AgendaScreen() {
   const [editingElement, setEditingElement] = useState<AgendaElement | null>(null);
 
   const [refreshing, setRefreshing] = useState(false);
+  const [isDestructiveMode, setIsDestructiveMode] = useState(false);
 
   useEffect(() => {
     navigation.setOptions({
@@ -849,6 +850,21 @@ export default function AgendaScreen() {
     }
   };
 
+  const handleDeleteComment = async (commentId: number) => {
+    try {
+      const { error } = await supabase
+        .from('Agenda Comment')
+        .delete()
+        .eq('id', commentId);
+
+      if (error) throw error;
+      await fetchAgenda();
+    } catch (error) {
+      console.error('Delete comment error:', error);
+      Alert.alert(t('settings.error'), t('agenda.error.deleteComment'));
+    }
+  };
+
   const renderComment = ({ item }: { item: AgendaComment }) => (
     <RNView style={[styles.commentContainer, { backgroundColor: theme.card }]}>
       <RNView style={styles.commentHeader}>
@@ -863,9 +879,21 @@ export default function AgendaScreen() {
             {item.author.username}
           </Text>
         </RNView>
-        <Text style={[typography.caption, { color: theme.placeholder }]}>
-          {getRelativeTime(item.created_at, t, language)}
-        </Text>
+        <RNView style={styles.commentActions}>
+          <Text style={[typography.caption, { color: theme.placeholder }]}>
+            {getRelativeTime(item.created_at, t, language)}
+          </Text>
+          {isDestructiveMode && (isCreator || isEditor) && (
+            <Icon
+              name="eraser"
+              type="font-awesome-5"
+              size={14}
+              color={theme.error}
+              onPress={() => handleDeleteComment(item.id)}
+              containerStyle={[styles.actionIcon, { marginLeft: spacing.sm }]}
+            />
+          )}
+        </RNView>
       </RNView>
       <TruncatedText text={item.text} />
     </RNView>
@@ -1247,15 +1275,27 @@ export default function AgendaScreen() {
             <Text style={[typography.h3, { color: theme.text }]}>
               {t('agenda.comments')}
             </Text>
-            {isCreator && (
-              <Icon
-                name="comments"
-                type="font-awesome-5"
-                size={20}
-                color={agenda.comments ? theme.tint : theme.placeholder}
-                onPress={toggleComments}
-              />
-            )}
+            <RNView style={styles.commentHeaderActions}>
+              {isCreator && (
+                <Icon
+                  name={agenda.comments ? "eye" : "eye-slash"}
+                  type="font-awesome-5"
+                  size={20}
+                  color={agenda.comments ? theme.tint : theme.placeholder}
+                  onPress={toggleComments}
+                  containerStyle={{ marginRight: spacing.sm }}
+                />
+              )}
+              {(isCreator || isEditor) && (
+                <Icon
+                  name="bomb"
+                  type="font-awesome-5"
+                  size={20}
+                  color={isDestructiveMode ? theme.error : theme.placeholder}
+                  onPress={() => setIsDestructiveMode(!isDestructiveMode)}
+                />
+              )}
+            </RNView>
           </View>
           
           {agenda.comments ? (
@@ -1545,20 +1585,29 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
   },
   commentContainer: {
-    padding: spacing.md,
-    borderRadius: 12,
+    padding: spacing.sm,
+    borderRadius: 8,
     marginVertical: spacing.xs,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
   },
   commentHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: spacing.xs,
+  },
+  commentInputContainer: {
+    marginBottom: spacing.md,
+  },
+  commentInput: {
+    marginBottom: -spacing.lg,
+  },
+  commentsList: {
+    width: '100%',
+  },
+  commentActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   commentAuthor: {
     flexDirection: 'row',
@@ -1682,5 +1731,14 @@ const styles = StyleSheet.create({
   elementCount: {
     ...typography.caption,
     fontWeight: 'normal',
+  },
+  commentHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  commentActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });

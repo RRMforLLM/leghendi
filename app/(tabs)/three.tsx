@@ -608,6 +608,7 @@ function Account({
 
   // Add profile state
   const [profile, setProfile] = useState<ProfileState>({ comments: true });
+  const [isDestructiveMode, setIsDestructiveMode] = useState(false);
 
   const updateUsername = async () => {
     if (!session?.user?.id || !newUsername.trim()) return
@@ -648,30 +649,6 @@ function Account({
       Alert.alert('Error', 'Failed to pick image')
     }
   }
-
-  const renderComment = ({ item }: { item: ProfileComment }) => (
-    <RNView style={[styles.commentContainer, { backgroundColor: theme.card }]}>
-      <RNView style={styles.commentHeader}>
-        <RNView style={styles.commentAuthor}>
-          <Avatar
-            size={24}
-            rounded
-            source={{ uri: item.author.avatar_url || DEFAULT_AVATAR }}
-            containerStyle={styles.commentAvatar}
-          />
-          <Text style={[typography.caption, { color: theme.text }]}>
-            {item.author.username}
-          </Text>
-        </RNView>
-        <Text style={[typography.caption, { color: theme.placeholder }]}>
-          {getRelativeTime(item.created_at, t, language)}
-        </Text>
-      </RNView>
-      <Text style={[typography.body, { color: theme.text }]}>
-        {item.text}
-      </Text>
-    </RNView>
-  )
 
   // Add polling effect
   useEffect(() => {
@@ -746,6 +723,21 @@ function Account({
 
     fetchProfileState();
   }, [session?.user?.id]);
+
+  const handleDeleteComment = async (commentId: number) => {
+    try {
+      const { error } = await supabase
+        .from('Profile Comment')
+        .delete()
+        .eq('id', commentId);
+
+      if (error) throw error;
+      await fetchComments();
+    } catch (error) {
+      console.error('Delete comment error:', error);
+      Alert.alert(t('settings.error'), t('profile.error.deleteComment'));
+    }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -892,13 +884,23 @@ function Account({
               <Text style={[typography.h3, { color: theme.text }]}>
                 {translations.comments}
               </Text>
-              <Icon
-                name="comments"
-                type="font-awesome-5"
-                size={20}
-                color={profile.comments ? theme.tint : theme.placeholder}
-                onPress={toggleComments}
-              />
+              <RNView style={styles.commentHeaderActions}>
+                <Icon
+                  name={profile.comments ? "eye" : "eye-slash"}
+                  type="font-awesome-5"
+                  size={20}
+                  color={profile.comments ? theme.tint : theme.placeholder}
+                  onPress={toggleComments}
+                />
+                <Icon
+                  name="bomb"
+                  type="font-awesome-5"
+                  size={20}
+                  color={isDestructiveMode ? theme.error : theme.placeholder}
+                  onPress={() => setIsDestructiveMode(!isDestructiveMode)}
+                  containerStyle={{ marginLeft: spacing.sm }}
+                />
+              </RNView>
             </View>
             
             {profile.comments ? (
@@ -943,9 +945,21 @@ function Account({
                             {comment.author.username}
                           </Text>
                         </RNView>
-                        <Text style={[typography.caption, { color: theme.placeholder }]}>
-                          {getRelativeTime(comment.created_at, t, language)}
-                        </Text>
+                        <RNView style={styles.commentActions}>
+                          <Text style={[typography.caption, { color: theme.placeholder }]}>
+                            {getRelativeTime(comment.created_at, t, language)}
+                          </Text>
+                          {isDestructiveMode && (
+                            <Icon
+                              name="eraser"
+                              type="font-awesome-5"
+                              size={14}
+                              color={theme.error}
+                              onPress={() => handleDeleteComment(comment.id)}
+                              containerStyle={{ marginLeft: spacing.sm }}
+                            />
+                          )}
+                        </RNView>
                       </RNView>
                       <TruncatedText text={comment.text} />
                     </View>
@@ -1124,5 +1138,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: spacing.md,
     fontStyle: 'italic',
+  },
+  commentHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  commentActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  actionIcon: {
+    padding: spacing.xs,
   },
 })
