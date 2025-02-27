@@ -1,6 +1,6 @@
 import { StyleSheet, FlatList, RefreshControl, Alert, Switch, Pressable, ScrollView, Clipboard } from "react-native"
 import { View, Text } from "@/components/Themed"
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { supabase } from "@/lib/supabase"
 import type { Agenda, AgendaElement } from "@/types"
 import { Button, Input, Dialog, Icon } from "@rneui/themed" // Add Icon to imports
@@ -150,6 +150,7 @@ export default function HomeScreen() {
   const [selectedDayElements, setSelectedDayElements] = useState<AgendaElement[]>([]);
   const [showDayDialog, setShowDayDialog] = useState(false);
   const [selectedElement, setSelectedElement] = useState<AgendaElement | null>(null);
+  const weekScrollRef = useRef<ScrollView>(null);
 
   const resetState = useCallback(() => {
     setAgendas([])
@@ -884,16 +885,29 @@ export default function HomeScreen() {
 
   // Add this function right after state declarations
   const getWeekDates = (date: Date) => {
-    const startOfWeek = new Date(date);
-    startOfWeek.setDate(date.getDate() - date.getDay());
+    const today = new Date(date);
     const dates = [];
-    for (let i = 0; i < 7; i++) {
-      const newDate = new Date(startOfWeek);
-      newDate.setDate(startOfWeek.getDate() + i);
+    // Add 3 days before and 3 days after to allow centering
+    for (let i = -3; i <= 3; i++) {
+      const newDate = new Date(today);
+      newDate.setDate(today.getDate() + i);
       dates.push(new Date(newDate));
     }
     return dates;
   };
+
+  // Add this effect to scroll to current day
+  useEffect(() => {
+    if (weekScrollRef.current) {
+      // Wait for layout to complete
+      setTimeout(() => {
+        weekScrollRef.current?.scrollTo({
+          x: (120 + 4) * 3, // dayWidth + gap * number of days to center
+          animated: false
+        });
+      }, 0);
+    }
+  }, [currentWeek]);
 
   if (!session) {
     return (
@@ -1036,6 +1050,7 @@ export default function HomeScreen() {
             {t('calendar.weekView')}
           </Text>
           <ScrollView 
+            ref={weekScrollRef}
             horizontal 
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.miniWeekContainer}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { StyleSheet, View as RNView, ScrollView, Pressable } from 'react-native';
 import { View, Text } from '@/components/Themed';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
@@ -92,18 +92,6 @@ const DayElementsDialog = ({ elements, isVisible, onClose, onElementPress, theme
   </Dialog>
 );
 
-const getWeekDates = (date: Date) => {
-  const startOfWeek = new Date(date);
-  startOfWeek.setDate(date.getDate() - date.getDay());
-  const dates = [];
-  for (let i = 0; i < 7; i++) {
-    const newDate = new Date(startOfWeek);
-    newDate.setDate(startOfWeek.getDate() + i);
-    dates.push(new Date(newDate));
-  }
-  return dates;
-};
-
 const sortElementsByUrgency = (elements: CalendarElement[]) => {
   return [...elements].sort((a, b) => {
     if (a.isUrgent && !b.isUrgent) return -1;
@@ -113,6 +101,9 @@ const sortElementsByUrgency = (elements: CalendarElement[]) => {
 };
 
 export default function CalendarScreen() {
+  // Add ScrollView ref
+  const weekScrollRef = useRef<ScrollView>(null);
+  
   const { t, language } = useLanguage(); // Add language here
   const navigation = useNavigation();
   const colorScheme = useColorScheme();
@@ -189,6 +180,31 @@ export default function CalendarScreen() {
       setCurrentWeek(getWeekDates(currentDate));
     }
   }, [currentDate, viewType]);
+
+  // Add this effect to scroll to current day
+  useEffect(() => {
+    if (weekScrollRef.current && viewType === 'week') {
+      // Wait for layout to complete
+      setTimeout(() => {
+        weekScrollRef.current?.scrollTo({
+          x: (120 + 4) * 3, // dayWidth + gap * number of days to center
+          animated: false
+        });
+      }, 0);
+    }
+  }, [viewType, currentDate]);
+
+  const getWeekDates = (date: Date) => {
+    const today = new Date(date);
+    const dates = [];
+    // Add 3 days before and 3 days after to allow centering
+    for (let i = -3; i <= 3; i++) {
+      const newDate = new Date(today);
+      newDate.setDate(today.getDate() + i);
+      dates.push(new Date(newDate));
+    }
+    return dates;
+  };
 
   const getDayName = (date: Date) => {
     const days = {
@@ -480,6 +496,7 @@ export default function CalendarScreen() {
       
       {viewType === 'week' ? (
         <ScrollView 
+          ref={weekScrollRef}
           horizontal 
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.weekContainer}
