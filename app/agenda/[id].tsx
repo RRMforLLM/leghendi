@@ -1,9 +1,3 @@
-{/*
-  TODOS:
-  - Match the date format in the elements to the language's
-  - Toggle comments section (creator only)
-*/}
-
 import { useEffect, useState, useCallback } from 'react';
 import { StyleSheet, FlatList, View as RNView, ScrollView, Pressable, Alert, Platform, Modal, RefreshControl } from 'react-native';
 import { View, Text } from '@/components/Themed';
@@ -12,16 +6,16 @@ import { supabase } from '@/lib/supabase';
 import { useLocalSearchParams, router, useNavigation } from 'expo-router';
 import { AgendaWithSections, AgendaElement } from '@/types';
 import Colors from '@/constants/Colors';
-import { typography, spacing } from '@/constants/Typography';  // Add typography import
+import { typography, spacing } from '@/constants/Typography';
 import { useColorScheme } from '@/components/useColorScheme';
 import { getRelativeTime } from '@/utils/dateUtils';
-import { useFocusEffect } from '@react-navigation/native'; // Add this import
+import { useFocusEffect } from '@react-navigation/native';
 import { useNetworkState } from '@/hooks/useNetworkState';
 import { storeAgendaData, getAgendaData, KEYS, storeData, getData } from '@/utils/offlineStorage';
 import OfflineBanner from '@/components/OfflineBanner';
 import { useLanguage } from '@/contexts/LanguageContext';
 import DatePickerInput from '@/components/DatePickerInput';
-import TruncatedText from '@/components/TruncatedText';  // Update import
+import TruncatedText from '@/components/TruncatedText';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg"
 
@@ -41,7 +35,6 @@ interface Member {
   avatar_url: string | null;
 }
 
-// Custom dialog button without defaultProps warning
 const DialogButton = ({ onPress, disabled = false, children }: {
   onPress: () => void;
   disabled?: boolean;
@@ -63,7 +56,6 @@ export default function AgendaScreen() {
   const theme = Colors[colorScheme ?? 'light'];
   const isOnline = useNetworkState();
   
-  // Add session state
   const [session, setSession] = useState(null);
   
   const { id } = useLocalSearchParams();
@@ -88,34 +80,30 @@ export default function AgendaScreen() {
   const [members, setMembers] = useState<Member[]>([]);
   const [showMemberDialog, setShowMemberDialog] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
-  const [editors, setEditors] = useState<string[]>([]); // Store editor IDs
+  const [editors, setEditors] = useState<string[]>([]);
   const [isEditingMembers, setIsEditingMembers] = useState(false);
   const [showCompletedButton, setShowCompletedButton] = useState(false);
   const [isEditor, setIsEditor] = useState(false);
 
-  // Add this to the top level of the component
   const [showEditElementDialog, setShowEditElementDialog] = useState(false);
   const [editingElement, setEditingElement] = useState<AgendaElement | null>(null);
 
-  // Add refreshing state near the other state declarations
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     navigation.setOptions({
       title: t('agenda.header'),
       headerBackTitle: t('tabs.home'),
-      // Remove the custom headerTitleStyle that was causing the misalignment
-      
-      // Replace the custom back button with proper headerLeft configuration
+
       headerLeft: Platform.select({
-        ios: undefined, // Use default iOS back button
+        ios: undefined,
         android: () => (
           <Pressable 
             onPress={() => navigation.goBack()}
             style={({ pressed }) => ({
               opacity: pressed ? 0.7 : 1,
               padding: spacing.sm,
-              marginLeft: spacing.xs // Add some margin on Android
+              marginLeft: spacing.xs
             })}
           >
             <Icon
@@ -139,10 +127,8 @@ export default function AgendaScreen() {
           setComments(cachedData.comments);
           setMembers(cachedData.members);
           setEditors(cachedData.editors);
-          // Update completed elements state from cache
           const completedMap = cachedData.completedElements || {};
           setCompletedElements(completedMap);
-          // Make sure to set the button visibility based on cached data
           setShowCompletedButton(Object.keys(completedMap).length > 0);
           return;
         }
@@ -152,7 +138,7 @@ export default function AgendaScreen() {
         { data: agenda, error }, 
         { data: comments, error: commentsError },
         { data: members, error: membersError },
-        { data: editors, error: editorsError }  // Add editors fetch
+        { data: editors, error: editorsError }
       ] = await Promise.all([
         supabase
           .from("Agenda")
@@ -190,14 +176,12 @@ export default function AgendaScreen() {
       if (membersError) throw membersError;
       if (editorsError) throw editorsError;
 
-      // Transform members data
       const membersList = members?.map(m => ({
         id: m.user.id,
         username: m.user.username,
         avatar_url: m.user.avatar_url
       })) || [];
 
-      // Also fetch creator's profile
       const { data: creator } = await supabase
         .from('Profile')
         .select('id, username, avatar_url')
@@ -205,10 +189,9 @@ export default function AgendaScreen() {
         .single();
 
       if (creator) {
-        membersList.unshift(creator); // Add creator at the beginning
+        membersList.unshift(creator);
       }
 
-      // Check if current user is creator
       const { data: { session } } = await supabase.auth.getSession();
       setIsCreator(session?.user?.id === agenda.creator_id);
 
@@ -232,7 +215,6 @@ export default function AgendaScreen() {
 
       if (sectionsError) throw sectionsError;
 
-      // Create map of completed elements for faster lookup
       const completedMap = {};
       const { data: completedData } = await supabase
         .from('Completed Element')
@@ -245,10 +227,8 @@ export default function AgendaScreen() {
       });
 
       setCompletedElements(completedMap);
-      // Set button visibility immediately after updating state
       setShowCompletedButton(Object.keys(completedMap).length > 0);
 
-      // Filter out completed elements for each section
       const filteredSections = sectionsData.map(section => ({
         ...section,
         elements: (section.elements || []).filter(element => 
@@ -261,7 +241,6 @@ export default function AgendaScreen() {
         sections: filteredSections
       };
 
-      // Check if there are any completed elements
       const hasCompletedElements = Object.keys(completedElements).length > 0;
       setShowCompletedButton(hasCompletedElements);
 
@@ -269,31 +248,26 @@ export default function AgendaScreen() {
       setAgenda(agendaWithSections);
       setComments(comments || []);
 
-      // Store editor IDs
       const editorIds = editors?.map(e => e.user_id) || [];
       setEditors(editorIds);
 
-      // Add this line to fetch element states when agenda loads
       await fetchElementStates();
 
-      // Cache the fetched data
       await storeAgendaData(id as string, {
         agenda: agendaWithSections,
         comments: comments || [],
         members: membersList,
         editors: editorIds,
-        completedElements: completedMap // Make sure to cache this
+        completedElements: completedMap
       });
     } catch (error) {
       console.error('Error fetching agenda:', error);
-      // Try loading from cache on error
       const cachedData = await getAgendaData(id as string);
       if (cachedData) {
         setAgenda(cachedData.agenda);
         setComments(cachedData.comments);
         setMembers(cachedData.members);
         setEditors(cachedData.editors);
-        // Make sure to restore completed elements from cache on error
         const completedMap = cachedData.completedElements || {};
         setCompletedElements(completedMap);
         setShowCompletedButton(Object.keys(completedMap).length > 0);
@@ -337,7 +311,6 @@ export default function AgendaScreen() {
     return () => { mounted = false };
   }, [fetchAgenda, checkEditorStatus]);
 
-  // Add session fetch in useEffect
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -348,7 +321,6 @@ export default function AgendaScreen() {
     });
   }, []);
 
-  // Add useFocusEffect to refresh states when returning to the screen
   useFocusEffect(
     useCallback(() => {
       if (session?.user?.id) {
@@ -357,11 +329,9 @@ export default function AgendaScreen() {
     }, [session?.user?.id])
   );
 
-  // Add useFocusEffect to maintain completed elements state
   useFocusEffect(
     useCallback(() => {
       if (session?.user?.id) {
-        // Check completed elements whenever screen is focused
         const checkCompletedElements = async () => {
           const completedMap = completedElements;
           setShowCompletedButton(Object.keys(completedMap).length > 0);
@@ -371,7 +341,6 @@ export default function AgendaScreen() {
     }, [session?.user?.id, completedElements])
   );
 
-  // Add a new useEffect to handle completedElements state persistence
   useEffect(() => {
     if (completedElements && Object.keys(completedElements).length > 0) {
       setShowCompletedButton(true);
@@ -392,7 +361,7 @@ export default function AgendaScreen() {
           .from('Urgent Element')
           .select('element_id')
           .eq('user_id', session.user.id)
-          .eq('agenda_id', id)  // Add this line
+          .eq('agenda_id', id)
       ]);
 
       const completedMap = {};
@@ -408,10 +377,8 @@ export default function AgendaScreen() {
 
       setCompletedElements(completedMap);
       setUrgentElements(urgentMap);
-      // Set button visibility immediately
       setShowCompletedButton(Object.keys(completedMap).length > 0);
 
-      // Cache the states
       await storeAgendaData(id as string, {
         ...(await getAgendaData(id as string) || {}),
         completedElements: completedMap,
@@ -419,7 +386,6 @@ export default function AgendaScreen() {
       });
     } catch (error) {
       console.error('Error fetching element states:', error);
-      // Try to load from cache
       const cachedData = await getAgendaData(id as string);
       if (cachedData?.completedElements) {
         setCompletedElements(cachedData.completedElements);
@@ -428,11 +394,9 @@ export default function AgendaScreen() {
     }
   };
 
-  // Modify the useFocusEffect to be more aggressive with cache
   useFocusEffect(
     useCallback(() => {
       if (session?.user?.id) {
-        // Load from cache first
         const loadCache = async () => {
           const cachedData = await getAgendaData(id as string);
           if (cachedData?.completedElements) {
@@ -441,8 +405,7 @@ export default function AgendaScreen() {
           }
         };
         loadCache();
-        
-        // Then fetch fresh data if online
+
         if (isOnline) {
           fetchElementStates();
         }
@@ -451,14 +414,12 @@ export default function AgendaScreen() {
   );
 
   const addSection = async () => {
-    // Validate section name
     const cleanName = newSectionName.trim();
     if (cleanName.length > 15) {
       Alert.alert(t('agenda.error'), t('agenda.error.sectionNameTooLong'));
       return;
     }
-    
-    // Check for special characters
+
     if (!/^[a-zA-Z0-9\s]+$/.test(cleanName)) {
       Alert.alert(t('agenda.error'), t('agenda.error.sectionNameInvalid'));
       return;
@@ -485,14 +446,12 @@ export default function AgendaScreen() {
   };
 
   const addElement = async () => {
-    // Validate element subject
     const cleanSubject = newElementData.subject.trim();
     if (cleanSubject.length > 15) {
       Alert.alert(t('agenda.error'), t('agenda.error.elementSubjectTooLong'));
       return;
     }
-    
-    // Check for special characters in subject
+
     if (!/^[a-zA-Z0-9\s]+$/.test(cleanSubject)) {
       Alert.alert(t('agenda.error'), t('agenda.error.elementSubjectInvalid'));
       return;
@@ -506,7 +465,7 @@ export default function AgendaScreen() {
           details: newElementData.details,
           deadline: newElementData.deadline,
           status: "pending",
-          section_id: newElementData.sectionId.toString() // Convert to string if it's a number
+          section_id: newElementData.sectionId.toString()
         }])
         .select()
         .single();
@@ -571,7 +530,6 @@ export default function AgendaScreen() {
     try {
       if (type === 'completed') {
         if (completedElements[elementId]) {
-          // Remove completed state
           const { error } = await supabase
             .from('Completed Element')
             .delete()
@@ -580,7 +538,6 @@ export default function AgendaScreen() {
   
           if (error) throw error;
         } else {
-          // Add completed state AND remove urgent state if it exists
           await Promise.all([
             supabase
               .from('Completed Element')
@@ -598,32 +555,29 @@ export default function AgendaScreen() {
         }
       } else if (type === 'urgent') {
         if (urgentElements[elementId]) {
-          // Remove urgent state
           const { error } = await supabase
             .from('Urgent Element')
             .delete()
             .eq('user_id', session.user.id)
             .eq('element_id', elementId)
-            .eq('agenda_id', id); // Add agenda_id to deletion query
+            .eq('agenda_id', id);
   
           if (error) throw error;
         } else {
-          // Only add urgent state if element is not completed
           if (!completedElements[elementId]) {
             const { error } = await supabase
               .from('Urgent Element')
               .insert({
                 user_id: session.user.id,
                 element_id: elementId,
-                agenda_id: id  // Add agenda_id when creating
+                agenda_id: id
               });
   
             if (error) throw error;
           }
         }
       }
-  
-      // After successful toggle, refresh both element states and agenda
+
       await Promise.all([
         fetchElementStates(),
         fetchAgenda()
@@ -635,7 +589,6 @@ export default function AgendaScreen() {
     }
   };
 
-  // Add this function inside the component
   const handleEditElement = async () => {
     if (!editingElement) return;
   
@@ -660,7 +613,6 @@ export default function AgendaScreen() {
     }
   };
 
-  // Modify the renderElement function to add the edit icon
   const renderElement = ({ item }: { item: AgendaElement }) => (
     <View style={[styles.elementCard, { backgroundColor: theme.card }]}>
       <View style={[styles.elementHeader, { backgroundColor: theme.card }]}>
@@ -753,7 +705,7 @@ export default function AgendaScreen() {
           style={styles.sectionTitleContainer}
         >
           <Icon
-            name={collapsedSections[section.id] ? 'chevron-right' : 'chevron-down'}
+            name={collapsedSections[section.id] ? 'chevron-up' : 'chevron-down'}
             type="font-awesome-5"
             size={14}
             color={theme.text}
@@ -822,14 +774,12 @@ export default function AgendaScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              // Delete from database
               const { error } = await supabase
                 .from("Agenda")
                 .delete()
                 .eq('id', agendaId);
               if (error) throw error;
 
-              // Update local cache by removing this agenda
               const cachedData = await getData(KEYS.AGENDAS);
               if (cachedData) {
                 const updatedAgendas = cachedData.filter(a => a.id !== agendaId);
@@ -875,7 +825,6 @@ export default function AgendaScreen() {
   }
 
   const postComment = async () => {
-    // Now we can use session here
     if (!session?.user?.id || !commentText.trim()) return;
     
     try {
@@ -927,15 +876,11 @@ export default function AgendaScreen() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user?.id) return;
 
-      // First try to get completed items from cache
       const cachedData = await getAgendaData(id as string);
-      // If we have cached completed elements, format them for display
       if (cachedData?.completedElements) {
-        // Get all sections and their elements from agenda cache
         const sections = cachedData.agenda?.sections || [];
         const completedIds = Object.keys(cachedData.completedElements);
-        
-        // Find completed elements in the cached sections
+
         const formattedItems = sections.flatMap(section => 
           section.elements
             ?.filter(element => completedIds.includes(element.id.toString()))
@@ -961,7 +906,6 @@ export default function AgendaScreen() {
         }
       }
 
-      // If no cache or online, fetch from server
       if (isOnline) {
         const { data: completedData, error } = await supabase
           .from('Completed Element')
@@ -1034,7 +978,6 @@ export default function AgendaScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              // Just remove from Agenda Member - everything else cascades
               const { error } = await supabase
                 .from("Agenda Member")
                 .delete()
@@ -1043,7 +986,6 @@ export default function AgendaScreen() {
 
               if (error) throw error;
 
-              // Update local cache
               try {
                 const cachedData = await getData(KEYS.AGENDAS) || [];
                 const updatedAgendas = cachedData.filter(a => a.id !== id);
@@ -1071,13 +1013,12 @@ export default function AgendaScreen() {
       size={24}
       color={theme.text}
       onPress={() => {
-        // Prepare elements data for calendar
         const elements = agenda?.sections.flatMap(section => 
           section.elements.map(element => ({
             ...element,
             isUrgent: urgentElements[element.id],
-            sectionId: section.id,     // Add these
-            sectionName: section.name  // two lines
+            sectionId: section.id,
+            sectionName: section.name
           }))
         ).filter(element => !completedElements[element.id]) || [];
 
@@ -1102,8 +1043,7 @@ export default function AgendaScreen() {
         .eq('id', id);
 
       if (error) throw error;
-      
-      // Update local state
+
       setAgenda(prev => prev ? { ...prev, comments: !prev.comments } : null);
     } catch (error) {
       console.error('Toggle comments error:', error);
@@ -1111,7 +1051,6 @@ export default function AgendaScreen() {
     }
   };
 
-  // Add refresh handler function near other handlers
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     Promise.all([
@@ -1199,15 +1138,14 @@ export default function AgendaScreen() {
           <FlatList
             data={agenda.sections}
             renderItem={renderSection}
-            keyExtractor={item => `section-${item.id}`}  // Update this line
-            scrollEnabled={false} // Important: disable scrolling on nested FlatList
+            keyExtractor={item => `section-${item.id}`}
+            scrollEnabled={false}
             ListEmptyComponent={() => (
               <Text style={styles.emptyText}>{t('agenda.noSections')}</Text>
             )}
           />
         </View>
 
-        {/* Add this before the members section */}
         {completedElements && Object.keys(completedElements).length > 0 && (
           <Pressable 
             onPress={navigateToCompleted}
@@ -1232,7 +1170,6 @@ export default function AgendaScreen() {
           </Pressable>
         )}
 
-        {/* Replace the existing Members section with this */}
         <View style={[styles.membersSection, { marginTop: spacing.xl }]}>
           <RNView style={styles.sectionHeader}>
             <Text style={[typography.h3, { color: theme.text }]}>
@@ -1245,7 +1182,7 @@ export default function AgendaScreen() {
                 size={16}
                 color={theme.text}
                 onPress={() => router.push({
-                  pathname: "members-management",  // Remove the leading slash
+                  pathname: "members-management",
                   params: { 
                     id: agenda.id, 
                     creatorId: agenda.creator_id 
@@ -1254,7 +1191,6 @@ export default function AgendaScreen() {
               />
             )}
           </RNView>
-          {/* Rest of the members section remains the same */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false} 
@@ -1264,7 +1200,6 @@ export default function AgendaScreen() {
               <Pressable 
                 key={member.id}
                 onPress={() => {
-                  // Don't allow managing the creator
                   if (isEditingMembers && isCreator && member.id !== agenda?.creator_id) {
                     setSelectedMember(member);
                     setShowMemberDialog(true);
@@ -1296,7 +1231,6 @@ export default function AgendaScreen() {
             ))}
           </ScrollView>
 
-          {/* Member Management Dialog */}
           <Dialog 
             isVisible={showMemberDialog && !!selectedMember && selectedMember.id !== agenda?.creator_id}
             onBackdropPress={() => {
@@ -1305,7 +1239,6 @@ export default function AgendaScreen() {
             }} 
             overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
           >
-            {/* ...existing dialog content... */}
           </Dialog>
         </View>
 
@@ -1373,7 +1306,6 @@ export default function AgendaScreen() {
         </View>
       </ScrollView>
 
-      {/* Add Section Dialog */}
       <Dialog
         isVisible={showSectionDialog}
         onBackdropPress={() => setShowSectionDialog(false)} 
@@ -1401,7 +1333,6 @@ export default function AgendaScreen() {
         </View>
       </Dialog>
 
-      {/* Add Element Dialog */}
       <Dialog
         isVisible={showElementDialog}
         onBackdropPress={() => setShowElementDialog(false)} 
@@ -1442,7 +1373,6 @@ export default function AgendaScreen() {
         </View>
       </Dialog>
 
-      {/* Edit Element Dialog */}
       <Dialog
         isVisible={showEditElementDialog}
         onBackdropPress={() => {
@@ -1526,7 +1456,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     height: '100%',
-    cursor: 'pointer', // This helps indicate clickability on web
+    cursor: 'pointer',
   },
   elementsList: {
     marginLeft: spacing.sm,
@@ -1602,7 +1532,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    height: '100%', // Add this
+    height: '100%',
   },
   deleteIcon: {
     padding: spacing.xs,
@@ -1678,8 +1608,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    height: '100%', // Add this
-    cursor: 'pointer', // This helps indicate clickability on web
+    height: '100%',
+    cursor: 'pointer',
   },
   collapseIcon: {
     marginRight: spacing.sm,
