@@ -762,6 +762,11 @@ export default function AgendaScreen() {
             ellipsizeMode="tail"
           >
             {section.name}
+            {collapsedSections[section.id] && (
+              <Text style={[styles.elementCount, { color: theme.placeholder }]}>
+                {` (${section.elements?.filter(e => !completedElements[e.id]).length || 0})`}
+              </Text>
+            )}
           </Text>
         </Pressable>
         {(isCreator || isEditor) && (
@@ -976,7 +981,7 @@ export default function AgendaScreen() {
           .eq('user_id', session.user.id)
           .eq('agenda_id', id);
         if (error) throw error;
-
+2
         const formattedItems = completedData?.map(item => ({
           id: item.element.id,
           elementId: item.element_id,
@@ -1060,7 +1065,7 @@ export default function AgendaScreen() {
     <Icon
       name="calendar-week"
       type="font-awesome-5"
-      size={16}
+      size={24}
       color={theme.text}
       onPress={() => {
         // Prepare elements data for calendar
@@ -1140,7 +1145,7 @@ export default function AgendaScreen() {
                 <Icon
                   name="trash"
                   type="font-awesome-5"
-                  size={16}
+                  size={24}
                   color={theme.error}
                   onPress={() => deleteAgenda(agenda.id, agenda.creator_id)}
                   containerStyle={styles.deleteIcon}
@@ -1159,7 +1164,7 @@ export default function AgendaScreen() {
                 <Icon
                   name="sign-out-alt"
                   type="font-awesome-5"
-                  size={16}
+                  size={24}
                   color={theme.error}
                   onPress={handleLeaveAgenda}
                   containerStyle={styles.deleteIcon}
@@ -1721,5 +1726,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: spacing.md,
     fontStyle: 'italic',
+  },
+  elementCount: {
+    ...typography.caption,
+    fontWeight: 'normal',
   },
 });
