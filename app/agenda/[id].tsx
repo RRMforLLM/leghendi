@@ -1010,7 +1010,7 @@ export default function AgendaScreen() {
     <Icon
       name="calendar-week"
       type="font-awesome-5"
-      size={24}
+      size={20}
       color={theme.text}
       onPress={() => {
         const elements = agenda?.sections.flatMap(section => 
@@ -1106,7 +1106,7 @@ export default function AgendaScreen() {
                 <Icon
                   name="trash"
                   type="font-awesome-5"
-                  size={24}
+                  size={20}
                   color={theme.error}
                   onPress={() => deleteAgenda(agenda.id, agenda.creator_id)}
                   containerStyle={styles.deleteIcon}
@@ -1179,7 +1179,7 @@ export default function AgendaScreen() {
               <Icon
                 name="users-cog"
                 type="font-awesome-5"
-                size={16}
+                size={20}
                 color={theme.text}
                 onPress={() => router.push({
                   pathname: "members-management",
