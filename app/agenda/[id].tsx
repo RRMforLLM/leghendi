@@ -1123,43 +1123,14 @@ export default function AgendaScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>{agenda.name}</Text>
           <RNView style={styles.headerActions}>
-            {isCreator ? (
-              <RNView style={styles.headerActions}>
-                <Button
-                  title={t('agenda.addSection')}
-                  type="clear"
-                  onPress={() => setShowSectionDialog(true)}
-                />
-                {renderCalendarButton()}
-                <Icon
-                  name="trash"
-                  type="font-awesome-5"
-                  size={20}
-                  color={theme.error}
-                  onPress={() => deleteAgenda(agenda.id, agenda.creator_id)}
-                  containerStyle={styles.deleteIcon}
-                />
-              </RNView>
-            ) : (
-              <RNView style={styles.headerActions}>
-                {isEditor && (
-                  <Button
-                    title={t('agenda.addSection')}
-                    type="clear"
-                    onPress={() => setShowSectionDialog(true)}
-                  />
-                )}
-                {renderCalendarButton()}
-                <Icon
-                  name="sign-out-alt"
-                  type="font-awesome-5"
-                  size={24}
-                  color={theme.error}
-                  onPress={handleLeaveAgenda}
-                  containerStyle={styles.deleteIcon}
-                />
-              </RNView>
+            {(isCreator || isEditor) && (
+              <Button
+                title={t('agenda.addSection')}
+                type="clear"
+                onPress={() => setShowSectionDialog(true)}
+              />
             )}
+            {renderCalendarButton()}
           </RNView>
         </View>
         <View style={styles.sectionsContainer}>
@@ -1344,6 +1315,32 @@ export default function AgendaScreen() {
             </Text>
           )}
         </View>
+
+        <View style={styles.dangerZone}>
+          <Text style={[typography.h3, { color: theme.error, marginBottom: spacing.md }]}>
+            {t('settings.dangerZone')}
+          </Text>
+          {isCreator ? (
+            <Button
+              title={t('agenda.deleteAgenda')}
+              onPress={() => deleteAgenda(agenda.id, agenda.creator_id)}
+              containerStyle={[styles.button, styles.deleteButton]}
+              buttonStyle={{ backgroundColor: theme.error }}
+              titleStyle={{ color: theme.buttonText }}
+            />
+          ) : (
+            <Button
+              title={t('agenda.leaveAgenda')}
+              onPress={handleLeaveAgenda}
+              containerStyle={[styles.button, styles.deleteButton]}
+              buttonStyle={{ backgroundColor: theme.error }}
+              titleStyle={{ color: theme.buttonText }}
+            />
+          )}
+          <Text style={[typography.caption, { color: theme.placeholder, marginTop: spacing.xs }]}>
+            {isCreator ? t('agenda.deleteWarning') : t('agenda.leaveWarning')}
+          </Text>
+        </View>
       </ScrollView>
 
       <Dialog
@@ -1468,14 +1465,17 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: spacing.lg,
   },
   title: {
     ...typography.h2,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md, // Update this to create space between title and buttons
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start', // Align buttons to the left
+    gap: spacing.xs,
   },
   sectionsList: {
     flex: 1,
@@ -1740,5 +1740,22 @@ const styles = StyleSheet.create({
   commentActions: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  dangerZone: {
+    marginTop: spacing.xl * 2,
+    marginBottom: spacing.xl,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: '#ff0000',
+    borderRadius: 8,
+    opacity: 0.8,
+  },
+  button: {
+    marginVertical: spacing.xs,
+    width: '100%',
+    height: 48, // Make buttons taller like in settings
+  },
+  deleteButton: {
+    marginBottom: spacing.xs,
   },
 });
