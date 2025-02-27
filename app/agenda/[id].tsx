@@ -5,7 +5,7 @@
 */}
 
 import { useEffect, useState, useCallback } from 'react';
-import { StyleSheet, FlatList, View as RNView, ScrollView, Pressable, Alert, Platform, Modal } from 'react-native';
+import { StyleSheet, FlatList, View as RNView, ScrollView, Pressable, Alert, Platform, Modal, RefreshControl } from 'react-native';
 import { View, Text } from '@/components/Themed';
 import { Button, Input, Dialog, Icon, Avatar } from '@rneui/themed';
 import { supabase } from '@/lib/supabase';
@@ -96,6 +96,9 @@ export default function AgendaScreen() {
   // Add this to the top level of the component
   const [showEditElementDialog, setShowEditElementDialog] = useState(false);
   const [editingElement, setEditingElement] = useState<AgendaElement | null>(null);
+
+  // Add refreshing state near the other state declarations
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     navigation.setOptions({
@@ -1108,6 +1111,18 @@ export default function AgendaScreen() {
     }
   };
 
+  // Add refresh handler function near other handlers
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    Promise.all([
+      fetchAgenda(),
+      fetchElementStates(),
+      checkEditorStatus()
+    ]).finally(() => {
+      setRefreshing(false);
+    });
+  }, [fetchAgenda, fetchElementStates, checkEditorStatus]);
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -1130,6 +1145,13 @@ export default function AgendaScreen() {
       <ScrollView 
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.text}
+          />
+        }
       >
         <View style={styles.header}>
           <Text style={styles.title}>{agenda.name}</Text>
