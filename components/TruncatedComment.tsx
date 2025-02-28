@@ -6,7 +6,7 @@ import Colors from '@/constants/Colors';
 import { useColorScheme } from './useColorScheme';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-const TRUNCATE_AT = 50; // Characters to show before truncating
+const TRUNCATE_AT = 50;
 
 interface TruncatedCommentProps {
   text: string;

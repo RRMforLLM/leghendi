@@ -3,7 +3,7 @@ import { View, Text } from "@/components/Themed"
 import { useEffect, useState, useCallback, useRef } from "react"
 import { supabase } from "@/lib/supabase"
 import type { Agenda, AgendaElement } from "@/types"
-import { Button, Input, Dialog, Icon } from "@rneui/themed" // Add Icon to imports
+import { Button, Input, Dialog, Icon } from "@rneui/themed"
 import { router, Link } from "expo-router"
 import type { Session } from "@supabase/supabase-js"
 import Colors from "@/constants/Colors"
@@ -15,7 +15,7 @@ import { storeData, getData, KEYS } from '@/utils/offlineStorage';
 import OfflineBanner from '@/components/OfflineBanner';
 import VibesDisplay from '@/components/VibesDisplay';
 import { useCredits } from '@/hooks/useCredits';
-import { useLanguage } from '@/contexts/LanguageContext'; // Add this import
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const DialogButton = ({ onPress, disabled = false, children }: {
   onPress: () => void;
@@ -122,7 +122,7 @@ const DayElementsDialog = ({ elements, isVisible, onClose, onElementPress, theme
 );
 
 export default function HomeScreen() {
-  const { t, language } = useLanguage(); // Add language here
+  const { t, language } = useLanguage();
   const colorScheme = useColorScheme()
   const theme = Colors[colorScheme ?? 'light'];
   const [agendas, setAgendas] = useState<Agenda[]>([])
@@ -163,28 +163,25 @@ export default function HomeScreen() {
     setJoinAgendaData({ name: '', key: '' })
   }, [])
 
-  // Add this function to clear any Supabase cache
   const clearSupabaseCache = useCallback(async () => {
     try {
-      // Remove all data from Supabase cache for these tables
       await Promise.all([
-        supabase.auth.refreshSession(), // Refresh the auth session
-        supabase.from('Agenda').select().abortSignal, // Clear agenda cache
-        supabase.from('Agenda Section').select().abortSignal, // Clear sections cache
-        supabase.from('Agenda Element').select().abortSignal, // Clear elements cache
+        supabase.auth.refreshSession(),
+        supabase.from('Agenda').select().abortSignal,
+        supabase.from('Agenda Section').select().abortSignal,
+        supabase.from('Agenda Element').select().abortSignal,
       ]);
     } catch (error) {
       console.log('Cache clear error:', error);
     }
   });
 
-  // Remove the session dependency from initialize effect and handle everything in auth change
   useEffect(() => {
     supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT') {
         await clearSupabaseCache();
         resetState();
-        setSession(null); // Add this
+        setSession(null);
         router.replace('/three');
         return;
       }
@@ -207,9 +204,8 @@ export default function HomeScreen() {
         }
       }
     });
-  }, []); // Empty dependency array
+  }, []);
 
-  // Modify the initialize effect to only run once on mount
   useEffect(() => {
     let mounted = true;
 
@@ -244,9 +240,8 @@ export default function HomeScreen() {
 
     initialize();
     return () => { mounted = false };
-  }, []); // Empty dependency array - only run once on mount
+  }, []);
 
-  // Add this helper function near the top of the component
   const clearAgendas = useCallback(async () => {
     setAgendas([]);
     await storeData(KEYS.AGENDAS, []);
@@ -285,7 +280,6 @@ export default function HomeScreen() {
           combined.map(item => [item.id, item])
         ).values());
 
-        // If we got an empty list from the server, clear everything
         if (uniqueAgendas.length === 0) {
           await clearAgendas();
         } else {
@@ -294,8 +288,7 @@ export default function HomeScreen() {
         }
         return;
       }
-      
-      // Only load from cache if we're offline
+
       const cachedAgendas = await getData(KEYS.AGENDAS);
       if (cachedAgendas?.length > 0) {
         setAgendas(cachedAgendas);
@@ -305,7 +298,6 @@ export default function HomeScreen() {
       
     } catch (error) {
       console.error('Fetch agendas error:', error);
-      // On error, try cache, but if cache is empty, clear everything
       const cachedAgendas = await getData(KEYS.AGENDAS);
       if (cachedAgendas?.length > 0) {
         setAgendas(cachedAgendas);
@@ -331,7 +323,6 @@ export default function HomeScreen() {
         return;
       }
 
-      // First get all agendas user has access to
       const [{ data: memberAgendas }, { data: ownedAgendas }] = await Promise.all([
         supabase
           .from('Agenda Member')
@@ -348,7 +339,6 @@ export default function HomeScreen() {
         ...(ownedAgendas?.map(a => a.id) || [])
       ];
 
-      // Then get all sections from these agendas
       const { data: sections } = await supabase
         .from('Agenda Section')
         .select(`
@@ -363,7 +353,6 @@ export default function HomeScreen() {
 
       if (!sections?.length) return;
 
-      // Get completed elements to filter them out
       const { data: completed } = await supabase
         .from('Completed Element')
         .select('element_id')
@@ -371,13 +360,11 @@ export default function HomeScreen() {
 
       const completedIds = new Set(completed?.map(c => c.element_id) || []);
 
-      // Fetch all elements from these sections that aren't completed
       const { data: elements } = await supabase
         .from('Agenda Element')
         .select('*')
         .in('section_id', sections.map(s => s.id));
 
-      // First get urgent elements to know which elements are urgent
       const { data: urgentData } = await supabase
         .from('Urgent Element')
         .select('element_id')
@@ -385,10 +372,8 @@ export default function HomeScreen() {
 
       const urgentIds = new Set(urgentData?.map(u => u.element_id) || []);
 
-      // Organize elements by day, excluding completed ones
       const organized: {[key: string]: AgendaElement[]} = {};
       elements?.forEach(element => {
-        // Skip completed elements
         if (completedIds.has(element.id)) return;
         
         const dateKey = new Date(element.deadline).toDateString();
@@ -396,7 +381,6 @@ export default function HomeScreen() {
           organized[dateKey] = [];
         }
 
-        // Find the section this element belongs to
         const section = sections.find(s => s.id === element.section_id);
         if (!section) return;
 
@@ -410,14 +394,13 @@ export default function HomeScreen() {
           sectionId: section.id,
           sectionName: section.name,
           agendaName: section.agenda.name,
-          isUrgent: urgentIds.has(element.id) // Add this line
+          isUrgent: urgentIds.has(element.id)
         });
       });
 
       setElementsByDay(organized);
       setCurrentWeek(getWeekDates(new Date()));
 
-      // Fetch urgent elements for this user
       const { data: urgentElements, error: urgentError } = await supabase
         .from('Urgent Element')
         .select(`
@@ -443,17 +426,15 @@ export default function HomeScreen() {
 
       if (urgentError) throw urgentError;
 
-      // Filter out any null elements and map to the element structure
-      const urgentItems = urgentElements // Changed variable name here
+      const urgentItems = urgentElements
         ?.filter(ue => ue.element)
         .map(ue => ({
           ...ue.element,
           agendaName: ue.element.section.agenda.name
         }));
 
-      setAgendaElements(urgentItems || []); // Updated variable name here
+      setAgendaElements(urgentItems || []);
 
-      // Add this after fetching urgent elements in fetchAgendaElements
       const { data: completedElements, error: completedError } = await supabase
         .from('Completed Element')
         .select(`
@@ -479,7 +460,6 @@ export default function HomeScreen() {
 
       if (completedError) throw completedError;
 
-      // Filter and map completed elements
       const completedItems = completedElements
         ?.filter(ce => ce.element)
         .map(ce => ({
@@ -487,17 +467,14 @@ export default function HomeScreen() {
           agendaName: ce.element.section.agenda.name
         }));
 
-      // Update the state
       setCompletedElements(completedItems || []);
 
-      // Cache the fetched data
       await Promise.all([
-        storeData(KEYS.AGENDA_ELEMENTS, urgentItems || []), // Updated variable name here
+        storeData(KEYS.AGENDA_ELEMENTS, urgentItems || []),
         storeData(KEYS.COMPLETED_ELEMENTS, completedItems || [])
       ]);
     } catch (error) {
       console.error('Error fetching elements:', error);
-      // Try loading from cache
       const cachedElements = await getData(KEYS.AGENDA_ELEMENTS);
       const cachedCompleted = await getData(KEYS.COMPLETED_ELEMENTS);
       if (cachedElements) setAgendaElements(cachedElements);
@@ -512,17 +489,14 @@ export default function HomeScreen() {
     setCredits(amount);
   }, [session, fetchCredits, setCredits]);
 
-  // Focus listener to refresh data when returning to this screen
   useFocusEffect(
     useCallback(() => {
       if (session?.user) {
         fetchCredits();
         if (isOnline) {
-          // Force a fresh fetch from server when screen is focused
           fetchAgendas(session);
           fetchAgendaElements(session);
         } else {
-          // If offline, just check cache
           getData(KEYS.AGENDAS).then(cachedAgendas => {
             if (cachedAgendas?.length > 0) {
               setAgendas(cachedAgendas);
@@ -547,14 +521,12 @@ export default function HomeScreen() {
     if (!session?.user?.id || !joinAgendaData.name || !joinAgendaData.key) return
     
     const trimmedName = joinAgendaData.name.trim();
-  
-    // Validate agenda name
+
     if (trimmedName.length > 15) {
       Alert.alert(t('settings.error'), t('home.error.nameTooLong'));
       return;
     }
-    
-    // Check for special characters
+
     if (!/^[a-zA-Z0-9\s]+$/.test(trimmedName)) {
       Alert.alert(t('settings.error'), t('home.error.invalidChars'));
       return;
@@ -572,8 +544,7 @@ export default function HomeScreen() {
           key: trimmedKey.length
         }
       })
-  
-      // Search for ANY agenda matching these credentials
+
       const { data: foundAgendas, error: searchError } = await supabase
         .from("Agenda")
         .select("*")
@@ -597,19 +568,16 @@ export default function HomeScreen() {
 
       const agenda = foundAgendas[0]
 
-      // Check if it's own agenda
       if (agenda.creator_id === session.user.id) {
         Alert.alert(t('settings.error'), t('home.error.alreadyOwner'));
         return
       }
 
-      // If the key is not visible and user is not the creator, reject
       if (!agenda.key_visible) {
         Alert.alert(t('settings.error'), t('home.error.privateKey'));
         return
       }
 
-      // Check if already a member using the correct table name
       const { data: existingMember } = await supabase
         .from("Agenda Member")
         .select("*")
@@ -622,7 +590,6 @@ export default function HomeScreen() {
         return
       }
 
-      // Join the agenda using the correct table name
       const { error: joinError } = await supabase
         .from("Agenda Member")
         .insert({
@@ -632,7 +599,6 @@ export default function HomeScreen() {
 
       if (joinError) throw joinError
 
-      // Wait for fetchAgendas to complete before closing dialog
       await fetchAgendas()
       setShowJoinDialog(false)
       setJoinAgendaData({ name: '', key: '' })
@@ -647,7 +613,6 @@ export default function HomeScreen() {
     }
   }
 
-  // Add this function for testing - create a test agenda
   const createTestAgenda = async () => {
     try {
       const { data, error } = await supabase
@@ -671,15 +636,13 @@ export default function HomeScreen() {
 
   const handleCreateAgenda = async () => {
     if (!session?.user?.id || !newAgendaData.name) return;
-    
-    // Validate agenda name
+
     const cleanName = newAgendaData.name.trim();
     if (cleanName.length > 15) {
       Alert.alert(t('settings.error'), t('home.error.nameTooLong'));
       return;
     }
-    
-    // Check for special characters
+
     if (!/^[a-zA-Z0-9\s]+$/.test(cleanName)) {
       Alert.alert(t('settings.error'), t('home.error.invalidChars'));
       return;
@@ -775,7 +738,6 @@ export default function HomeScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              // Just remove from Agenda Member - everything else cascades
               const { error } = await supabase
                 .from("Agenda Member")
                 .delete()
@@ -784,7 +746,6 @@ export default function HomeScreen() {
 
               if (error) throw error;
 
-              // Update local cache
               try {
                 const cachedData = await getData(KEYS.AGENDAS) || [];
                 const updatedAgendas = cachedData.filter(a => a.id !== id);
@@ -805,7 +766,6 @@ export default function HomeScreen() {
     );
   };
 
-  // Add this effect to initialize the week
   useEffect(() => {
     setCurrentWeek(getWeekDates(new Date()));
   }, []);
@@ -815,7 +775,7 @@ export default function HomeScreen() {
     const dayElements = elementsByDay[dateKey] || [];
     const sortedElements = sortElementsByUrgency(dayElements);
     const isToday = new Date().toDateString() === dateKey;
-    const MAX_VISIBLE_ELEMENTS = 2; // Keep truncation
+    const MAX_VISIBLE_ELEMENTS = 2;
   
     return (
       <Pressable
@@ -883,11 +843,9 @@ export default function HomeScreen() {
     );
   };
 
-  // Add this function right after state declarations
   const getWeekDates = (date: Date) => {
     const today = new Date(date);
     const dates = [];
-    // Add 3 days before and 3 days after to allow centering
     for (let i = -3; i <= 3; i++) {
       const newDate = new Date(today);
       newDate.setDate(today.getDate() + i);
@@ -896,13 +854,11 @@ export default function HomeScreen() {
     return dates;
   };
 
-  // Add this effect to scroll to current day
   useEffect(() => {
     if (weekScrollRef.current) {
-      // Wait for layout to complete
       setTimeout(() => {
         weekScrollRef.current?.scrollTo({
-          x: (120 + 4) * 3, // dayWidth + gap * number of days to center
+          x: (120 + 4) * 3,
           animated: false
         });
       }, 0);
@@ -1376,7 +1332,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingTop: spacing.xl + spacing.lg, // Add extra padding to account for floating header
+    paddingTop: spacing.xl + spacing.lg,
     padding: spacing.lg,
   },
   bottomSection: {
@@ -1386,13 +1342,13 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.1)',
-    marginTop: 'auto', // Push to bottom
+    marginTop: 'auto',
   },
   miniWeekContainer: {
     flexDirection: 'row',
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
-    height: 204, // Fixed height to match calendar.tsx
+    height: 204,
   },
   dayContainer: {
     width: 120,
@@ -1476,7 +1432,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: '20%', // Offset it slightly up from center
+    paddingBottom: '20%',
   },
   loginButton: {
     minWidth: 200,

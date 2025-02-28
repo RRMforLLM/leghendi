@@ -23,17 +23,14 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // Get system language
         const deviceLanguage =
           Platform.OS === 'ios'
             ? NativeModules.SettingsManager.settings.AppleLocale ||
               NativeModules.SettingsManager.settings.AppleLanguages[0]
             : NativeModules.I18nManager.localeIdentifier;
 
-        // Get first 2 chars of language code
         const languageCode = deviceLanguage.substring(0, 2);
 
-        // Set language if supported, otherwise fallback to 'en'
         const newLang = languageCode in SUPPORTED_LANGUAGES ? languageCode : 'en';
         setLanguageState(newLang as Language);
         await AsyncStorage.setItem('userLanguage', newLang);

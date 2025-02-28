@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   },
   vibesRow: {
     flexDirection: 'row',
-    alignItems: 'baseline', // Changed from center to baseline
+    alignItems: 'baseline',
     gap: spacing.xs,
     marginVertical: spacing.sm,
     backgroundColor: 'transparent',
@@ -185,6 +185,6 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     resizeMode: 'contain',
-    transform: [{ translateY: 4 }], // Fine-tune icon position relative to text
+    transform: [{ translateY: 4 }],
   },
 });

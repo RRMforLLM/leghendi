@@ -10,7 +10,7 @@ import { useNetworkState } from '@/hooks/useNetworkState';
 import { storeData, getData, KEYS } from '@/utils/offlineStorage';
 import OfflineBanner from '@/components/OfflineBanner';
 import { useState, useEffect } from 'react';
-import { useLanguage } from '@/contexts/LanguageContext'; // Add this import
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CompletedItem {
   id: number;
@@ -18,11 +18,11 @@ interface CompletedItem {
   deadline: string;
   agendaName: string;
   agendaId: string;
-  elementId: number; // Add this to store the actual element_id
+  elementId: number;
 }
 
 export default function CompletedScreen() {
-  const { language, t } = useLanguage(); // Add useLanguage hook
+  const { language, t } = useLanguage();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'light'];
   const isOnline = useNetworkState();
@@ -34,10 +34,8 @@ export default function CompletedScreen() {
       if (items) {
         const parsedItems = JSON.parse(decodeURIComponent(items as string));
         setCompletedItems(parsedItems);
-        // Cache the completed items whenever we receive new ones
         await storeData(KEYS.COMPLETED_ITEMS, parsedItems);
       } else {
-        // If no items provided via params, try to load from cache
         const cachedItems = await getData(KEYS.COMPLETED_ITEMS);
         setCompletedItems(cachedItems || []);
       }
@@ -64,14 +62,11 @@ export default function CompletedScreen() {
 
       if (error) throw error;
 
-      // Update the local state by removing the uncompleted item
       const updatedItems = completedItems.filter(i => i.elementId !== elementId);
       
       if (updatedItems.length === 0) {
-        // If no items left, go back
         router.back();
       } else {
-        // Update the URL with remaining items
         router.setParams({
           items: encodeURIComponent(JSON.stringify(updatedItems))
         });

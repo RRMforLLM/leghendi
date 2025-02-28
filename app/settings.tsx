@@ -39,7 +39,6 @@ export default function Settings() {
         setLoading(true)
         const { data: { user }, error } = await supabase.auth.getUser()
         if (error) throw error
-        // Fetch profile and additional statistics
         const [profileData, reactionsReceived, reactionsSent, commentsData, creditsData] = 
           await Promise.all([
             supabase
@@ -114,7 +113,6 @@ export default function Settings() {
     try {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
-      // The root layout will handle the navigation and reload
     } catch (error) {
       Alert.alert(t('settings.error'), t('settings.errorSignOut'))
     }
@@ -140,14 +138,12 @@ export default function Settings() {
               try {
                 const { data: { session }, error: sessionError } = await supabase.auth.getSession()
                 if (sessionError) throw sessionError
-                // Use supabase functions directly instead of raw fetch
                 const { data, error: functionError } = await supabase.functions.invoke('delete-account', {
                   method: 'POST',
                 })
                 if (functionError) {
                   throw functionError
                 }
-                // Sign out and redirect
                 await supabase.auth.signOut()
                 router.replace('/')
               } catch (error) {

@@ -26,9 +26,9 @@ export default function RainingIcons() {
     const initialIcons = Array.from({ length: 20 }, (_, i) => ({
       id: i,
       x: Math.random() * width,
-      y: -50 - (Math.random() * 200), // Start at different heights above screen
+      y: -50 - (Math.random() * 200),
       icon: ICONS[Math.floor(Math.random() * ICONS.length)],
-      finalY: 100 + (Math.random() * (height - 200)) // Final position spread across screen
+      finalY: 100 + (Math.random() * (height - 200))
     }));
 
     setIcons(initialIcons);
@@ -37,21 +37,17 @@ export default function RainingIcons() {
       animationsRef.current[icon.id] = new Animated.Value(icon.y);
     });
 
-    // Modified animation sequence with correct easing
-    const fallAnimation = Animated.stagger(200, // Increased stagger delay
+    const fallAnimation = Animated.stagger(200,
       initialIcons.map(icon => 
         Animated.timing(animationsRef.current[icon.id], {
           toValue: icon.finalY,
-          duration: 3000, // Longer duration
+          duration: 3000,
           useNativeDriver: true,
           easing: (t) => {
-            // Custom easing function that starts normal and slows down at the end
-            const slowdownPoint = 0.7; // Start slowing down at 70% of the animation
+            const slowdownPoint = 0.7;
             if (t < slowdownPoint) {
-              // Linear motion for the first 70%
               return t / slowdownPoint;
             } else {
-              // Ease out cubic for the last 30%
               const remaining = (t - slowdownPoint) / (1 - slowdownPoint);
               return slowdownPoint + (1 - Math.pow(1 - remaining, 3)) * (1 - slowdownPoint);
             }
@@ -64,7 +60,6 @@ export default function RainingIcons() {
       setFrozen(true);
     });
 
-    // Increased interval for less frequent restarts
     const interval = setInterval(() => {
       if (frozen) {
         setFrozen(false);
@@ -75,7 +70,7 @@ export default function RainingIcons() {
           setFrozen(true);
         });
       }
-    }, 45000); // 45 seconds between animations
+    }, 45000);
 
     return () => {
       clearInterval(interval);

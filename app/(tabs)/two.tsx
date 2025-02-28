@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     flexGrow: 1,
-    paddingTop: spacing.xl + spacing.lg, // Add extra padding for floating header
+    paddingTop: spacing.xl + spacing.lg,
     padding: spacing.lg,
   },
   userCard: {

@@ -9,7 +9,7 @@ import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useNetworkState } from '@/hooks/useNetworkState';
 import OfflineBanner from '@/components/OfflineBanner';
-import { useLanguage } from '@/contexts/LanguageContext'; // Add this import
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg"
 
@@ -21,7 +21,7 @@ interface Member {
 }
 
 export default function MembersManagementScreen() {
-  const { t } = useLanguage(); // Add useLanguage hook
+  const { t } = useLanguage();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'light'];
   const { id: agendaId, creatorId } = useLocalSearchParams();
@@ -63,7 +63,6 @@ export default function MembersManagementScreen() {
       if (membersData.error) throw membersData.error;
       if (editorsData.error) throw editorsData.error;
 
-      // Also fetch creator's profile
       const { data: creator } = await supabase
         .from('Profile')
         .select('id, username, avatar_url')
@@ -79,7 +78,6 @@ export default function MembersManagementScreen() {
         is_editor: editorIds.includes(m.user.id)
       }));
 
-      // Add creator at the beginning
       if (creator) {
         formattedMembers.unshift({
           ...creator,
@@ -112,7 +110,6 @@ export default function MembersManagementScreen() {
                 style: "destructive",
                 onPress: async () => {
                   try {
-                    // First get all sections for this agenda
                     const { data: sections } = await supabase
                       .from("Agenda Section")
                       .select('id')
@@ -120,7 +117,6 @@ export default function MembersManagementScreen() {
 
                     if (!sections) throw new Error('No sections found');
 
-                    // Then get all elements from these sections
                     const { data: elements } = await supabase
                       .from("Agenda Element")
                       .select('id')
@@ -128,7 +124,6 @@ export default function MembersManagementScreen() {
 
                     const elementIds = elements?.map(e => e.id) || [];
 
-                    // Clean up ALL of the user's data from this agenda in parallel
                     await Promise.all([
                       supabase
                         .from('Agenda Member')
@@ -174,7 +169,7 @@ export default function MembersManagementScreen() {
             .insert({ user_id: memberId, agenda_id: agendaId });
           
           if (promoteError) throw promoteError;
-          await fetchMembers(); // Refresh the member list
+          await fetchMembers();
           break;
 
         case 'demote':
@@ -185,7 +180,7 @@ export default function MembersManagementScreen() {
             .eq('agenda_id', agendaId);
           
           if (demoteError) throw demoteError;
-          await fetchMembers(); // Refresh the member list
+          await fetchMembers();
           break;
       }
     } catch (error) {
@@ -296,8 +291,8 @@ const styles = StyleSheet.create({
   },
   memberTextInfo: {
     marginLeft: spacing.md,
-    flex: 1,  // Add this to enable text truncation
-    marginRight: spacing.md, // Add this to prevent text from overlapping with actions
+    flex: 1,
+    marginRight: spacing.md,
   },
   actions: {
     flexDirection: 'row',

@@ -39,12 +39,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
     padding: spacing.sm,
-    height: 40, // Add fixed height
+    height: 40,
   },
   icon: {
     width: 20,
     height: 20,
     resizeMode: 'contain',
-    marginTop: 2, // Slight adjustment for visual alignment
+    marginTop: 2,
   }
 });

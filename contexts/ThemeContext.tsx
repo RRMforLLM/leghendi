@@ -17,7 +17,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const systemColorScheme = useSystemColorScheme();
 
   useEffect(() => {
-    // Load saved theme preference
     AsyncStorage.getItem('themeMode').then((savedTheme) => {
       if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
         setThemeModeState(savedTheme as ThemeMode);

@@ -1,7 +1,7 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack, useRouter } from 'expo-router';  // Add useRouter here
+import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
@@ -15,16 +15,13 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useTheme } from '@/contexts/ThemeContext';
 
 export {
-  // Catch any errors thrown by the Layout component.
   ErrorBoundary,
 } from 'expo-router';
 
 export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
   initialRouteName: '(tabs)',
 };
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
@@ -34,7 +31,6 @@ export default function RootLayout() {
   });
   const router = useRouter();
 
-  // Modify initialization to ensure storage is ready
   useEffect(() => {
     const init = async () => {
       try {
@@ -49,7 +45,6 @@ export default function RootLayout() {
     init();
   }, [loaded]);
 
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
     if (error) throw error;
   }, [error]);
@@ -57,12 +52,10 @@ export default function RootLayout() {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
       if (event === 'SIGNED_OUT') {
-        // Perform a full reload of the app
         if (__DEV__) {
           router.replace('/three');
           await Updates.reloadAsync();
         } else {
-          // In production, use this method
           await Updates.reloadAsync();
         }
       }
@@ -87,7 +80,7 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
-  const { colorScheme } = useTheme(); // Replace useColorScheme with useTheme
+  const { colorScheme } = useTheme();
   const { t } = useLanguage();
 
   return (

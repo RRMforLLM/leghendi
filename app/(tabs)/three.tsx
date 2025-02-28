@@ -18,9 +18,9 @@ import VibesDisplay from '@/components/VibesDisplay';
 import { useCredits } from '@/hooks/useCredits';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLanguage } from '@/contexts/LanguageContext';
-import TruncatedText from '@/components/TruncatedText';  // Update import
+import TruncatedText from '@/components/TruncatedText';
 
-const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg" // Default avatar URL
+const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg"
 
 interface ProfileComment {
   id: number
@@ -55,7 +55,7 @@ export default function ProfileScreen() {
   const [comments, setComments] = useState<ProfileComment[]>([])
   const [newComment, setNewComment] = useState("")
   const [isPostingComment, setIsPostingComment] = useState(false)
-  const [commentText, setCommentText] = useState("")  // Add this state here
+  const [commentText, setCommentText] = useState("")
   const { credits, setCredits, fetchCredits } = useCredits();
 
   useEffect(() => {
@@ -88,7 +88,6 @@ export default function ProfileScreen() {
     }
   }, [])
 
-  // Add focus effect to fetch credits when screen gains focus
   useFocusEffect(
     useCallback(() => {
       if (session?.user) {
@@ -136,7 +135,6 @@ export default function ProfileScreen() {
           .order('created_at', { ascending: false })
       ]);
 
-      // Calculate reaction counts
       const newStats = {
         hugs: 0,
         hearts: 0,
@@ -154,8 +152,7 @@ export default function ProfileScreen() {
       }
 
       setReactionStats(newStats);
-      
-      // Update state with profile data
+
       if (!profileData.error && profileData.data) {
         setUsername(profileData.data.username || '');
         setAvatarUrl(profileData.data.avatar_url);
@@ -166,7 +163,6 @@ export default function ProfileScreen() {
         setComments(commentsData.data || []);
       }
 
-      // Cache the profile data
       await storeData(KEYS.USER_PROFILE, {
         username: profileData.data?.username || '',
         avatar_url: profileData.data?.avatar_url,
@@ -177,7 +173,6 @@ export default function ProfileScreen() {
 
     } catch (error) {
       console.error("Error loading profile:", error);
-      // Try loading from cache
       const cachedProfile = await getData(KEYS.USER_PROFILE);
       if (cachedProfile) {
         setUsername(cachedProfile.username || '');
@@ -207,12 +202,9 @@ export default function ProfileScreen() {
       })
 
       if (error) {
-        // Properly throw the error so it can be caught
         throw error
       }
-      // Success case - no need to do anything else as the auth state change will trigger
     } catch (error) {
-      // Proper error handling
       const message = error?.message || 'An error occurred during sign in'
       console.error("Sign in error:", message)
       Alert.alert("Error", message)
@@ -233,9 +225,9 @@ export default function ProfileScreen() {
         email,
         password,
         options: {
-          emailRedirectTo: null, // Disable email confirmation
+          emailRedirectTo: null,
           data: {
-            email_confirmed: true // Mark as confirmed immediately
+            email_confirmed: true
           }
         }
       })
@@ -246,10 +238,8 @@ export default function ProfileScreen() {
         throw new Error("Failed to create session")
       }
 
-      // Wait a moment for the trigger to create the profile
       await new Promise(resolve => setTimeout(resolve, 1000))
 
-      // Fetch the newly created profile
       const { data: profile, error: profileError } = await supabase
         .from('Profile')
         .select('*')
@@ -258,10 +248,8 @@ export default function ProfileScreen() {
 
       if (profileError) {
         console.error('Profile fetch error:', profileError)
-        // Don't throw here, as the user is still created
       }
 
-      // The trigger should have created the profile, so we can proceed
       setSession(data.session)
       router.replace('/(tabs)/')
     } catch (error) {
@@ -277,8 +265,7 @@ export default function ProfileScreen() {
       setLoading(true)
       const { error } = await supabase.auth.signOut()
       if (error) throw error
-      
-      // Clear local state
+
       setSession(null)
       setUsername('')
       setEmail('')
@@ -311,8 +298,7 @@ export default function ProfileScreen() {
     if (!session?.user?.id) return
     try {
       const fileName = `${session.user.id}-${Date.now()}.jpg`
-      
-      // Upload image to Supabase Storage
+
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(fileName, decode(avatarBase64), {
@@ -322,12 +308,10 @@ export default function ProfileScreen() {
 
       if (uploadError) throw uploadError
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName)
 
-      // Update profile with new avatar URL
       const { error: updateError } = await supabase
         .from('Profile')
         .update({ avatar_url: publicUrl })
@@ -358,7 +342,6 @@ export default function ProfileScreen() {
     }
   }
 
-  // In the ProfileScreen component:
 
   const postComment = async (profileId: string, text: string) => {
     if (!session?.user?.id || !text.trim()) return
@@ -370,14 +353,13 @@ export default function ProfileScreen() {
         .insert({
           text: text.trim(),
           author_id: session.user.id,
-          profile_id: profileId  // This is correct now
+          profile_id: profileId
         })
 
       if (error) throw error
-      
-      // Refresh comments for the current profile
+
       await getProfile(profileId)
-      setCommentText("")  // Now this will work
+      setCommentText("")
     } catch (error) {
       console.error('Post comment error:', error)
       Alert.alert('Error', 'Failed to post comment')
@@ -386,7 +368,6 @@ export default function ProfileScreen() {
     }
   }
 
-  // Add this function to update reaction stats
   const updateReactionStats = async () => {
     if (!session?.user?.id) return;
     
@@ -419,7 +400,6 @@ export default function ProfileScreen() {
     }
   };
 
-  // Move fetchComments here
   const fetchComments = async () => {
     if (!session?.user?.id) return;
     
@@ -525,12 +505,12 @@ export default function ProfileScreen() {
     comments={comments}
     onPostComment={postComment}
     isPostingComment={isPostingComment}
-    commentText={commentText}  // Add these props
+    commentText={commentText}
     setCommentText={setCommentText}
     updateReactionStats={updateReactionStats}
-    fetchComments={fetchComments}  // Add this prop
-    isOnline={isOnline} // Add this prop
-    userCredits={credits} // Add this prop
+    fetchComments={fetchComments}
+    isOnline={isOnline}
+    userCredits={credits}
     translations={{
       noDescription: t('profile.noDescription'),
       addDescription: t('profile.addDescription'),
@@ -558,9 +538,9 @@ interface AccountProps {
   commentText: string
   setCommentText: (text: string) => void
   updateReactionStats: () => Promise<void>;
-  fetchComments: () => Promise<void>;  // Add this type
-  isOnline: boolean; // Add this type
-  userCredits: number; // Add this type
+  fetchComments: () => Promise<void>;
+  isOnline: boolean;
+  userCredits: number;
   translations: {
     noDescription: string;
     addDescription: string;
@@ -570,10 +550,8 @@ interface AccountProps {
   };
 }
 
-// Add profileState type
 interface ProfileState {
   comments: boolean;
-  // Add other profile fields as needed
 }
 
 function Account({ 
@@ -593,20 +571,19 @@ function Account({
   commentText,
   setCommentText,
   updateReactionStats,
-  fetchComments,  // Add this to props
-  isOnline, // Add this prop
-  userCredits, // Add this prop
+  fetchComments,
+  isOnline,
+  userCredits,
   translations,
 }: AccountProps) {
   const colorScheme = useColorScheme()
   const theme = Colors[colorScheme ?? 'light'];
-  const { t, language } = useLanguage(); // Add language here
+  const { t, language } = useLanguage();
   const [isEditingUsername, setIsEditingUsername] = useState(false)
   const [newUsername, setNewUsername] = useState(username)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [newDescription, setNewDescription] = useState(description)
 
-  // Add profile state
   const [profile, setProfile] = useState<ProfileState>({ comments: true });
   const [isDestructiveMode, setIsDestructiveMode] = useState(false);
 
@@ -617,7 +594,6 @@ function Account({
       await onUpdateUsername(newUsername)
       setIsEditingUsername(false)
     } catch (error) {
-      // Error is handled by parent component
     }
   }
 
@@ -627,14 +603,13 @@ function Account({
       await onUpdateDescription(newDescription)
       setIsEditingDescription(false)
     } catch (error) {
-      // Error handled by parent
     }
   }
 
   const handleAvatarPress = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,  // Fixed: Use the enum instead of string array
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.5,
@@ -650,35 +625,27 @@ function Account({
     }
   }
 
-  // Add polling effect
   useEffect(() => {
     if (!session?.user?.id) return;
 
-    // Poll every 5 seconds
     const pollInterval = setInterval(updateReactionStats, 5000);
 
-    // Initial fetch
     updateReactionStats();
 
-    // Cleanup interval on unmount
     return () => clearInterval(pollInterval);
   }, [session?.user?.id]);
 
-  // Update the polling effect to include comments
   useEffect(() => {
     if (!session?.user?.id) return;
 
-    // Poll every 5 seconds for both reactions and comments
     const pollInterval = setInterval(() => {
       updateReactionStats();
       fetchComments();
     }, 5000);
 
-    // Initial fetch
     updateReactionStats();
     fetchComments();
 
-    // Cleanup interval on unmount
     return () => clearInterval(pollInterval);
   }, [session?.user?.id]);
 
@@ -692,8 +659,7 @@ function Account({
         .eq('id', session.user.id);
 
       if (error) throw error;
-      
-      // Update local state
+
       setProfile(prev => ({ ...prev, comments: !prev.comments }));
     } catch (error) {
       console.error('Toggle comments error:', error);
@@ -701,7 +667,6 @@ function Account({
     }
   };
 
-  // Add this effect to fetch initial profile state
   useEffect(() => {
     const fetchProfileState = async () => {
       if (!session?.user?.id) return;
@@ -851,7 +816,7 @@ function Account({
               <Icon 
                 name="like1" 
                 type="ant-design" 
-                color="#1877F2" // Facebook blue
+                color="#1877F2"
                 size={30}
                 style={styles.iconStyle}
               />
@@ -861,7 +826,7 @@ function Account({
               <Icon 
                 name="heart" 
                 type="font-awesome" 
-                color="#FF3B30" // iOS red
+                color="#FF3B30"
                 size={30}
                 style={styles.iconStyle}
               />
@@ -871,7 +836,7 @@ function Account({
               <Icon 
                 name="kiss-wink-heart" 
                 type="font-awesome-5" 
-                color="#FF2D55" // Vibrant pink
+                color="#FF2D55"
                 size={30}
                 style={styles.iconStyle}
               />
@@ -1044,7 +1009,7 @@ const styles = StyleSheet.create({
     width: '80%',
   },
   usernameInput: {
-    marginBottom: -spacing.lg, // Reduce bottom margin from Input component
+    marginBottom: -spacing.lg,
   },
   descriptionContainer: {
     width: '100%',
@@ -1081,7 +1046,7 @@ const styles = StyleSheet.create({
   commentHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between', // This spreads the author info and timestamp
+    justifyContent: 'space-between',
     marginBottom: spacing.xs,
   },
   commentAuthor: {
@@ -1093,14 +1058,14 @@ const styles = StyleSheet.create({
     marginRight: spacing.xs,
   },
   commentInputContainer: {
-    marginBottom: spacing.md, // Add margin below input
+    marginBottom: spacing.md,
   },
   commentInput: {
     marginBottom: -spacing.lg,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingTop: spacing.xl + spacing.lg, // Add extra padding for floating header
+    paddingTop: spacing.xl + spacing.lg,
     padding: spacing.lg,
   },
   headerContainer: {

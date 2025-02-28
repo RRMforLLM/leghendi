@@ -6,11 +6,11 @@ import Colors from '@/constants/Colors';
 import { useColorScheme } from './useColorScheme';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-const TRUNCATE_AT = 50; // Characters to show before truncating
+const TRUNCATE_AT = 50;
 
 interface TruncatedTextProps {
   text: string;
-  textStyle?: object; // Allow custom text styling
+  textStyle?: object;
 }
 
 export default function TruncatedText({ text, textStyle = {} }: TruncatedTextProps) {

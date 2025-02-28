@@ -26,7 +26,6 @@ export const getData = async (key: string) => {
   try {
     const data = await AsyncStorage.getItem(key);
     if (!data) {
-      // Return typed empty values
       switch (key) {
         case KEYS.AGENDAS:
           return [];
@@ -46,8 +45,7 @@ export const getData = async (key: string) => {
           return null;
       }
     }
-    
-    // Add validation for array types
+
     const parsed = JSON.parse(data);
     if ([KEYS.AGENDAS, KEYS.AGENDA_ELEMENTS, KEYS.COMPLETED_ELEMENTS].includes(key)) {
       return Array.isArray(parsed) ? parsed : [];
@@ -70,7 +68,6 @@ export const clearOfflineData = async () => {
   }
 };
 
-// Helper to store individual agenda data
 export const storeAgendaData = async (agendaId: string, data: any) => {
   try {
     const existingData = await getData(KEYS.INDIVIDUAL_AGENDAS) || {};
@@ -84,7 +81,6 @@ export const storeAgendaData = async (agendaId: string, data: any) => {
   }
 };
 
-// Helper to get individual agenda data
 export const getAgendaData = async (agendaId: string) => {
   try {
     const allData = await getData(KEYS.INDIVIDUAL_AGENDAS) || {};
@@ -95,7 +91,6 @@ export const getAgendaData = async (agendaId: string) => {
   }
 };
 
-// Helper to clear old cache entries (older than 24 hours)
 export const cleanupOldCache = async () => {
   try {
     const allData = await getData(KEYS.INDIVIDUAL_AGENDAS) || {};
@@ -115,14 +110,12 @@ export const cleanupOldCache = async () => {
 
 export const initializeStorage = async () => {
   try {
-    // First check if storage is already initialized
     const initialized = await AsyncStorage.getItem('storage_initialized');
     if (initialized) return;
 
-    // Initialize all storage keys with empty data
     await Promise.all(
       Object.entries(KEYS).map(([_, key]) => 
-        storeData(key, getData(key)) // Uses the existing getData logic for proper empty values
+        storeData(key, getData(key))
       )
     );
     

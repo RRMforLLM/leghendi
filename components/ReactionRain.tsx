@@ -40,7 +40,6 @@ export default function ReactionRain({ type, onAnimationComplete }: Props) {
       })
     );
 
-    // Start animations immediately after setting state
     requestAnimationFrame(() => {
       Animated.parallel(animations).start(() => {
         onAnimationComplete?.();

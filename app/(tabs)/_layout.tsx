@@ -8,7 +8,6 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-// You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof FontAwesome>['name'];
   color: string;
@@ -28,16 +27,15 @@ export default function TabLayout() {
         headerTitleStyle: {
           ...Platform.select({
             android: {
-              marginLeft: 'auto',  // Center the title on Android
+              marginLeft: 'auto',
               marginRight: 'auto'
             }
           })
         },
-        // Add consistent header styling
         headerStyle: {
-          height: Platform.OS === 'ios' ? 96 : 64, // Taller on iOS
+          height: Platform.OS === 'ios' ? 96 : 64,
         },
-        headerTitleAlign: 'center', // Center on all platforms
+        headerTitleAlign: 'center',
       }}>
       <Tabs.Screen
         name="index"

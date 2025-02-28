@@ -1484,12 +1484,12 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.h2,
-    marginBottom: spacing.md, // Update this to create space between title and buttons
+    marginBottom: spacing.md,
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start', // Align buttons to the left
+    justifyContent: 'flex-start',
     gap: spacing.xs,
   },
   sectionsList: {

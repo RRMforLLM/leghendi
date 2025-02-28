@@ -13,10 +13,10 @@ import { useNetworkState } from '@/hooks/useNetworkState';
 import OfflineBanner from '@/components/OfflineBanner';
 import VibesDisplay from '@/components/VibesDisplay';
 import { useLanguage } from '@/contexts/LanguageContext';
-import RainingIcons from '@/components/RainingIcons';  // Add this import at the top
-import ReactionRain from '@/components/ReactionRain'; // Add this import
+import RainingIcons from '@/components/RainingIcons';
+import ReactionRain from '@/components/ReactionRain';
 import TruncatedComment from '@/components/TruncatedComment';
-import TruncatedText from '@/components/TruncatedText';  // Update import
+import TruncatedText from '@/components/TruncatedText';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg";
 
@@ -43,9 +43,8 @@ interface Reaction {
 
 const UserProfileScreen = () => {
   const isOnline = useNetworkState();
-  const { t, language } = useLanguage(); // Add language here
+  const { t, language } = useLanguage();
 
-  // Let's add type safety for our statistics
   interface ReactionStatistics {
     hugs: number;
     hearts: number;
@@ -80,14 +79,12 @@ const UserProfileScreen = () => {
   const [activeAnimations, setActiveAnimations] = useState<Array<{ id: number; type: 'hug' | 'heart' | 'kiss' }>>([]);
   const animationIdCounter = useRef(0);
 
-  // Add a type-safe mapping
   const reactionTypeToStatKey = {
     'hug': 'hugs',
     'heart': 'hearts',
     'kiss': 'kisses'
   } as const;
 
-  // Add animated values for each reaction type
   const scaleAnims = {
     hug: new Animated.Value(1),
     heart: new Animated.Value(1),
@@ -96,13 +93,11 @@ const UserProfileScreen = () => {
 
   const animatePress = (type: 'hug' | 'heart' | 'kiss') => {
     Animated.sequence([
-      // Initial quick shrink
       Animated.timing(scaleAnims[type], {
         toValue: 0.4,
         duration: 150,
         useNativeDriver: true,
       }),
-      // Dramatic expansion with rotation and bounce
       Animated.parallel([
         Animated.spring(scaleAnims[type], {
           toValue: 1.5,
@@ -110,7 +105,6 @@ const UserProfileScreen = () => {
           speed: 40,
           bounciness: 25
         }),
-        // Add rotation animation
         Animated.sequence([
           Animated.timing(new Animated.Value(0), {
             toValue: 1,
@@ -125,7 +119,6 @@ const UserProfileScreen = () => {
           })
         ])
       ]),
-      // Wobble effect
       Animated.sequence([
         Animated.timing(scaleAnims[type], {
           toValue: 0.8,
@@ -144,7 +137,6 @@ const UserProfileScreen = () => {
           speed: 35,
           bounciness: 15
         }),
-        // Final settle to normal size
         Animated.spring(scaleAnims[type], {
           toValue: 1,
           useNativeDriver: true,
@@ -165,11 +157,10 @@ const UserProfileScreen = () => {
   };
 
   const handleReactionWithAnimation = async (type: 'hug' | 'heart' | 'kiss') => {
-    if (!currentUserId || sendingReaction) return; // Check authentication first
+    if (!currentUserId || sendingReaction) return;
     
     const cost = REACTION_COSTS[type];
-    
-    // Only check credits for paid reactions
+
     if (cost > 0 && currentUserCredits < cost) {
       Alert.alert(
         t('userProfile.error.insufficientVibes'),
@@ -185,7 +176,6 @@ const UserProfileScreen = () => {
       return;
     }
 
-    // If we get here, we can proceed with the reaction
     setSendingReaction(true);
     animatePress(type);
 
@@ -194,9 +184,7 @@ const UserProfileScreen = () => {
       const existingReaction = userReactions.find(r => r.type.toLowerCase() === type.toLowerCase());
 
       if (type === 'hug') {
-        // Handle hug toggle logic
         if (existingReaction) {
-          // Remove hug
           const { error: deleteError } = await supabase
             .from('Reaction')
             .delete()
@@ -211,7 +199,6 @@ const UserProfileScreen = () => {
             [statKey]: Math.max(0, prev[statKey] - 1)
           }));
         } else {
-          // Add hug
           const { data, error } = await supabase
             .from('Reaction')
             .insert({
@@ -235,7 +222,6 @@ const UserProfileScreen = () => {
           }
         }
       } else {
-        // Handle paid reactions
         const { data: reactionData, error: reactionError } = await supabase
           .from('Reaction')
           .insert({
@@ -249,7 +235,6 @@ const UserProfileScreen = () => {
 
         if (reactionError) throw reactionError;
 
-        // Deduct credits
         const { error: creditError } = await supabase
           .from('User Credit')
           .update({ amount: currentUserCredits - cost })
@@ -257,7 +242,6 @@ const UserProfileScreen = () => {
 
         if (creditError) throw creditError;
 
-        // Update local states
         setCurrentUserCredits(prev => prev - cost);
         setUserReactions(prev => [...prev, reactionData]);
         setStatistics(prev => ({
@@ -289,8 +273,8 @@ const UserProfileScreen = () => {
         }
         
         setCurrentUserId(user?.id || null);
-        await fetchCurrentUserCredits(user?.id);  // Add this line
-        await fetchProfile(user?.id || null);  // Pass the userId directly
+        await fetchCurrentUserCredits(user?.id);
+        await fetchProfile(user?.id || null);
       } catch (error) {
         console.error('Init error:', error);
       } finally {
@@ -302,9 +286,8 @@ const UserProfileScreen = () => {
 
     initialize();
     return () => { mounted = false; };
-  }, [id]); // Remove currentUserId dependency
+  }, [id]);
 
-  // Modify fetchProfile to accept userId parameter
   const fetchProfile = async (userId: string | null) => {
     if (!id) return;
     
@@ -312,10 +295,9 @@ const UserProfileScreen = () => {
       const [profileData, reactionsData, userReactionsData, commentsData, creditsData] = await Promise.all([
         supabase
           .from("Profile")
-          .select("username, avatar_url, description, comments") // Add comments field
+          .select("username, avatar_url, description, comments")
           .eq("id", id)
           .single(),
-        // Get total counts per reaction type
         supabase
           .from("Reaction")
           .select('type')
@@ -325,7 +307,6 @@ const UserProfileScreen = () => {
           .select('id, type')
           .eq('sender_id', userId)
           .eq('recipient_id', id) : Promise.resolve({ data: [] }),
-        // Add this to fetch comments
         supabase
           .from('Profile Comment')
           .select(`
@@ -344,15 +325,13 @@ const UserProfileScreen = () => {
       ]);
 
       if (profileData.error) throw profileData.error;
-      
-      // Initialize counts first
+
       const reactionCounts = {
         hugs: 0,
         hearts: 0,
         kisses: 0
       };
-      
-      // Count all reactions
+
       reactionsData.data?.forEach((reaction: { type: string }) => {
         const type = reaction.type.toLowerCase().trim();
         switch (type) {
@@ -370,8 +349,7 @@ const UserProfileScreen = () => {
 
       setProfile(profileData.data);
       setUserReactions(userReactionsData.data || []);
-      setComments(commentsData.data || []); // Add this line to set comments
-      // Update statistics all at once
+      setComments(commentsData.data || []);
       setStatistics(prev => ({
         ...prev,
         hugs: reactionCounts.hugs,
@@ -660,7 +638,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingTop: spacing.xl + spacing.lg, // Add extra padding for floating header
+    paddingTop: spacing.xl + spacing.lg,
     padding: spacing.lg,
     paddingBottom: spacing.xl,
   },
@@ -745,7 +723,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'transparent',
         borderRadius: 0,
         overflow: 'hidden',
-        WebkitTapHighlightColor: 'transparent', // This helps on mobile web
+        WebkitTapHighlightColor: 'transparent',
       },
     }),
     opacity: 1,

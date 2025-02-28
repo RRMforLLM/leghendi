@@ -7,7 +7,7 @@ import Colors from '@/constants/Colors';
 import { typography, spacing } from '@/constants/Typography';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Button, Dialog, Icon } from '@rneui/themed'; // Update import to include Button
+import { Button, Dialog, Icon } from '@rneui/themed';
 
 type ViewType = 'week' | 'month';
 
@@ -23,7 +23,7 @@ interface Section {
 }
 
 const ElementDetailsDialog = ({ element, isVisible, onClose, theme, t, language }) => {
-  if (!element) return null;  // Add this guard clause
+  if (!element) return null;
   
   return (
     <Dialog
@@ -101,10 +101,9 @@ const sortElementsByUrgency = (elements: CalendarElement[]) => {
 };
 
 export default function CalendarScreen() {
-  // Add ScrollView ref
   const weekScrollRef = useRef<ScrollView>(null);
   
-  const { t, language } = useLanguage(); // Add language here
+  const { t, language } = useLanguage();
   const navigation = useNavigation();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'light'];
@@ -134,21 +133,17 @@ export default function CalendarScreen() {
   };
 
   useEffect(() => {
-    // Set up navigation options
     navigation.setOptions({
       title: t('calendar.header'),
       headerBackTitle: t('agenda.header'),
     });
 
-    // Set current week dates immediately when component mounts
     setCurrentWeek(getWeekDates(currentDate));
 
-    // Parse and organize elements by day with sections
     if (encodedElements) {
       try {
         const elements: CalendarElement[] = JSON.parse(decodeURIComponent(encodedElements as string));
-        
-        // Extract unique sections
+
         const uniqueSections = Array.from(new Set(elements.map(e => e.sectionId)))
           .filter(Boolean)
           .map(sectionId => ({
@@ -157,7 +152,6 @@ export default function CalendarScreen() {
           }));
         setSections(uniqueSections);
 
-        // Organize elements by day
         const organized: {[key: string]: CalendarElement[]} = {};
         elements.forEach(element => {
           const dateKey = new Date(element.deadline).toDateString();
@@ -172,20 +166,17 @@ export default function CalendarScreen() {
         console.error('Error parsing elements:', error);
       }
     }
-  }, [encodedElements, currentDate]); // Add currentDate as dependency
+  }, [encodedElements, currentDate]);
 
-  // Add this effect to update week when currentDate changes
   useEffect(() => {
     if (viewType === 'week') {
       setCurrentWeek(getWeekDates(currentDate));
     }
   }, [currentDate, viewType]);
 
-  // Modify this effect for better scroll timing
   useEffect(() => {
     if (weekScrollRef.current && viewType === 'week') {
-      const scrollOffset = (120 + 4) * 3; // dayWidth + gap * 3 days to center
-      // Wait for next frame to ensure layout is complete
+      const scrollOffset = (120 + 4) * 3;
       requestAnimationFrame(() => {
         weekScrollRef.current?.scrollTo({
           x: scrollOffset,
@@ -193,13 +184,11 @@ export default function CalendarScreen() {
         });
       });
     }
-  }, [viewType, currentWeek]); // Add currentWeek as dependency
+  }, [viewType, currentWeek]);
 
-  // Add this new effect to handle date changes
   useEffect(() => {
     if (viewType === 'week') {
       setCurrentWeek(getWeekDates(currentDate));
-      // Scroll after week is updated
       const scrollOffset = (120 + 4) * 3;
       requestAnimationFrame(() => {
         weekScrollRef.current?.scrollTo({
@@ -213,7 +202,6 @@ export default function CalendarScreen() {
   const getWeekDates = (date: Date) => {
     const today = new Date(date);
     const dates = [];
-    // Add 3 days before and 3 days after to allow centering
     for (let i = -3; i <= 3; i++) {
       const newDate = new Date(today);
       newDate.setDate(today.getDate() + i);
@@ -257,21 +245,18 @@ export default function CalendarScreen() {
     const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
     const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
     const days: Date[] = [];
-    
-    // Add padding days from previous month
+
     for (let i = 0; i < firstDay.getDay(); i++) {
       const prevDate = new Date(firstDay);
       prevDate.setDate(prevDate.getDate() - (firstDay.getDay() - i));
       days.push(prevDate);
     }
-    
-    // Add days of current month
+
     for (let i = 1; i <= lastDay.getDate(); i++) {
       days.push(new Date(date.getFullYear(), date.getMonth(), i));
     }
-    
-    // Add padding days from next month if needed
-    const remainingDays = 42 - days.length; // 6 rows × 7 days
+
+    const remainingDays = 42 - days.length;
     for (let i = 1; i <= remainingDays; i++) {
       const nextDate = new Date(lastDay);
       nextDate.setDate(nextDate.getDate() + i);
@@ -516,7 +501,7 @@ export default function CalendarScreen() {
           horizontal 
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.weekContainer}
-          contentOffset={{ x: (120 + 4) * 3, y: 0 }} // Add this line
+          contentOffset={{ x: (120 + 4) * 3, y: 0 }}
         >
           {currentWeek.map(date => renderDay(date))}
         </ScrollView>
@@ -596,10 +581,10 @@ const styles = StyleSheet.create({
   },
   elementTextContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.05)', // Add subtle background
+    backgroundColor: 'rgba(0,0,0,0.05)',
     borderRadius: 12,
     padding: spacing.sm,
-    paddingHorizontal: spacing.md, // Add more horizontal padding
+    paddingHorizontal: spacing.md,
   },
   elementText: {
     ...typography.caption,

@@ -17,7 +17,7 @@ export function useCredits() {
 
       if (error) throw error;
       setCredits(data.amount || 0);
-      return data.amount || 0; // Return the value for immediate use if needed
+      return data.amount || 0;
     } catch (error) {
       console.error('Error fetching credits:', error);
       return 0;
@@ -26,7 +26,7 @@ export function useCredits() {
 
   return {
     credits,
-    setCredits, // Export setCredits for manual updates
+    setCredits,
     fetchCredits
   };
 }

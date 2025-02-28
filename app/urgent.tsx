@@ -9,7 +9,7 @@ import { useNetworkState } from '@/hooks/useNetworkState';
 import { storeData, getData, KEYS } from '@/utils/offlineStorage';
 import OfflineBanner from '@/components/OfflineBanner';
 import { useState, useEffect } from 'react';
-import { useLanguage } from '@/contexts/LanguageContext'; // Add this import
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface UrgentItem {
   id: number;
@@ -20,7 +20,7 @@ interface UrgentItem {
 }
 
 export default function UrgentScreen() {
-  const { language, t } = useLanguage(); // Add useLanguage hook
+  const { language, t } = useLanguage();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'light'];
   const isOnline = useNetworkState();
@@ -32,10 +32,8 @@ export default function UrgentScreen() {
       if (items) {
         const parsedItems = JSON.parse(decodeURIComponent(items as string));
         setUrgentItems(parsedItems);
-        // Cache the urgent items whenever we receive new ones
         await storeData(KEYS.URGENT_ITEMS, parsedItems);
       } else {
-        // If no items provided via params, try to load from cache
         const cachedItems = await getData(KEYS.URGENT_ITEMS);
         setUrgentItems(cachedItems || []);
       }

@@ -3,7 +3,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 serve(async (req) => {
   try {
-    // Get auth header
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       return new Response(
@@ -12,7 +11,6 @@ serve(async (req) => {
       )
     }
 
-    // Create privileged admin client
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -24,7 +22,6 @@ serve(async (req) => {
       }
     )
 
-    // Create regular client to verify the user's token
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -36,7 +33,6 @@ serve(async (req) => {
       }
     )
 
-    // Get the user from their session
     const { data: { user }, error: userError } = await supabase.auth.getUser(
       authHeader.replace('Bearer ', '')
     )
@@ -48,7 +44,6 @@ serve(async (req) => {
       )
     }
 
-    // First delete the profile (this will cascade to all related data)
     const { error: profileError } = await supabaseAdmin
       .from('Profile')
       .delete()
@@ -61,7 +56,6 @@ serve(async (req) => {
       )
     }
 
-    // Then delete the auth user
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(
       user.id
     )
