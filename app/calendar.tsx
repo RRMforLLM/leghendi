@@ -181,18 +181,34 @@ export default function CalendarScreen() {
     }
   }, [currentDate, viewType]);
 
-  // Add this effect to scroll to current day
+  // Modify this effect for better scroll timing
   useEffect(() => {
     if (weekScrollRef.current && viewType === 'week') {
-      // Wait for layout to complete
-      setTimeout(() => {
+      const scrollOffset = (120 + 4) * 3; // dayWidth + gap * 3 days to center
+      // Wait for next frame to ensure layout is complete
+      requestAnimationFrame(() => {
         weekScrollRef.current?.scrollTo({
-          x: (120 + 4) * 3, // dayWidth + gap * number of days to center
+          x: scrollOffset,
           animated: false
         });
-      }, 0);
+      });
     }
-  }, [viewType, currentDate]);
+  }, [viewType, currentWeek]); // Add currentWeek as dependency
+
+  // Add this new effect to handle date changes
+  useEffect(() => {
+    if (viewType === 'week') {
+      setCurrentWeek(getWeekDates(currentDate));
+      // Scroll after week is updated
+      const scrollOffset = (120 + 4) * 3;
+      requestAnimationFrame(() => {
+        weekScrollRef.current?.scrollTo({
+          x: scrollOffset,
+          animated: false
+        });
+      });
+    }
+  }, [currentDate, viewType]);
 
   const getWeekDates = (date: Date) => {
     const today = new Date(date);
@@ -500,6 +516,7 @@ export default function CalendarScreen() {
           horizontal 
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.weekContainer}
+          contentOffset={{ x: (120 + 4) * 3, y: 0 }} // Add this line
         >
           {currentWeek.map(date => renderDay(date))}
         </ScrollView>
