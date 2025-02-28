@@ -315,11 +315,49 @@ export default function HomeScreen() {
 
     try {
       if (!isOnline) {
-        // ...existing offline handling...
-        const cachedElements = await getData(KEYS.AGENDA_ELEMENTS);
-        const cachedCompleted = await getData(KEYS.COMPLETED_ELEMENTS);
-        if (cachedElements) setAgendaElements(cachedElements);
-        if (cachedCompleted) setCompletedElements(cachedCompleted);
+        // Load cached elements from storage
+        const [cachedElements, cachedCompleted, cachedElementsByDay] = await Promise.all([
+          getData(KEYS.AGENDA_ELEMENTS),
+          getData(KEYS.COMPLETED_ELEMENTS),
+          getData(KEYS.INDIVIDUAL_AGENDAS)
+        ]);
+
+        // Set urgent elements
+        if (cachedElements) {
+          setAgendaElements(cachedElements);
+        }
+
+        // Set completed elements
+        if (cachedCompleted) {
+          setCompletedElements(cachedCompleted);
+        }
+
+        // Set elements by day from individual agenda cache
+        if (cachedElementsByDay) {
+          const organized: {[key: string]: AgendaElement[]} = {};
+          Object.values(cachedElementsByDay).forEach(agendaData => {
+            if (agendaData?.data?.agenda?.sections) {
+              agendaData.data.agenda.sections.forEach(section => {
+                section.elements?.forEach(element => {
+                  if (!cachedCompleted?.find(ce => ce.id === element.id)) {
+                    const dateKey = new Date(element.deadline).toDateString();
+                    if (!organized[dateKey]) {
+                      organized[dateKey] = [];
+                    }
+                    organized[dateKey].push({
+                      ...element,
+                      isUrgent: cachedElements?.some(ue => ue.id === element.id),
+                      sectionId: section.id,
+                      sectionName: section.name
+                    });
+                  }
+                });
+              });
+            }
+          });
+          setElementsByDay(organized);
+          setCurrentWeek(getWeekDates(new Date()));
+        }
         return;
       }
 
