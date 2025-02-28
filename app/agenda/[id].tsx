@@ -1316,30 +1316,45 @@ export default function AgendaScreen() {
           )}
         </View>
 
-        <View style={styles.dangerZone}>
-          <Text style={[typography.h3, { color: theme.error, marginBottom: spacing.md }]}>
-            {t('settings.dangerZone')}
-          </Text>
+        {/* Replace the old danger zone with this */}
+        <View style={[styles.dangerActions, { borderTopColor: theme.border }]}>
           {isCreator ? (
-            <Button
-              title={t('agenda.deleteAgenda')}
+            <Pressable
               onPress={() => deleteAgenda(agenda.id, agenda.creator_id)}
-              containerStyle={[styles.button, styles.deleteButton]}
-              buttonStyle={{ backgroundColor: theme.error }}
-              titleStyle={{ color: theme.buttonText }}
-            />
+              style={({ pressed }) => [
+                styles.dangerAction,
+                { opacity: pressed ? 0.7 : 1 }
+              ]}
+            >
+              <Icon
+                name="trash"
+                type="font-awesome-5"
+                size={20}
+                color={theme.error}
+              />
+              <Text style={[styles.dangerActionText, { color: theme.error }]}>
+                {t('agenda.deleteAgenda')}
+              </Text>
+            </Pressable>
           ) : (
-            <Button
-              title={t('agenda.leaveAgenda')}
+            <Pressable
               onPress={handleLeaveAgenda}
-              containerStyle={[styles.button, styles.deleteButton]}
-              buttonStyle={{ backgroundColor: theme.error }}
-              titleStyle={{ color: theme.buttonText }}
-            />
+              style={({ pressed }) => [
+                styles.dangerAction,
+                { opacity: pressed ? 0.7 : 1 }
+              ]}
+            >
+              <Icon
+                name="sign-out-alt"
+                type="font-awesome-5"
+                size={20}
+                color={theme.error}
+              />
+              <Text style={[styles.dangerActionText, { color: theme.error }]}>
+                {t('agenda.leaveAgenda')}
+              </Text>
+            </Pressable>
           )}
-          <Text style={[typography.caption, { color: theme.placeholder, marginTop: spacing.xs }]}>
-            {isCreator ? t('agenda.deleteWarning') : t('agenda.leaveWarning')}
-          </Text>
         </View>
       </ScrollView>
 
@@ -1741,21 +1756,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  dangerZone: {
+  dangerActions: {
     marginTop: spacing.xl * 2,
     marginBottom: spacing.xl,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: '#ff0000',
-    borderRadius: 8,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
     opacity: 0.8,
   },
-  button: {
-    marginVertical: spacing.xs,
-    width: '100%',
-    height: 48, // Make buttons taller like in settings
+  dangerAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.md,
+    gap: spacing.sm,
   },
-  deleteButton: {
-    marginBottom: spacing.xs,
+  dangerActionText: {
+    ...typography.body,
+    fontWeight: '500',
   },
 });
