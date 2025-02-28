@@ -315,24 +315,20 @@ export default function HomeScreen() {
 
     try {
       if (!isOnline) {
-        // Load cached elements from storage
         const [cachedElements, cachedCompleted, cachedElementsByDay] = await Promise.all([
           getData(KEYS.AGENDA_ELEMENTS),
           getData(KEYS.COMPLETED_ELEMENTS),
           getData(KEYS.INDIVIDUAL_AGENDAS)
         ]);
 
-        // Set urgent elements
         if (cachedElements) {
           setAgendaElements(cachedElements);
         }
 
-        // Set completed elements
         if (cachedCompleted) {
           setCompletedElements(cachedCompleted);
         }
 
-        // Set elements by day from individual agenda cache
         if (cachedElementsByDay) {
           const organized: {[key: string]: AgendaElement[]} = {};
           Object.values(cachedElementsByDay).forEach(agendaData => {
