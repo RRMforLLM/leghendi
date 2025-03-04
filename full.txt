@@ -1,0 +1,131 @@
+Aghendi: Your Social Productivity Hub
+
+MAIN TABS
+---------
+Home Tab
+- View all your agendas in a scrollable list
+- See urgent elements that need immediate attention (max 2 visible)
+- Quick access to create or join new agendas
+- Mini calendar view of your upcoming week
+- Display your current Vibes balance
+- Create new agendas with public/private code settings
+- Join existing agendas using exact name and code
+
+Feed Tab
+- View list of all users on platform
+- View user profiles with avatars and usernames
+- Show current user highlighted
+- Navigate to user profiles
+- Your own profile directs to Profile tab
+- Pull to refresh user list
+- Offline support with cached user data
+- Display your Vibes balance in header
+
+Profile Tab
+- View and edit your username
+- Change profile picture
+- See your basic account information
+- Access app settings and preferences
+- Toggle dark/light mode
+- Switch between available languages
+- Sign out of your account
+
+SCREENS & FEATURES
+-----------------
+Agenda View
+- View and manage a single agenda
+- Create, edit, and delete sections
+- Add, edit, and delete elements within sections
+- Mark elements as urgent or completed
+- View and manage agenda members
+- Enable/disable comments (creator only)
+- Post and delete comments
+- Access completed elements history
+- View elements in calendar format
+- Leave agenda (for members)
+- Delete agenda (for creator)
+
+Calendar View
+- Toggle between week and month views
+- Filter elements by agenda section
+- Center on current day by default
+- Navigate between weeks/months
+- View element details in popups
+- Visual markers for urgent elements
+- Quick access to parent agendas
+
+Members Management
+- View all agenda members
+- Remove existing members (creator only)
+- Assign editor privileges (creator only)
+- View member profiles
+
+Completed Elements
+- List all completed elements (of the agenda)
+- Show completion dates
+
+Urgent Elements
+- List all urgent elements
+- Quick access to parent agendas
+- Mark as completed
+- Remove urgent status
+
+User Profile Screen
+- View user's avatar and username
+- Display user's description
+- View and give reactions (hug, heart, kiss)
+- Hugs are free and toggleable
+- Hearts cost 5 Vibes
+- Kisses cost 10 Vibes
+- See reaction statistics for user
+- Post comments on profile if enabled
+- View all comments with timestamps
+- Cached profile data for offline view
+- Display your Vibes balance in header
+- Navigate to user's profile from comments
+- Pull to refresh profile data
+- Animated reaction effects
+- Block self-view (redirects to Profile tab)
+
+Store Screen
+- View Vibes bundle options
+- Four bundle tiers available:
+  * Starter (50 Vibes - $0.99)
+  * Popular (150 Vibes - $2.49)
+  * Super (400 Vibes - $4.99)
+  * Mega (1000 Vibes - $9.99)
+- Visual price/value comparison
+- Popular bundle highlighting
+- Animated falling Vibes icons
+- Coming soon placeholder (not yet implemented)
+- Preview Vibes amounts before purchase
+
+CORE FEATURES
+------------
+Offline Support
+- View cached agenda data
+- Access previously loaded elements
+- Automatic sync when online
+
+Vibes System
+- Display current balance
+- View in header area
+- Static balance display
+
+Privacy Features
+- Public/Private agenda codes
+- Member-only access
+- Editor role system
+- Creator privileges
+
+Language Support
+- English, Spanish and French languages
+- Date/time localization
+- Adaptive text direction
+- Translatable interface
+
+This productivity app helps you:
+1. Organize tasks across multiple agendas
+2. Collaborate with team members
+3. Track element completion and urgency
+4. Maintain agenda privacy settings
