@@ -17,21 +17,46 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const getDeviceLanguage = async () => {
       try {
+        // For testing: uncomment to clear saved language
+        // await AsyncStorage.removeItem('userLanguage');
+        
         const savedLang = await AsyncStorage.getItem('userLanguage');
+        console.log('Saved language in storage:', savedLang);
+        
         if (savedLang && savedLang in SUPPORTED_LANGUAGES) {
+          console.log('Using saved language preference:', savedLang);
           setLanguageState(savedLang as Language);
           return;
         }
 
-        const deviceLanguage =
-          Platform.OS === 'ios'
-            ? NativeModules.SettingsManager.settings.AppleLocale ||
-              NativeModules.SettingsManager.settings.AppleLanguages[0]
-            : NativeModules.I18nManager.localeIdentifier;
+        // Get device language based on platform
+        let deviceLanguage;
+        if (Platform.OS === 'ios') {
+          deviceLanguage = NativeModules.SettingsManager.settings.AppleLanguages[0];
+          console.log('iOS language detection:', deviceLanguage);
+        } else {
+          // For Android, try multiple methods to get the locale
+          deviceLanguage = 
+            NativeModules.I18nManager?.getConstants?.().localeIdentifier || // primary method
+            NativeModules.Settings?.settings?.locale || // backup method
+            NativeModules.I18nManager?.locale || // fallback
+            Intl.DateTimeFormat().resolvedOptions().locale; // last resort
+          
+          console.log('Android locale detection methods:', {
+            localeIdentifier: NativeModules.I18nManager?.getConstants?.().localeIdentifier,
+            settings: NativeModules.Settings?.settings?.locale,
+            i18nLocale: NativeModules.I18nManager?.locale,
+            intlLocale: Intl.DateTimeFormat().resolvedOptions().locale
+          });
+        }
+        console.log('Raw device language:', deviceLanguage);
 
-        const languageCode = deviceLanguage.substring(0, 2);
+        const langCode = deviceLanguage.toLowerCase().split(/[-_]/)[0];
+        console.log('Extracted language code:', langCode);
 
-        const newLang = languageCode in SUPPORTED_LANGUAGES ? languageCode : 'en';
+        const newLang = ['en', 'es', 'fr'].includes(langCode) ? langCode : 'en';
+        console.log('Setting new language to:', newLang);
+        
         setLanguageState(newLang as Language);
         await AsyncStorage.setItem('userLanguage', newLang);
       } catch (error) {
