@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
-import { StyleSheet, Alert, View as RNView, FlatList, ScrollView } from "react-native"
+import { StyleSheet, Alert, View as RNView, FlatList, ScrollView, Pressable } from "react-native"
 import { supabase } from "@/lib/supabase"
 import { Button, Input, Avatar, Icon } from "@rneui/themed"
 import { View, Text } from "@/components/Themed"
@@ -27,6 +27,7 @@ interface ProfileComment {
   text: string
   created_at: string
   author: {
+    id: string
     username: string
     avatar_url: string | null
   }
@@ -129,7 +130,11 @@ export default function ProfileScreen() {
             id,
             text,
             created_at,
-            author:Profile!author_id(username, avatar_url)
+            author:Profile!author_id(
+              id,
+              username, 
+              avatar_url
+            )
           `)
           .eq('profile_id', userId)
           .order('created_at', { ascending: false })
@@ -410,7 +415,11 @@ export default function ProfileScreen() {
           id,
           text,
           created_at,
-          author:Profile!author_id(username, avatar_url)
+          author:Profile!author_id(
+            id,
+            username, 
+            avatar_url
+          )
         `)
         .eq('profile_id', session.user.id)
         .order('created_at', { ascending: false });
@@ -704,6 +713,55 @@ function Account({
     }
   };
 
+  const renderComment = ({ item }: { item: AgendaComment }) => (
+    <View key={item.id.toString()} style={[styles.commentContainer, { backgroundColor: theme.card }]}>
+      <RNView style={styles.commentHeader}>
+        <RNView style={styles.commentAuthor}>
+          <Pressable 
+            onPress={() => {
+              if (session?.user?.id === comment.author.id) {
+                return; // Stay on current profile
+              }
+              router.push({
+                pathname: "/user-profile",
+                params: { id: comment.author.id }
+              });
+            }}
+            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+          >
+            <RNView style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Avatar
+                size={24}
+                rounded
+                source={{ uri: comment.author.avatar_url || DEFAULT_AVATAR }}
+                containerStyle={styles.commentAvatar}
+              />
+              <Text style={[typography.caption, { color: theme.text }]}>
+                {comment.author.username}
+              </Text>
+            </RNView>
+          </Pressable>
+        </RNView>
+        <RNView style={styles.commentActions}>
+          <Text style={[typography.caption, { color: theme.placeholder }]}>
+            {getRelativeTime(comment.created_at, t, language)}
+          </Text>
+          {isDestructiveMode && (
+            <Icon
+              name="eraser"
+              type="font-awesome-5"
+              size={14}
+              color={theme.error}
+              onPress={() => handleDeleteComment(comment.id)}
+              containerStyle={{ marginLeft: spacing.sm }}
+            />
+          )}
+        </RNView>
+      </RNView>
+      <TruncatedText text={comment.text} />
+    </View>
+  );
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {!isOnline && <OfflineBanner />}
@@ -900,15 +958,30 @@ function Account({
                     <View key={comment.id.toString()} style={[styles.commentContainer, { backgroundColor: theme.card }]}>
                       <RNView style={styles.commentHeader}>
                         <RNView style={styles.commentAuthor}>
-                          <Avatar
-                            size={24}
-                            rounded
-                            source={{ uri: comment.author.avatar_url || DEFAULT_AVATAR }}
-                            containerStyle={styles.commentAvatar}
-                          />
-                          <Text style={[typography.caption, { color: theme.text }]}>
-                            {comment.author.username}
-                          </Text>
+                          <Pressable 
+                            onPress={() => {
+                              if (session?.user?.id === comment.author.id) {
+                                return; // Stay on current profile
+                              }
+                              router.push({
+                                pathname: "/user-profile",
+                                params: { id: comment.author.id }
+                              });
+                            }}
+                            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                          >
+                            <RNView style={{ flexDirection: 'row', alignItems: 'center' }}>
+                              <Avatar
+                                size={24}
+                                rounded
+                                source={{ uri: comment.author.avatar_url || DEFAULT_AVATAR }}
+                                containerStyle={styles.commentAvatar}
+                              />
+                              <Text style={[typography.caption, { color: theme.text }]}>
+                                {comment.author.username}
+                              </Text>
+                            </RNView>
+                          </Pressable>
                         </RNView>
                         <RNView style={styles.commentActions}>
                           <Text style={[typography.caption, { color: theme.placeholder }]}>

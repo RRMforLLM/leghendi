@@ -24,6 +24,7 @@ interface AgendaComment {
   text: string;
   created_at: string;
   author: {
+    id: string;
     username: string;
     avatar_url: string | null;
   };
@@ -152,7 +153,11 @@ export default function AgendaScreen() {
             id,
             text,
             created_at,
-            author:Profile!author_id(username, avatar_url)
+            author:Profile!author_id(
+              id,
+              username,
+              avatar_url
+            )
           `)
           .eq('agenda_id', id)
           .order('created_at', { ascending: false }),
@@ -869,15 +874,31 @@ export default function AgendaScreen() {
     <RNView style={[styles.commentContainer, { backgroundColor: theme.card }]}>
       <RNView style={styles.commentHeader}>
         <RNView style={styles.commentAuthor}>
-          <Avatar
-            size={24}
-            rounded
-            source={{ uri: item.author.avatar_url || DEFAULT_AVATAR }}
-            containerStyle={styles.commentAvatar}
-          />
-          <Text style={[typography.caption, { color: theme.text }]}>
-            {item.author.username}
-          </Text>
+          <Pressable 
+            onPress={() => {
+              if (session?.user?.id === item.author.id) {
+                router.push('/three');
+              } else {
+                router.push({
+                  pathname: "/user-profile",
+                  params: { id: item.author.id }
+                });
+              }
+            }}
+            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+          >
+            <RNView style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Avatar
+                size={24}
+                rounded
+                source={{ uri: item.author.avatar_url || DEFAULT_AVATAR }}
+                containerStyle={styles.commentAvatar}
+              />
+              <Text style={[typography.caption, { color: theme.text }]}>
+                {item.author.username}
+              </Text>
+            </RNView>
+          </Pressable>
         </RNView>
         <RNView style={styles.commentActions}>
           <Text style={[typography.caption, { color: theme.placeholder }]}>

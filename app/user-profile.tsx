@@ -1,4 +1,4 @@
-import { StyleSheet, ScrollView, Platform, Alert, Animated, TouchableWithoutFeedback, View as RNView } from 'react-native';
+import { StyleSheet, ScrollView, Platform, Alert, Animated, TouchableWithoutFeedback, View as RNView, Pressable } from 'react-native';
 import { View, Text } from '@/components/Themed';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useState, useEffect, useRef } from 'react';
@@ -31,6 +31,7 @@ interface ProfileComment {
   text: string;
   created_at: string;
   author: {
+    id: string;
     username: string;
     avatar_url: string | null;
   };
@@ -313,7 +314,11 @@ const UserProfileScreen = () => {
             id,
             text,
             created_at,
-            author:Profile!author_id(username, avatar_url)
+            author:Profile!author_id(
+              id,
+              username, 
+              avatar_url
+            )
           `)
           .eq('profile_id', id)
           .order('created_at', { ascending: false }),
@@ -422,15 +427,36 @@ const UserProfileScreen = () => {
     <RNView style={[styles.commentContainer, { backgroundColor: theme.card }]}>
       <RNView style={styles.commentHeader}>
         <RNView style={styles.commentAuthor}>
-          <Avatar
-            size={24}
-            rounded
-            source={{ uri: item.author.avatar_url || DEFAULT_AVATAR }}
-            containerStyle={styles.commentAvatar}
-          />
-          <Text style={[typography.caption, { color: theme.text }]}>
-            {item.author.username}
-          </Text>
+          <Pressable 
+            onPress={() => {
+              if (currentUserId === item.author.id) {
+                // Navigate to own profile
+                router.push('/three');
+              } else if (id === item.author.id) {
+                // Already viewing this user's profile, do nothing
+                return;
+              } else {
+                // Navigate to another user's profile
+                router.push({
+                  pathname: "/user-profile",
+                  params: { id: item.author.id }
+                });
+              }
+            }}
+            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+          >
+            <RNView style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Avatar
+                size={24}
+                rounded
+                source={{ uri: item.author.avatar_url || DEFAULT_AVATAR }}
+                containerStyle={styles.commentAvatar}
+              />
+              <Text style={[typography.caption, { color: theme.text }]}>
+                {item.author.username}
+              </Text>
+            </RNView>
+          </Pressable>
         </RNView>
         <Text style={[typography.caption, { color: theme.placeholder }]}>
           {getRelativeTime(item.created_at, t, language)}
@@ -582,15 +608,36 @@ const UserProfileScreen = () => {
                   <View key={comment.id.toString()} style={[styles.commentCard, { backgroundColor: theme.card }]}>
                     <RNView style={styles.commentHeader}>
                       <RNView style={styles.commentAuthor}>
-                        <Avatar
-                          size={24}
-                          rounded
-                          source={{ uri: comment.author.avatar_url || DEFAULT_AVATAR }}
-                          containerStyle={styles.commentAvatar}
-                        />
-                        <Text style={[typography.caption, { color: theme.text }]}>
-                          {comment.author.username}
-                        </Text>
+                        <Pressable 
+                          onPress={() => {
+                            if (currentUserId === comment.author.id) {
+                              // Navigate to own profile
+                              router.push('/three');
+                            } else if (id === comment.author.id) {
+                              // Already viewing this user's profile, do nothing
+                              return;
+                            } else {
+                              // Navigate to another user's profile
+                              router.push({
+                                pathname: "/user-profile",
+                                params: { id: comment.author.id }
+                              });
+                            }
+                          }}
+                          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                        >
+                          <RNView style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Avatar
+                              size={24}
+                              rounded
+                              source={{ uri: comment.author.avatar_url || DEFAULT_AVATAR }}
+                              containerStyle={styles.commentAvatar}
+                            />
+                            <Text style={[typography.caption, { color: theme.text }]}>
+                              {comment.author.username}
+                            </Text>
+                          </RNView>
+                        </Pressable>
                       </RNView>
                       <Text style={[typography.caption, { color: theme.placeholder }]}>
                         {getRelativeTime(comment.created_at, t, language)}
