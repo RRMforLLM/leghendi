@@ -32,17 +32,32 @@ const ElementDetailsDialog = ({ element, isVisible, onClose, theme, t, language 
       overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
     >
       <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
-        <Text style={[styles.dialogTitle, { color: theme.text }]}>
-          {element.subject}
-        </Text>
-        {element.details && (
-          <Text style={[styles.dialogDetails, { color: theme.text }]}>
-            {element.details}
+        <ScrollView 
+          style={styles.elementDialogScroll}
+          showsVerticalScrollIndicator={true}
+        >
+          <Text style={[styles.dialogTitle, { color: theme.text }]}>
+            {element.subject}
           </Text>
-        )}
-        <Text style={[styles.dialogDeadline, { color: theme.placeholder }]}>
-          {t('agenda.due')}: {new Date(element.deadline).toLocaleDateString(language)}
-        </Text>
+          {element.details && (
+            <Text style={[styles.dialogDetails, { color: theme.text }]}>
+              {element.details}
+            </Text>
+          )}
+          <Text style={[styles.dialogDeadline, { color: theme.placeholder }]}>
+            {t('agenda.due')}: {new Date(element.deadline).toLocaleDateString(language)}
+          </Text>
+        </ScrollView>
+        <Button
+          title={t('calendar.viewAgenda')}
+          type="clear"
+          titleStyle={{ color: theme.tint }}
+          containerStyle={styles.viewAgendaButton}
+          onPress={() => {
+            onClose();
+            router.push(`/agenda/${element.section.agenda.id}`);
+          }}
+        />
       </View>
     </Dialog>
   );
@@ -738,5 +753,9 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontSize: 10,
     fontWeight: '600',
+  },
+  elementDialogScroll: {
+    maxHeight: 300,
+    marginBottom: spacing.md,
   },
 });

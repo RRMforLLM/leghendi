@@ -41,19 +41,22 @@ const ElementDetailsDialog = ({ element, isVisible, onClose, theme, t, language 
       overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
     >
       <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
-        <Text style={[styles.dialogTitle, { color: theme.text }]}>
-          {element.subject}
-        </Text>
-        {element.details && (
-          <Text style={[styles.dialogDetails, { color: theme.text }]}>
-            {element.details}
+        <ScrollView 
+          style={styles.elementDialogScroll}
+          showsVerticalScrollIndicator={true}
+        >
+          <Text style={[styles.dialogTitle, { color: theme.text }]}>
+            {element.subject}
           </Text>
-        )}
-        <Text style={[styles.dialogDeadline, { color: theme.placeholder }]}>
-          {t('agenda.due')}: {new Date(element.deadline).toLocaleDateString(language)}
-        </Text>
-        
-        {/* Add this button */}
+          {element.details && (
+            <Text style={[styles.dialogDetails, { color: theme.text }]}>
+              {element.details}
+            </Text>
+          )}
+          <Text style={[styles.dialogDeadline, { color: theme.placeholder }]}>
+            {t('agenda.due')}: {new Date(element.deadline).toLocaleDateString(language)}
+          </Text>
+        </ScrollView>
         <Button
           title={t('home.viewAgenda')}
           type="clear"
@@ -1509,5 +1512,9 @@ const styles = StyleSheet.create({
   },
   copyIcon: {
     marginLeft: spacing.xs,
+  },
+  elementDialogScroll: {
+    maxHeight: 300,
+    marginBottom: spacing.md,
   },
 })
