@@ -697,6 +697,14 @@ export default function AgendaScreen() {
     }));
   };
 
+  const sortElementsByUrgency = (elements: AgendaElement[]) => {
+    return [...elements].sort((a, b) => {
+      if (a.isUrgent && !b.isUrgent) return -1;
+      if (!a.isUrgent && b.isUrgent) return 1;
+      return 0;
+    });
+  };
+
   const renderSection = ({ item: section }) => (
     <View style={styles.sectionContainer}>
       <View style={[
@@ -750,7 +758,10 @@ export default function AgendaScreen() {
       </View>
       {!collapsedSections[section.id] && (
         <FlatList
-          data={section.elements}
+          data={sortElementsByUrgency(section.elements.map(element => ({
+            ...element,
+            isUrgent: urgentElements[element.id]
+          })))}
           renderItem={renderElement}
           keyExtractor={item => `element-${item.id}`}
           style={styles.elementsList}
