@@ -622,70 +622,102 @@ export default function AgendaScreen() {
   const renderElement = ({ item }: { item: AgendaElement }) => (
     <View style={[styles.elementCard, { backgroundColor: theme.card }]}>
       <View style={[styles.elementHeader, { backgroundColor: theme.card }]}>
-        <View style={[styles.elementTitleContainer, { backgroundColor: theme.card }]}>
-          <Text 
-            style={[styles.elementTitle, { color: theme.text }]}
-            numberOfLines={1} 
-            ellipsizeMode="tail"
+        {/* Left side controls */}
+        <View style={[styles.elementControls, { backgroundColor: theme.card }]}>
+          {/* Urgent flag button - now above complete button */}
+          <Pressable
+            onPress={() => toggleElementState(item.id, 'urgent')}
+            style={({ pressed }) => [
+              styles.urgentButton,
+              { opacity: pressed ? 0.7 : 1 }
+            ]}
+            hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
           >
-            {item.subject}
-          </Text>
-          <View style={[styles.elementActions, { backgroundColor: theme.card }]}>
-            {(isCreator || isEditor) && (
-              <Icon
-                name="edit"
-                type="font-awesome-5"
-                size={14}
-                color={theme.text}
-                onPress={() => {
-                  setEditingElement(item);
-                  setShowEditElementDialog(true);
-                }}
-                containerStyle={styles.actionIcon}
-                hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-              />
-            )}
             <Icon
-              name="exclamation"
+              name="flag"
               type="font-awesome-5"
-              size={14}
+              size={20}
               color={urgentElements[item.id] ? theme.error : theme.placeholder}
-              onPress={() => toggleElementState(item.id, 'urgent')}
-              containerStyle={styles.actionIcon}
-              hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+              solid={urgentElements[item.id]}
             />
+          </Pressable>
+
+          {/* Complete button */}
+          <Pressable
+            onPress={() => toggleElementState(item.id, 'completed')}
+            style={({ pressed }) => [
+              styles.completeButton,
+              { 
+                backgroundColor: theme.card,
+                borderColor: completedElements[item.id] ? theme.tint : theme.placeholder,
+                opacity: pressed ? 0.7 : 1
+              }
+            ]}
+            hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+          >
             <Icon
-              name="check-circle"
+              name={completedElements[item.id] ? "check-circle" : "circle"}
               type="font-awesome-5"
-              size={14}
+              size={24}
               color={completedElements[item.id] ? theme.tint : theme.placeholder}
-              onPress={() => toggleElementState(item.id, 'completed')}
-              containerStyle={styles.actionIcon}
-              hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+              solid={completedElements[item.id]}
             />
-          </View>
+          </Pressable>
         </View>
-        {(isCreator || isEditor) && (
-          <Icon
-            name="trash"
-            type="font-awesome-5"
-            size={14}
-            color={theme.error}
-            onPress={() => handleDeleteElement(item)}
-            containerStyle={styles.deleteIcon}
-          />
-        )}
-      </View>
-      {item.details && (
-        <TruncatedText 
-          text={item.details} 
-          textStyle={[styles.elementDetails, { color: theme.text }]}
-        />
-      )}
-      <View style={[styles.elementMeta, { backgroundColor: theme.card }]}>
-        <Text style={[styles.deadline, { color: theme.text }]}>
-          {t('agenda.due')}: {new Date(item.deadline).toLocaleDateString(language)}
-        </Text>
+
+        {/* Main content area */}
+        <View style={[styles.elementContent, { backgroundColor: theme.card }]}>
+          <View style={[styles.titleRow, { backgroundColor: theme.card }]}>
+            <Text 
+              style={[
+                styles.elementTitle,
+                { color: theme.text },
+                completedElements[item.id] && styles.completedText
+              ]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {item.subject}
+            </Text>
+            {(isCreator || isEditor) && (
+              <View style={[styles.titleActions, { backgroundColor: theme.card }]}>
+                <Icon
+                  name="edit"
+                  type="font-awesome-5"
+                  size={16}
+                  color={theme.text}
+                  onPress={() => {
+                    setEditingElement(item);
+                    setShowEditElementDialog(true);
+                  }}
+                  containerStyle={styles.actionIcon}
+                  hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                />
+                <Icon
+                  name="trash"
+                  type="font-awesome-5"
+                  size={16}
+                  color={theme.error}
+                  onPress={() => handleDeleteElement(item)}
+                  containerStyle={styles.actionIcon}
+                />
+              </View>
+            )}
+          </View>
+          {item.details && (
+            <TruncatedText 
+              text={item.details} 
+              textStyle={[
+                styles.elementDetails,
+                { color: theme.text },
+                completedElements[item.id] && styles.completedText
+              ]}
+            />
+          )}
+          <Text style={[styles.deadline, { color: theme.placeholder }]}>
+            {t('agenda.due')}: {new Date(item.deadline).toLocaleDateString(language)}
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -1549,7 +1581,7 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
   },
   elementCard: {
-    padding: spacing.md,
+    padding: spacing.sm,
     marginBottom: spacing.sm,
     borderRadius: 12,
     shadowColor: "#000",
@@ -1560,45 +1592,62 @@ const styles = StyleSheet.create({
   },
   elementHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  elementTitleContainer: {
-    flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
+  },
+  elementControls: {
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  urgentButton: {
+    padding: spacing.xs,
+  },
+  completeButton: {
+    padding: spacing.xs,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  elementContent: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start', // Change to flex-start to align with the title top
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  titleActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: 4, // Add a small top margin to align with the title
+  },
+  elementTitle: {
+    ...typography.h3,
+    flex: 1,
+    marginTop: 2, // Add a small top margin to the title for perfect alignment
+  },
+  elementDetails: {
+    ...typography.body,
+    opacity: 0.7,
+  },
+  completedText: {
+    textDecorationLine: 'line-through',
+    opacity: 0.5,
   },
   elementActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   actionIcon: {
     padding: spacing.xs,
   },
-  elementTitle: {
-    ...typography.h3,
-    marginBottom: spacing.xs,
-  },
-  elementDetails: {
-    ...typography.body,
-    marginBottom: 1,
-    opacity: 0.7,
-  },
-  elementMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: spacing.xs,
-  },
   deadline: {
     ...typography.caption,
     opacity: 0.6,
-  },
-  status: {
-    ...typography.caption,
-    fontWeight: '500',
   },
   emptyText: {
     ...typography.body,
