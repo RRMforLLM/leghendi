@@ -209,18 +209,23 @@ export default function HomeScreen() {
   useEffect(() => {
     let mounted = true;
 
-    async function initialize() {
+    const initialize = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
         if (!mounted) return;
-        
-        if (!session) {
-          router.replace('/three');
+
+        if (error) {
+          console.error('Session error:', error);
           return;
         }
 
         setSession(session);
-        setLoading(true);
+        
+        if (!session) {
+          setLoading(false);
+          return;
+        }
+
         await Promise.all([
           fetchAgendas(session),
           fetchAgendaElements(session),
@@ -236,10 +241,26 @@ export default function HomeScreen() {
           setLoading(false);
         }
       }
-    }
+    };
 
     initialize();
-    return () => { mounted = false };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return;
+      setSession(session);
+      if (session) {
+        await Promise.all([
+          fetchAgendas(session),
+          fetchAgendaElements(session),
+          fetchUserCredits(session)
+        ]);
+      }
+    });
+
+    return () => { 
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const clearAgendas = useCallback(async () => {

@@ -87,8 +87,49 @@ export default function TabTwoScreen() {
   );
 
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers, currentUserId]);
+    let mounted = true;
+  
+    const initialize = async () => {
+      try {
+        setLoading(true);
+        const { data: { user }, error } = await supabase.auth.getUser();
+        
+        if (!mounted) return;
+        if (error) {
+          console.error('Auth error:', error);
+          return;
+        }
+
+        setCurrentUserId(user?.id || null);
+        await fetchUsers();
+        if (user?.id) {
+          await fetchUserCredits();
+        }
+      } catch (error) {
+        console.error('Init error:', error);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    initialize();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return;
+      setCurrentUserId(session?.user?.id || null);
+      await fetchUsers();
+      if (session?.user?.id) {
+        await fetchUserCredits();
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

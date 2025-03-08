@@ -60,33 +60,53 @@ export default function ProfileScreen() {
   const { credits, setCredits, fetchCredits } = useCredits();
 
   useEffect(() => {
+    let mounted = true;
+
     async function initialize() {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        setSession(session)
+        setLoading(true);
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (!mounted) return;
+        if (error) {
+          console.error('Session error:', error);
+          return;
+        }
+
+        setSession(session);
         if (session?.user) {
-          await getProfile(session.user.id)
+          await Promise.all([
+            getProfile(session.user.id),
+            fetchCredits()
+          ]);
         }
       } catch (error) {
-        Alert.alert(t('settings.error'), t('profile.error.session'))
+        console.error('Init error:', error);
+        Alert.alert(t('settings.error'), t('profile.error.session'));
       } finally {
-        setLoading(false)
+        if (mounted) {
+          setLoading(false);
+        }
       }
     }
-    initialize()
-  }, [])
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session)
+    initialize();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return;
+      setSession(session);
       if (session?.user) {
-        await getProfile(session.user.id)
+        await Promise.all([
+          getProfile(session.user.id),
+          fetchCredits()
+        ]);
       }
-    })
+    });
 
     return () => {
-      subscription?.unsubscribe()
-    }
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [])
 
   useFocusEffect(
