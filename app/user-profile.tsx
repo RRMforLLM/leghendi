@@ -251,6 +251,37 @@ const UserProfileScreen = () => {
         }));
         addReactionAnimation(type);
       }
+
+      const { data: tokens } = await supabase
+        .from('Device Token')
+        .select('token')
+        .eq('user_id', id);
+
+      if (tokens?.length > 0) {
+        const message = {
+          to: tokens.map(t => t.token),
+          sound: 'default',
+          title: t('notifications.newReaction') || 'New Reaction!',
+          body: (t('notifications.reactionReceived') || '{username} reacted with a {reaction}!')
+            .replace('{reaction}', t(`reactions.${type}`) || type)
+            .replace('{username}', profile?.username || 'Someone'),
+          data: { 
+            type: 'reaction',
+            userId: id,
+            reactionType: type
+          },
+        };
+
+        await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Accept-encoding': 'gzip, deflate',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(message),
+        });
+      }
     } catch (error) {
       console.error('Reaction error:', error);
       Alert.alert('Error', 'Failed to process reaction');

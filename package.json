@@ -38,7 +38,10 @@
     "react-native-screens": "~4.4.0",
     "react-native-web": "~0.19.13",
     "@react-native-community/netinfo": "11.4.1",
-    "@react-native-community/datetimepicker": "8.2.0"
+    "@react-native-community/datetimepicker": "8.2.0",
+    "expo-notifications": "~0.29.13",
+    "expo-device": "~7.0.2",
+    "expo-constants": "~17.0.7"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

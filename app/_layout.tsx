@@ -11,6 +11,7 @@ import { initializeStorage } from '@/utils/offlineStorage';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import { PushNotifications } from '@/components/Push';
 
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -73,6 +74,7 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <LanguageProvider>
+        <PushNotifications />
         <RootLayoutNav />
       </LanguageProvider>
     </ThemeProvider>
