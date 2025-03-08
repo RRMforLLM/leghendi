@@ -55,6 +55,7 @@ public schema:
 - username // text
 - avatar_url // text
 - description // text
+- language // text
 - comments // bool
 - updated_at // timestamptz
 

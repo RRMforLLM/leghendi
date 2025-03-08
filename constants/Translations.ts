@@ -409,15 +409,11 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'home.goToLogin': 'Go to Login',
     'comments.readMore': 'Read more',
     'comments.showLess': 'Show less',
-    notifications: {
-      newReaction: "New Reaction!",
-      reactionReceived: "{username} reacted with a {reaction} to your profile!",
-    },
-    reactions: {
-      hug: "hug",
-      heart: "heart",
-      kiss: "kiss"
-    },
+    'notifications.newReaction': 'New Reaction!',
+    'notifications.reactionReceived': '{username} reacted with a {reaction} to your profile!',
+    'reactions.hug': 'hug',
+    'reactions.heart': 'heart',
+    'reactions.kiss': 'kiss',
   },
   es: {
     'settings.title': 'Ajustes de Cuenta',
@@ -617,15 +613,11 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'home.goToLogin': 'Ir a Iniciar Sesión',
     'comments.readMore': 'Leer más',
     'comments.showLess': 'Ver menos',
-    notifications: {
-      newReaction: "¡Nueva Reacción!",
-      reactionReceived: "¡{username} ha reaccionado con un {reaction} a tu perfil!",
-    },
-    reactions: {
-      hug: "abrazo",
-      heart: "corazón",
-      kiss: "beso"
-    },
+    'notifications.newReaction': '¡Nueva Reacción!',
+    'notifications.reactionReceived': '¡{username} ha reaccionado con un {reaction} a tu perfil!',
+    'reactions.hug': 'abrazo',
+    'reactions.heart': 'corazón',
+    'reactions.kiss': 'beso',
   },
   fr: {
     'settings.title': 'Paramètres du Compte',
@@ -825,14 +817,10 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'home.goToLogin': 'Aller à la Connexion',
     'comments.readMore': 'Lire la suite',
     'comments.showLess': 'Voir moins',
-    notifications: {
-      newReaction: "Nouvelle Réaction !",
-      reactionReceived: "{username} a réagi avec un {reaction} à votre profil !",
-    },
-    reactions: {
-      hug: "câlin",
-      heart: "cœur",
-      kiss: "bisou"
-    },
+    'notifications.newReaction': 'Nouvelle Réaction !',
+    'notifications.reactionReceived': '{username} a réagi avec un {reaction} à votre profil !',
+    'reactions.hug': 'câlin',
+    'reactions.heart': 'cœur',
+    'reactions.kiss': 'bisou',
   }
 };
