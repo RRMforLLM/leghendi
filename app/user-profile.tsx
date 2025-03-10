@@ -17,6 +17,7 @@ import RainingIcons from '@/components/RainingIcons';
 import ReactionRain from '@/components/ReactionRain';
 import TruncatedComment from '@/components/TruncatedComment';
 import TruncatedText from '@/components/TruncatedText';
+import { Language, translations } from '@/constants/Translations';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg";
 
@@ -259,12 +260,23 @@ const UserProfileScreen = () => {
         .eq('user_id', id);
 
       if (tokens?.length > 0) {
+        // Get recipient's language preference
+        const { data: recipientData } = await supabase
+          .from('Profile')
+          .select('language')
+          .eq('id', id)
+          .single();
+
+        // Create a temporary translation function for the recipient's language
+        const recipientLang = recipientData?.language || 'en';
+        const tempT = (key: string) => translations[recipientLang as Language][key as keyof typeof translations['en']] || key;
+
         const message = {
           to: tokens.map(t => t.token),
           sound: 'default',
-          title: t('notifications.newReaction') || 'New Reaction!',
-          body: (t('notifications.reactionReceived') || '{username} reacted with a {reaction}!')
-            .replace('{reaction}', t(`reactions.${type}`) || type)
+          title: tempT('notifications.newReaction'),
+          body: tempT('notifications.reactionReceived')
+            .replace('{reaction}', tempT(`reactions.${type}`))
             .replace('{username}', profile?.username || 'Someone'),
           data: { 
             type: 'reaction',
