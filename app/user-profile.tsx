@@ -1,4 +1,4 @@
-import { StyleSheet, ScrollView, Platform, Alert, Animated, TouchableWithoutFeedback, View as RNView, Pressable } from 'react-native';
+import { StyleSheet, ScrollView, Platform, Alert, Animated, TouchableWithoutFeedback, View as RNView, Pressable, Modal, Image } from 'react-native';
 import { View, Text } from '@/components/Themed';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useState, useEffect, useRef } from 'react';
@@ -79,6 +79,7 @@ const UserProfileScreen = () => {
   const [showRainingAnimation, setShowRainingAnimation] = useState<'hug' | 'heart' | 'kiss' | null>(null);
   const [activeAnimations, setActiveAnimations] = useState<Array<{ id: number; type: 'hug' | 'heart' | 'kiss' }>>([]);
   const animationIdCounter = useRef(0);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
 
   const reactionTypeToStatKey = {
     'hug': 'hugs',
@@ -532,12 +533,14 @@ const UserProfileScreen = () => {
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.profileContainer}>
-          <Avatar
-            size={100}
-            rounded
-            source={{ uri: profile.avatar_url || DEFAULT_AVATAR }}
-            containerStyle={[styles.avatar, styles.avatarContainer]}
-          />
+          <Pressable onPress={() => setShowAvatarModal(true)}>
+            <Avatar
+              size={100}
+              rounded
+              source={{ uri: profile.avatar_url || DEFAULT_AVATAR }}
+              containerStyle={[styles.avatar, styles.avatarContainer]}
+            />
+          </Pressable>
           <View style={styles.usernameContainer}>
             <Text style={[typography.h2, { color: theme.text }]}>
               {profile.username}
@@ -691,6 +694,24 @@ const UserProfileScreen = () => {
           )}
         </View>
       </ScrollView>
+
+      <Modal
+        visible={showAvatarModal}
+        transparent={true}
+        onRequestClose={() => setShowAvatarModal(false)}
+        animationType="fade"
+      >
+        <Pressable 
+          style={styles.modalOverlay}
+          onPress={() => setShowAvatarModal(false)}
+        >
+          <Image
+            source={{ uri: profile?.avatar_url || DEFAULT_AVATAR }}
+            style={styles.expandedAvatar}
+            resizeMode="contain"
+          />
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -814,5 +835,16 @@ const styles = StyleSheet.create({
   usernameContainer: {
     marginTop: spacing.sm,
     marginBottom: spacing.sm,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  expandedAvatar: {
+    width: '80%',
+    aspectRatio: 1,
+    borderRadius: 20,
   },
 });
