@@ -625,4 +625,30 @@ FOR INSERT WITH CHECK (
     )
 );
 
+-- Drop existing language-related constraints if they exist
+ALTER TABLE "Profile" DROP CONSTRAINT IF EXISTS language_check;
+
+-- Add language column with constraint and default
+ALTER TABLE "Profile" 
+  ALTER COLUMN language SET DEFAULT 'en',
+  ADD CONSTRAINT language_check CHECK (language IN ('en', 'es', 'fr'));
+
+-- Add policies for language management
+DROP POLICY IF EXISTS "users_can_read_language" ON "Profile";
+DROP POLICY IF EXISTS "users_can_update_language" ON "Profile";
+
+-- Anyone can read a user's language setting
+CREATE POLICY "users_can_read_language" ON "Profile"
+FOR SELECT
+USING (true);
+
+-- Only user can update their own language setting
+CREATE POLICY "users_can_update_language" ON "Profile"
+FOR UPDATE
+USING (auth.uid() = id)
+WITH CHECK (
+  auth.uid() = id AND
+  language IN ('en', 'es', 'fr')
+);
+
 COMMIT;
