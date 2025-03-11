@@ -18,11 +18,10 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#000000"
+        "foregroundImage": "./assets/images/icon.png"
       },
       "package": "com.rrmforllm.aghendi",
-      "versionCode": 9
+      "versionCode": 10
     },
     "web": {
       "bundler": "metro",
