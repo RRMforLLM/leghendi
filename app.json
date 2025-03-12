@@ -17,11 +17,13 @@
       "supportsTablet": true
     },
     "android": {
+      "icon": "./assets/images/icon.png",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/icon.png"
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#000000"
       },
       "package": "com.rrmforllm.aghendi",
-      "versionCode": 10
+      "versionCode": 11
     },
     "web": {
       "bundler": "metro",
