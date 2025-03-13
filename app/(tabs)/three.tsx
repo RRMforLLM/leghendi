@@ -481,7 +481,7 @@ export default function ProfileScreen() {
               leftIcon={{ type: "font-awesome", name: "envelope", color: theme.text }}
               onChangeText={setEmail}
               value={email}
-              placeholder="email@address.com"
+              placeholder={t('profile.emailPlaceholder')}
               autoCapitalize="none"
               containerStyle={[styles.input, { marginBottom: spacing.sm }]}
               inputStyle={{ color: theme.text }}
@@ -493,7 +493,7 @@ export default function ProfileScreen() {
               onChangeText={setPassword}
               value={password}
               secureTextEntry={true}
-              placeholder="Password"
+              placeholder={t('profile.passwordPlaceholder')}
               autoCapitalize="none"
               containerStyle={[styles.input, { marginBottom: spacing.lg }]}
               inputStyle={{ color: theme.text }}

@@ -46,6 +46,8 @@ type TranslationKey =
   | 'profile.error.signOut'
   | 'profile.error.image'
   | 'profile.error.fields'
+  | 'profile.emailPlaceholder'
+  | 'profile.passwordPlaceholder'
   | 'feed.loading'
   | 'userList.loading'
   | 'userList.noUsers'
@@ -260,6 +262,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'profile.error.image': 'Failed to pick image',
     'profile.error.fields': 'Please fill in all fields',
     'profile.commentsDisabled': 'Comments are disabled for this profile',
+    'profile.emailPlaceholder': 'email@address.com',
+    'profile.passwordPlaceholder': 'Password',
     'feed.loading': 'Loading feed...',
     'userList.loading': 'Loading users...',
     'userList.noUsers': 'No users found',
@@ -464,6 +468,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'profile.error.image': 'Error al seleccionar imagen',
     'profile.error.fields': 'Por favor completa todos los campos',
     'profile.commentsDisabled': 'Los comentarios están desactivados para este perfil',
+    'profile.emailPlaceholder': 'correo@ejemplo.com',
+    'profile.passwordPlaceholder': 'Contraseña',
     'feed.loading': 'Cargando feed...',
     'userList.loading': 'Cargando usuarios...',
     'userList.noUsers': 'No se encontraron usuarios',
@@ -668,6 +674,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'profile.error.image': 'Échec de la sélection de l\'image',
     'profile.error.fields': 'Veuillez remplir tous les champs',
     'profile.commentsDisabled': 'Les commentaires sont désactivés pour ce profil',
+    'profile.emailPlaceholder': 'email@exemple.com',
+    'profile.passwordPlaceholder': 'Mot de passe',
     'feed.loading': 'Chargement du fil...',
     'userList.loading': 'Chargement des utilisateurs...',
     'userList.noUsers': 'Aucun utilisateur trouvé',
