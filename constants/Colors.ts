@@ -1,4 +1,4 @@
-const primaryColor = "#3498db"
+const primaryColor = "#4DDDEB"
 const secondaryColor = "#e74c3c"
 const backgroundColor = "#f8f9fa"
 const cardColor = "#ffffff"
