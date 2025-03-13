@@ -36,6 +36,10 @@ interface Member {
   avatar_url: string | null;
 }
 
+interface ExpandedElements {
+  [key: string]: boolean;
+}
+
 const DialogButton = ({ onPress, disabled = false, children }: {
   onPress: () => void;
   disabled?: boolean;
@@ -91,6 +95,7 @@ export default function AgendaScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
   const [isDestructiveMode, setIsDestructiveMode] = useState(false);
+  const [expandedElements, setExpandedElements] = useState<ExpandedElements>({});
 
   useEffect(() => {
     navigation.setOptions({
@@ -619,108 +624,201 @@ export default function AgendaScreen() {
     }
   };
 
-  const renderElement = ({ item }: { item: AgendaElement }) => (
-    <View style={[styles.elementCard, { backgroundColor: theme.card }]}>
-      <View style={[styles.elementHeader, { backgroundColor: theme.card }]}>
-        {/* Left side controls */}
-        <View style={[styles.elementControls, { backgroundColor: theme.card }]}>
-          {/* Urgent flag button - now above complete button */}
-          <Pressable
-            onPress={() => toggleElementState(item.id, 'urgent')}
-            style={({ pressed }) => [
-              styles.urgentButton,
-              { opacity: pressed ? 0.7 : 1 }
-            ]}
-            hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-          >
-            <Icon
-              name="flag"
-              type="font-awesome-5"
-              size={20}
-              color={urgentElements[item.id] ? theme.error : theme.placeholder}
-              solid={urgentElements[item.id]}
-            />
-          </Pressable>
+  const elementStyles = StyleSheet.create({
+    elementCard: {
+      marginBottom: spacing.xs,
+      borderRadius: 8,
+      backgroundColor: theme.card,
+      overflow: 'hidden',
+      borderLeftWidth: 3,
+      borderLeftColor: theme.border,
+    },
+    elementHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      padding: spacing.sm,
+    },
+    elementControls: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      marginRight: spacing.sm,
+    },
+    urgentButton: {
+      width: 32,
+      height: 32,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    completeButton: {
+      width: 32,
+      height: 32,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderRadius: 16,
+    },
+    elementContent: {
+      flex: 1,
+    },
+    titleRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+    },
+    titleMain: {
+      flex: 1,
+      marginRight: spacing.sm,
+    },
+    elementTitle: {
+      ...typography.h3,
+      fontSize: 15,
+      marginBottom: 2,
+    },
+    titleActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    deadline: {
+      ...typography.caption,
+      fontSize: 12,
+      opacity: 0.7,
+    },
+    expandedContent: {
+      paddingTop: spacing.xs,
+      paddingBottom: spacing.sm,
+    },
+    elementDetails: {
+      ...typography.body,
+      fontSize: 14,
+      marginBottom: spacing.xs,
+      opacity: 0.9,
+    },
+  });
 
-          {/* Complete button */}
-          <Pressable
-            onPress={() => toggleElementState(item.id, 'completed')}
-            style={({ pressed }) => [
-              styles.completeButton,
-              { 
-                backgroundColor: theme.card,
-                borderColor: completedElements[item.id] ? theme.tint : theme.placeholder,
-                opacity: pressed ? 0.7 : 1
-              }
-            ]}
-            hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-          >
-            <Icon
-              name={completedElements[item.id] ? "check-circle" : "circle"}
-              type="font-awesome-5"
-              size={24}
-              color={completedElements[item.id] ? theme.tint : theme.placeholder}
-              solid={completedElements[item.id]}
-            />
-          </Pressable>
-        </View>
-
-        {/* Main content area */}
-        <View style={[styles.elementContent, { backgroundColor: theme.card }]}>
-          <View style={[styles.titleRow, { backgroundColor: theme.card }]}>
-            <Text 
-              style={[
-                styles.elementTitle,
-                { color: theme.text },
-                completedElements[item.id] && styles.completedText
-              ]}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {item.subject}
-            </Text>
-            {(isCreator || isEditor) && (
-              <View style={[styles.titleActions, { backgroundColor: theme.card }]}>
+  const renderElement = ({ item }: { item: AgendaElement }) => {
+    const isUrgent = urgentElements[item.id];
+    const isCompleted = completedElements[item.id];
+    const isExpanded = expandedElements[item.id];
+  
+    return (
+      <Pressable
+        onPress={() => {
+          setExpandedElements(prev => ({
+            ...prev,
+            [item.id]: !prev[item.id]
+          }));
+        }}
+      >
+        <View 
+          style={[
+            elementStyles.elementCard, 
+            { 
+              borderLeftColor: isUrgent ? theme.error : 
+                             isCompleted ? theme.tint : 
+                             theme.border 
+            }
+          ]}
+        >
+          <View style={elementStyles.elementHeader}>
+            <View style={elementStyles.elementControls}>
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  toggleElementState(item.id, 'urgent');
+                }}
+                style={({ pressed }) => [
+                  elementStyles.urgentButton,
+                  { opacity: pressed ? 0.7 : 1 }
+                ]}
+              >
                 <Icon
-                  name="edit"
+                  name="flag"
                   type="font-awesome-5"
                   size={16}
-                  color={theme.text}
-                  onPress={() => {
-                    setEditingElement(item);
-                    setShowEditElementDialog(true);
-                  }}
-                  containerStyle={styles.actionIcon}
-                  hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                  color={isUrgent ? theme.error : theme.placeholder}
+                  solid={isUrgent}
                 />
+              </Pressable>
+  
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  toggleElementState(item.id, 'completed');
+                }}
+                style={({ pressed }) => [
+                  elementStyles.completeButton,
+                  { opacity: pressed ? 0.7 : 1 }
+                ]}
+              >
                 <Icon
-                  name="trash"
+                  name={isCompleted ? "check-circle" : "circle"}
                   type="font-awesome-5"
-                  size={16}
-                  color={theme.error}
-                  onPress={() => handleDeleteElement(item)}
-                  containerStyle={styles.actionIcon}
+                  size={20}
+                  color={isCompleted ? theme.tint : theme.placeholder}
+                  solid={isCompleted}
                 />
+              </Pressable>
+            </View>
+  
+            <View style={elementStyles.elementContent}>
+              <View style={elementStyles.titleRow}>
+                <View style={elementStyles.titleMain}>
+                  <Text 
+                    style={[
+                      elementStyles.elementTitle,
+                      { color: theme.text },
+                      isCompleted && styles.completedText
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {item.subject}
+                  </Text>
+                  {!isExpanded && (
+                    <Text style={[elementStyles.deadline, { color: theme.placeholder }]}>
+                      {t('agenda.due')}: {new Date(item.deadline).toLocaleDateString(language)}
+                    </Text>
+                  )}
+                </View>
+                {(isCreator || isEditor) && (
+                  <View style={elementStyles.titleActions}>
+                    <Icon
+                      name="edit"
+                      type="font-awesome-5"
+                      size={14}
+                      color={theme.text}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        setEditingElement(item);
+                        setShowEditElementDialog(true);
+                      }}
+                    />
+                  </View>
+                )}
               </View>
-            )}
+              
+              {isExpanded && (
+                <View style={elementStyles.expandedContent}>
+                  {item.details && (
+                    <Text style={[
+                      elementStyles.elementDetails,
+                      { color: theme.text },
+                      isCompleted && styles.completedText
+                    ]}>
+                      {item.details}
+                    </Text>
+                  )}
+                  <Text style={[elementStyles.deadline, { color: theme.placeholder }]}>
+                    {t('agenda.due')}: {new Date(item.deadline).toLocaleDateString(language)}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
-          {item.details && (
-            <TruncatedText 
-              text={item.details} 
-              textStyle={[
-                styles.elementDetails,
-                { color: theme.text },
-                completedElements[item.id] && styles.completedText
-              ]}
-            />
-          )}
-          <Text style={[styles.deadline, { color: theme.placeholder }]}>
-            {t('agenda.due')}: {new Date(item.deadline).toLocaleDateString(language)}
-          </Text>
         </View>
-      </View>
-    </View>
-  );
+      </Pressable>
+    );
+  };
 
   const toggleSection = (sectionId: string) => {
     setCollapsedSections(prev => ({
@@ -1498,39 +1596,72 @@ export default function AgendaScreen() {
         overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
       >
         <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
-          <Text style={[typography.h3, { color: theme.text }]}>{t('agenda.editElement')}</Text>
+          <View style={[styles.dialogHeader, { backgroundColor: theme.card }]}>
+            <View style={[{ flex: 1 }, { backgroundColor: theme.card }]}>
+              <Text style={[typography.h3, { color: theme.text }]}>
+                {t('agenda.editElement')}
+              </Text>
+            </View>
+            <View style={[styles.dialogHeaderAction, { backgroundColor: theme.card }]}>
+              <Icon
+                name="trash"
+                type="font-awesome-5"
+                size={18}
+                color={theme.error}
+                onPress={() => {
+                  if (editingElement) {
+                    handleDeleteElement(editingElement);
+                    setShowEditElementDialog(false);
+                    setEditingElement(null);
+                  }
+                }}
+              />
+            </View>
+          </View>
+          
           <Input
             placeholder={t('agenda.elementSubject')}
             value={editingElement?.subject}
             onChangeText={(text) => setEditingElement(prev => prev ? { ...prev, subject: text } : null)}
             inputStyle={{ color: theme.text }}
+            containerStyle={styles.dialogInput}
           />
+          
           <Input
             placeholder={t('agenda.elementDetails')}
             value={editingElement?.details}
             onChangeText={(text) => setEditingElement(prev => prev ? { ...prev, details: text } : null)}
             multiline
-            inputStyle={{ color: theme.text }}
+            numberOfLines={3}
+            inputStyle={[{ color: theme.text, minHeight: 80 }]}
+            containerStyle={styles.dialogInput}
           />
+          
           <DatePickerInput
             value={editingElement?.deadline}
             onChange={(date) => setEditingElement(prev => prev ? { ...prev, deadline: date } : null)}
             placeholder={t('agenda.elementDeadline')}
             inputStyle={{ color: theme.text }}
+            containerStyle={[styles.dialogInput, { marginBottom: spacing.lg }]}
           />
-          <View style={[{ flexDirection: 'row', justifyContent: 'flex-end' }, { backgroundColor: theme.card }]}>
-            <DialogButton onPress={() => {
-              setShowEditElementDialog(false);
-              setEditingElement(null);
-            }}>
-              {t('agenda.cancel')}
-            </DialogButton>
-            <DialogButton 
-              onPress={handleEditElement} 
-              disabled={!editingElement?.subject?.trim() || !editingElement?.deadline}
-            >
-              {t('agenda.save')}
-            </DialogButton>
+
+          <View style={styles.dialogFooter}>
+            <View style={styles.dialogMainActions}>
+              <DialogButton 
+                onPress={() => {
+                  setShowEditElementDialog(false);
+                  setEditingElement(null);
+                }}
+              >
+                {t('agenda.cancel')}
+              </DialogButton>
+              <DialogButton 
+                onPress={handleEditElement} 
+                disabled={!editingElement?.subject?.trim() || !editingElement?.deadline}
+              >
+                {t('agenda.save')}
+              </DialogButton>
+            </View>
           </View>
         </View>
       </Dialog>
@@ -1580,59 +1711,6 @@ const styles = StyleSheet.create({
   elementsList: {
     marginLeft: spacing.sm,
   },
-  elementCard: {
-    padding: spacing.sm,
-    marginBottom: spacing.sm,
-    borderRadius: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  elementHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  elementControls: {
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  urgentButton: {
-    padding: spacing.xs,
-  },
-  completeButton: {
-    padding: spacing.xs,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  elementContent: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start', // Change to flex-start to align with the title top
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-  },
-  titleActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginTop: 4, // Add a small top margin to align with the title
-  },
-  elementTitle: {
-    ...typography.h3,
-    flex: 1,
-    marginTop: 2, // Add a small top margin to the title for perfect alignment
-  },
-  elementDetails: {
-    ...typography.body,
-    opacity: 0.7,
-  },
   completedText: {
     textDecorationLine: 'line-through',
     opacity: 0.5,
@@ -1645,10 +1723,6 @@ const styles = StyleSheet.create({
   actionIcon: {
     padding: spacing.xs,
   },
-  deadline: {
-    ...typography.caption,
-    opacity: 0.6,
-  },
   emptyText: {
     ...typography.body,
     textAlign: 'center',
@@ -1658,20 +1732,27 @@ const styles = StyleSheet.create({
   dialog: {
     width: '90%',
     borderRadius: 12,
-    padding: spacing.md,
+    padding: 0, // Remove default padding
+    overflow: 'hidden',
   },
   dialogContent: {
-    paddingHorizontal: spacing.sm,
-    paddingBottom: spacing.sm,
+    padding: spacing.lg,
   },
-  sectionActions: {
+  dialogInput: {
+    paddingHorizontal: 0,
+    marginBottom: spacing.md,
+  },
+  dialogFooter: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+    marginHorizontal: -spacing.lg,
+    marginBottom: -spacing.lg,
+    paddingVertical: spacing.xs,
+  },
+  dialogMainActions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    height: '100%',
-  },
-  deleteIcon: {
-    padding: spacing.xs,
+    justifyContent: 'flex-end',
+    paddingHorizontal: spacing.lg,
   },
   commentsSection: {
     width: '100%',
@@ -1854,5 +1935,39 @@ const styles = StyleSheet.create({
   dangerActionText: {
     ...typography.body,
     fontWeight: '500',
+  },
+  expandedContent: {
+    paddingHorizontal: spacing.sm,
+    paddingBottom: spacing.sm,
+  },
+  titleMain: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  elementTitle: {
+    ...typography.h3,
+    fontSize: 15,
+    marginBottom: 2,
+  },
+  elementDetails: {
+    ...typography.body,
+    fontSize: 14,
+    marginBottom: spacing.xs,
+    opacity: 0.9,
+  },
+  dialogButtonGroup: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  deleteButton: {
+    marginTop: spacing.md,
+  },
+  dialogHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: spacing.xs,
+  },
+  dialogHeaderAction: {
+    paddingTop: 4, // Align with the first line of text
   },
 });
