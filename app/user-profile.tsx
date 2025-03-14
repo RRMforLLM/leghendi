@@ -19,6 +19,9 @@ import TruncatedComment from '@/components/TruncatedComment';
 import TruncatedText from '@/components/TruncatedText';
 import { Language, translations } from '@/constants/Translations';
 
+// Add your FCM server key as a constant (get this from Firebase Console)
+const FCM_SERVER_KEY = 'YOUR_FCM_SERVER_KEY';
+
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg";
 
 const REACTION_COSTS = {
@@ -271,13 +274,15 @@ const UserProfileScreen = () => {
         const recipientLang = recipientData?.language || 'en';
         const tempT = (key: string) => translations[recipientLang as Language][key as keyof typeof translations['en']] || key;
 
+        // Use FCM API instead of Expo's push service
         const message = {
-          to: tokens.map(t => t.token),
-          sound: 'default',
-          title: tempT('notifications.newReaction'),
-          body: tempT('notifications.reactionReceived')
-            .replace('{reaction}', tempT(`reactions.${type}`))
-            .replace('{username}', profile?.username || 'Someone'),
+          registration_ids: tokens.map(t => t.token), // Multiple tokens
+          notification: {
+            title: tempT('notifications.newReaction'),
+            body: tempT('notifications.reactionReceived')
+              .replace('{reaction}', tempT(`reactions.${type}`))
+              .replace('{username}', profile?.username || 'Someone'),
+          },
           data: { 
             type: 'reaction',
             userId: id,
@@ -285,12 +290,11 @@ const UserProfileScreen = () => {
           },
         };
 
-        await fetch('https://exp.host/--/api/v2/push/send', {
+        await fetch('https://fcm.googleapis.com/fcm/send', {
           method: 'POST',
           headers: {
-            'Accept': 'application/json',
-            'Accept-encoding': 'gzip, deflate',
             'Content-Type': 'application/json',
+            'Authorization': `key=${FCM_SERVER_KEY}`,
           },
           body: JSON.stringify(message),
         });

@@ -700,15 +700,21 @@ export default function AgendaScreen() {
     const isUrgent = urgentElements[item.id];
     const isCompleted = completedElements[item.id];
     const isExpanded = expandedElements[item.id];
+    const hasDetails = item.details && item.details.trim().length > 0;
   
+    const ElementContainer = hasDetails ? Pressable : View;
+    
     return (
-      <Pressable
-        onPress={() => {
-          setExpandedElements(prev => ({
-            ...prev,
-            [item.id]: !prev[item.id]
-          }));
-        }}
+      <ElementContainer
+        {...(hasDetails ? {
+          onPress: () => {
+            setExpandedElements(prev => ({
+              ...prev,
+              [item.id]: !prev[item.id]
+            }));
+          },
+          style: ({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })  
+        } : {})}
       >
         <View 
           style={[
@@ -816,7 +822,7 @@ export default function AgendaScreen() {
             </View>
           </View>
         </View>
-      </Pressable>
+      </ElementContainer>
     );
   };
 
@@ -1526,23 +1532,39 @@ export default function AgendaScreen() {
         overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
       >
         <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
-          <Text style={[typography.h3, { color: theme.text }]}>{t('agenda.newSection')}</Text>
+          <View style={[styles.dialogHeader, { backgroundColor: theme.card }]}>
+            <View style={[{ flex: 1 }, { backgroundColor: theme.card }]}>
+              <Text style={[styles.dialogHeaderTitle, { color: theme.text }]}>
+                {t('agenda.newSection')}
+              </Text>
+            </View>
+          </View>
+          
           <Input
             placeholder={t('agenda.newSection')}
             value={newSectionName}
             onChangeText={setNewSectionName}
-            inputStyle={{ color: theme.text }}
+            inputStyle={[
+              { color: theme.text },
+              { minHeight: 40 },
+              styles.inputField
+            ]}
+            inputContainerStyle={{ paddingVertical: spacing.xs }}
+            containerStyle={styles.dialogInput}
           />
-          <View style={[{ flexDirection: 'row', justifyContent: 'flex-end' }, { backgroundColor: theme.card }]}>
-            <DialogButton onPress={() => setShowSectionDialog(false)}>
-              {t('agenda.cancel')}
-            </DialogButton>
-            <DialogButton 
-              onPress={addSection} 
-              disabled={!newSectionName.trim()}
-            >
-              {t('agenda.add')}
-            </DialogButton>
+
+          <View style={styles.dialogFooter}>
+            <View style={styles.dialogMainActions}>
+              <DialogButton onPress={() => setShowSectionDialog(false)}>
+                {t('agenda.cancel')}
+              </DialogButton>
+              <DialogButton 
+                onPress={addSection} 
+                disabled={!newSectionName.trim()}
+              >
+                {t('agenda.add')}
+              </DialogButton>
+            </View>
           </View>
         </View>
       </Dialog>
@@ -1553,36 +1575,57 @@ export default function AgendaScreen() {
         overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
       >
         <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
-          <Text style={[typography.h3, { color: theme.text }]}>{t('agenda.addElement')}</Text>
+          <View style={[styles.dialogHeader, { backgroundColor: theme.card }]}>
+            <View style={[{ flex: 1 }, { backgroundColor: theme.card }]}>
+              <Text style={[typography.h3, { color: theme.text }]}>
+                {t('agenda.addElement')}
+              </Text>
+            </View>
+          </View>
+          
           <Input
             placeholder={t('agenda.elementSubject')}
             value={newElementData.subject}
             onChangeText={(text) => setNewElementData(prev => ({ ...prev, subject: text }))}
             inputStyle={{ color: theme.text }}
+            containerStyle={styles.dialogInput}
           />
+          
           <Input
             placeholder={t('agenda.elementDetails')}
             value={newElementData.details}
             onChangeText={(text) => setNewElementData(prev => ({ ...prev, details: text }))}
             multiline
-            inputStyle={{ color: theme.text }}
+            inputStyle={[
+              { color: theme.text },
+              { minHeight: newElementData.details?.split('\n').length > 2 ? 80 : 40 },
+              { maxHeight: 120 },
+              styles.inputField
+            ]}
+            inputContainerStyle={{ paddingVertical: spacing.xs }}
+            containerStyle={styles.dialogInput}
           />
+          
           <DatePickerInput
             value={newElementData.deadline}
             onChange={(date) => setNewElementData(prev => ({ ...prev, deadline: date }))}
             placeholder={t('agenda.elementDeadline')}
             inputStyle={{ color: theme.text }}
+            containerStyle={[styles.dialogInput, { marginBottom: spacing.lg }]}
           />
-          <View style={[{ flexDirection: 'row', justifyContent: 'flex-end' }, { backgroundColor: theme.card }]}>
-            <DialogButton onPress={() => setShowElementDialog(false)}>
-              {t('agenda.cancel')}
-            </DialogButton>
-            <DialogButton 
-              onPress={addElement} 
-              disabled={!newElementData.subject.trim() || !newElementData.deadline}
-            >
-              {t('agenda.add')}
-            </DialogButton>
+
+          <View style={styles.dialogFooter}>
+            <View style={styles.dialogMainActions}>
+              <DialogButton onPress={() => setShowElementDialog(false)}>
+                {t('agenda.cancel')}
+              </DialogButton>
+              <DialogButton 
+                onPress={addElement} 
+                disabled={!newElementData.subject.trim() || !newElementData.deadline}
+              >
+                {t('agenda.add')}
+              </DialogButton>
+            </View>
           </View>
         </View>
       </Dialog>
@@ -1598,7 +1641,7 @@ export default function AgendaScreen() {
         <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
           <View style={[styles.dialogHeader, { backgroundColor: theme.card }]}>
             <View style={[{ flex: 1 }, { backgroundColor: theme.card }]}>
-              <Text style={[typography.h3, { color: theme.text }]}>
+              <Text style={[styles.dialogHeaderTitle, { color: theme.text }]}>
                 {t('agenda.editElement')}
               </Text>
             </View>
@@ -1632,8 +1675,13 @@ export default function AgendaScreen() {
             value={editingElement?.details}
             onChangeText={(text) => setEditingElement(prev => prev ? { ...prev, details: text } : null)}
             multiline
-            numberOfLines={3}
-            inputStyle={[{ color: theme.text, minHeight: 80 }]}
+            inputStyle={[
+              { color: theme.text },
+              { minHeight: editingElement?.details?.split('\n').length > 2 ? 80 : 40 },
+              { maxHeight: 120 },
+              styles.inputField
+            ]}
+            inputContainerStyle={{ paddingVertical: spacing.xs }}
             containerStyle={styles.dialogInput}
           />
           
@@ -1732,7 +1780,7 @@ const styles = StyleSheet.create({
   dialog: {
     width: '90%',
     borderRadius: 12,
-    padding: 0, // Remove default padding
+    padding: 0,
     overflow: 'hidden',
   },
   dialogContent: {
@@ -1741,6 +1789,9 @@ const styles = StyleSheet.create({
   dialogInput: {
     paddingHorizontal: 0,
     marginBottom: spacing.md,
+  },
+  inputField: {
+    padding: spacing.sm,
   },
   dialogFooter: {
     borderTopWidth: 1,
@@ -1964,10 +2015,14 @@ const styles = StyleSheet.create({
   },
   dialogHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  dialogHeaderTitle: {
+    ...typography.h3,
   },
   dialogHeaderAction: {
-    paddingTop: 4, // Align with the first line of text
+    paddingTop: 5, // Align with the first line of text
   },
 });

@@ -147,29 +147,21 @@ export function PushNotifications() {
         return;
       }
 
-      // Get project ID from app config
-      const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-      if (!projectId) {
-        console.log('No project ID found in app config');
-        return;
-      }
-
+      // Get FCM token instead of Expo token
+      const deviceToken = await Notifications.getDevicePushTokenAsync();
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         console.log('No user found');
         return;
       }
 
-      const tokenData = await Notifications.getExpoPushTokenAsync({
-        projectId: projectId
-      });
-
-      // Store token in Supabase
+      // Store FCM token in Supabase
       const { error } = await supabase
         .from('Device Token')
         .upsert({
           user_id: user.id,
-          token: tokenData.data,
+          token: deviceToken.data, // This will be the FCM token
         }, {
           onConflict: 'user_id, token'
         });
