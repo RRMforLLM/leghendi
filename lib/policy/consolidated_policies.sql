@@ -446,25 +446,15 @@ DROP POLICY IF EXISTS "completed_element_access" ON "Completed Element";
 DROP POLICY IF EXISTS "urgent_element_access" ON "Urgent Element";
 
 -- 4. Member & Editor Policies
+-- Drop existing member policies first
+DROP POLICY IF EXISTS "member_access" ON "Agenda Member";
+DROP POLICY IF EXISTS "agenda_member_management" ON "Agenda Member";
+
+-- Simple public read access for members
 CREATE POLICY "member_access" ON "Agenda Member"
-FOR ALL USING (
-    user_id = auth.uid() OR
-    EXISTS (
-        SELECT 1 FROM "Agenda"
-        WHERE id = agenda_id AND creator_id = auth.uid()
-    )
-);
+FOR SELECT USING (true);  -- Anyone can view members
 
-CREATE POLICY "editor_access" ON "Agenda Editor"
-FOR ALL USING (
-    user_id = auth.uid() OR
-    EXISTS (
-        SELECT 1 FROM "Agenda"
-        WHERE id = agenda_id AND creator_id = auth.uid()
-    )
-);
-
--- Add specific policy for managing members (after the existing member policies)
+-- Management policy stays the same
 CREATE POLICY "agenda_member_management" ON "Agenda Member"
 FOR ALL USING (
     EXISTS (
