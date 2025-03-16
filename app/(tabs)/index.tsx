@@ -1532,7 +1532,7 @@ const styles = StyleSheet.create({
   miniCalendar: {
     paddingTop: spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
+    borderTopColor: 'transparent',
     marginTop: 'auto',
   },
   miniWeekContainer: {
