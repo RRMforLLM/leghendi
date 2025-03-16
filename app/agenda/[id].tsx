@@ -100,7 +100,6 @@ export default function AgendaScreen() {
   const [editingElement, setEditingElement] = useState<AgendaElement | null>(null);
 
   const [refreshing, setRefreshing] = useState(false);
-  const [isDestructiveMode, setIsDestructiveMode] = useState(false);
   const [expandedElements, setExpandedElements] = useState<ExpandedElements>({});
   const [editingState, setEditingState] = useState<AgendaEditingState>({ sections: {} });
   const [editingSectionName, setEditingSectionName] = useState<{ [key: string]: string }>({});
@@ -109,6 +108,8 @@ export default function AgendaScreen() {
   const [isNewElementSubjectValid, setIsNewElementSubjectValid] = useState(true);
   const [isEditingSectionNameValid, setIsEditingSectionNameValid] = useState(true);
   const [isEditingElementSubjectValid, setIsEditingElementSubjectValid] = useState(true);
+
+  const [pressedCommentId, setPressedCommentId] = useState<number | null>(null);
 
   useEffect(() => {
     navigation.setOptions({
@@ -1138,55 +1139,69 @@ export default function AgendaScreen() {
     }
   };
 
-  const renderComment = ({ item }: { item: AgendaComment }) => (
-    <RNView style={[styles.commentContainer, { backgroundColor: theme.card }]}>
-      <RNView style={styles.commentHeader}>
-        <RNView style={styles.commentAuthor}>
-          <Pressable 
-            onPress={() => {
-              if (session?.user?.id === item.author.id) {
-                router.push('/three');
-              } else {
-                router.push({
-                  pathname: "/user-profile",
-                  params: { id: item.author.id }
-                });
-              }
-            }}
-            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-          >
-            <RNView style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Avatar
-                size={24}
-                rounded
-                source={{ uri: item.author.avatar_url || DEFAULT_AVATAR }}
-                containerStyle={styles.commentAvatar}
-              />
-              <Text style={[typography.caption, { color: theme.text }]}>
-                {item.author.username}
-              </Text>
+  const renderComment = ({ item }: { item: AgendaComment }) => {
+    const isOwnComment = session?.user?.id === item.author.id;
+    const canDelete = isCreator || isEditor || isOwnComment;
+  
+    return (
+      <Pressable 
+        onLongPress={canDelete ? () => {
+          setPressedCommentId(item.id);
+        } : undefined}
+        onPress={() => setPressedCommentId(null)}
+        delayLongPress={LONG_PRESS_DURATION}
+      >
+        <RNView style={[styles.commentContainer, { backgroundColor: theme.card }]}>
+          <RNView style={styles.commentHeader}>
+            <RNView style={styles.commentAuthor}>
+              <Pressable 
+                onPress={() => {
+                  if (session?.user?.id === item.author.id) {
+                    router.push('/three');
+                  } else {
+                    router.push({
+                      pathname: "/user-profile",
+                      params: { id: item.author.id }
+                    });
+                  }
+                }}
+                style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+              >
+                <RNView style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Avatar
+                    size={24}
+                    rounded
+                    source={{ uri: item.author.avatar_url || DEFAULT_AVATAR }}
+                    containerStyle={styles.commentAvatar}
+                  />
+                  <Text style={[typography.caption, { color: theme.text }]}>
+                    {item.author.username}
+                    {isOwnComment && ` (${t('agenda.you')})`}
+                  </Text>
+                </RNView>
+              </Pressable>
             </RNView>
-          </Pressable>
+            <RNView style={styles.commentActions}>
+              <Text style={[typography.caption, { color: theme.placeholder }]}>
+                {getRelativeTime(item.created_at, t, language)}
+              </Text>
+              {pressedCommentId === item.id && canDelete && (
+                <Icon
+                  name="eraser"
+                  type="font-awesome-5"
+                  size={14}
+                  color={theme.error}
+                  onPress={() => handleDeleteComment(item.id)}
+                  containerStyle={[styles.actionIcon, { marginLeft: spacing.sm }]}
+                />
+              )}
+            </RNView>
+          </RNView>
+          <TruncatedText text={item.text} />
         </RNView>
-        <RNView style={styles.commentActions}>
-          <Text style={[typography.caption, { color: theme.placeholder }]}>
-            {getRelativeTime(item.created_at, t, language)}
-          </Text>
-          {isDestructiveMode && (isCreator || isEditor) && (
-            <Icon
-              name="eraser"
-              type="font-awesome-5"
-              size={14}
-              color={theme.error}
-              onPress={() => handleDeleteComment(item.id)}
-              containerStyle={[styles.actionIcon, { marginLeft: spacing.sm }]}
-            />
-          )}
-        </RNView>
-      </RNView>
-      <TruncatedText text={item.text} />
-    </RNView>
-  );
+      </Pressable>
+    );
+  };
 
   const navigateToCompleted = useCallback(async () => {
     try {
@@ -1586,15 +1601,6 @@ export default function AgendaScreen() {
                   color={agenda.comments ? theme.tint : theme.placeholder}
                   onPress={toggleComments}
                   containerStyle={{ marginRight: spacing.sm }}
-                />
-              )}
-              {(isCreator || isEditor) && (
-                <Icon
-                  name="bomb"
-                  type="font-awesome-5"
-                  size={20}
-                  color={isDestructiveMode ? theme.error : theme.placeholder}
-                  onPress={() => setIsDestructiveMode(!isDestructiveMode)}
                 />
               )}
             </RNView>

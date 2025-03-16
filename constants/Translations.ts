@@ -202,7 +202,8 @@ type TranslationKey =
   | 'notifications.reactionReceived'
   | 'reactions.hug'
   | 'reactions.heart'
-  | 'reactions.kiss';
+  | 'reactions.kiss'
+  | 'agenda.you';
 
 export const SUPPORTED_LANGUAGES = {
   en: 'English',
@@ -418,6 +419,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'reactions.hug': 'hug',
     'reactions.heart': 'heart',
     'reactions.kiss': 'kiss',
+    'agenda.you': 'You',
   },
   es: {
     'settings.title': 'Ajustes de Cuenta',
@@ -624,6 +626,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'reactions.hug': 'abrazo',
     'reactions.heart': 'corazón',
     'reactions.kiss': 'beso',
+    'agenda.you': 'Tú',
   },
   fr: {
     'settings.title': 'Paramètres du Compte',
@@ -830,5 +833,6 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'reactions.hug': 'câlin',
     'reactions.heart': 'cœur',
     'reactions.kiss': 'bisou',
+    'agenda.you': 'Vous',
   }
 };
