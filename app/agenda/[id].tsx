@@ -18,6 +18,7 @@ import DatePickerInput from '@/components/DatePickerInput';
 import TruncatedText from '@/components/TruncatedText';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg"
+const LONG_PRESS_DURATION = 500; // 500ms = 0.5 seconds
 
 interface AgendaComment {
   id: number;
@@ -38,6 +39,10 @@ interface Member {
 
 interface ExpandedElements {
   [key: string]: boolean;
+}
+
+interface AgendaEditingState {
+  sections: { [key: string]: boolean };
 }
 
 const DialogButton = ({ onPress, disabled = false, children }: {
@@ -96,6 +101,8 @@ export default function AgendaScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [isDestructiveMode, setIsDestructiveMode] = useState(false);
   const [expandedElements, setExpandedElements] = useState<ExpandedElements>({});
+  const [editingState, setEditingState] = useState<AgendaEditingState>({ sections: {} });
+  const [editingSectionName, setEditingSectionName] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     navigation.setOptions({
@@ -713,7 +720,14 @@ export default function AgendaScreen() {
               [item.id]: !prev[item.id]
             }));
           },
-          style: ({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })  
+          onLongPress: (isCreator || isEditor) ? () => {
+            setEditingElement(item);
+            setShowEditElementDialog(true);
+          } : undefined,
+          delayLongPress: LONG_PRESS_DURATION,
+          style: ({ pressed }) => ({ 
+            opacity: pressed ? 0.7 : 1
+          })  
         } : {})}
       >
         <View 
@@ -786,21 +800,6 @@ export default function AgendaScreen() {
                     </Text>
                   )}
                 </View>
-                {(isCreator || isEditor) && (
-                  <View style={elementStyles.titleActions}>
-                    <Icon
-                      name="edit"
-                      type="font-awesome-5"
-                      size={14}
-                      color={theme.text}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        setEditingElement(item);
-                        setShowEditElementDialog(true);
-                      }}
-                    />
-                  </View>
-                )}
               </View>
               
               {isExpanded && (
@@ -841,6 +840,42 @@ export default function AgendaScreen() {
     });
   };
 
+  const handleEditSection = async (sectionId: string, newName: string) => {
+    if (!session?.user?.id) return;
+    
+    try {
+      const cleanName = newName.trim();
+      if (cleanName.length > 15) {
+        Alert.alert(t('agenda.error'), t('agenda.error.sectionNameTooLong'));
+        return;
+      }
+
+      if (!/^[a-zA-Z0-9\s]+$/.test(cleanName)) {
+        Alert.alert(t('agenda.error'), t('agenda.error.sectionNameInvalid'));
+        return;
+      }
+
+      const { error } = await supabase
+        .from("Agenda Section")
+        .update({ name: cleanName })
+        .eq('id', sectionId);
+
+      if (error) throw error;
+
+      setEditingState(prev => ({
+        ...prev,
+        sections: {
+          ...prev.sections,
+          [sectionId]: false
+        }
+      }));
+      await fetchAgenda();
+    } catch (error) {
+      console.error('Edit section error:', error);
+      Alert.alert(t('settings.error'), t('agenda.error.editSection'));
+    }
+  };
+
   const renderSection = ({ item: section }) => (
     <View style={styles.sectionContainer}>
       <View style={[
@@ -850,46 +885,99 @@ export default function AgendaScreen() {
           marginBottom: collapsedSections[section.id] ? 0 : spacing.sm 
         }
       ]}>
-        <Pressable 
-          onPress={() => toggleSection(section.id)}
-          style={styles.sectionTitleContainer}
-        >
-          <Icon
-            name={collapsedSections[section.id] ? 'chevron-up' : 'chevron-down'}
-            type="font-awesome-5"
-            size={14}
-            color={theme.text}
-            containerStyle={styles.collapseIcon}
+        {editingState.sections[section.id] ? (
+          <Input
+            value={editingSectionName[section.id] || section.name}
+            onChangeText={(text) => setEditingSectionName(prev => ({ ...prev, [section.id]: text }))}
+            containerStyle={styles.sectionEditInput}
+            inputStyle={{ color: theme.text }}
+            autoFocus
+            onSubmitEditing={() => handleEditSection(section.id, editingSectionName[section.id] || section.name)}
+            rightIcon={
+              <RNView style={{ flexDirection: 'row', gap: spacing.sm }}>
+                <Icon
+                  name="check"
+                  type="font-awesome-5"
+                  color={theme.text}
+                  size={16}
+                  onPress={() => handleEditSection(section.id, editingSectionName[section.id] || section.name)}
+                />
+                <Icon
+                  name="trash"
+                  type="font-awesome-5"
+                  color={theme.error}
+                  size={16}
+                  onPress={() => handleDeleteSection(section)}
+                />
+              </RNView>
+            }
           />
-          <Text 
-            style={styles.sectionTitle}
-            numberOfLines={1} 
-            ellipsizeMode="tail"
+        ) : (
+          <Pressable 
+            onPress={() => toggleSection(section.id)}
+            onLongPress={(isCreator || isEditor) ? () => {
+              setEditingState(prev => ({
+                ...prev,
+                sections: {
+                  ...prev.sections,
+                  [section.id]: true
+                }
+              }));
+              setEditingSectionName(prev => ({
+                ...prev,
+                [section.id]: section.name
+              }));
+            } : undefined}
+            delayLongPress={LONG_PRESS_DURATION}
+            style={({ pressed }) => [
+              styles.sectionTitleContainer
+            ]}
           >
-            {section.name}
-            {collapsedSections[section.id] && (
-              <Text style={[styles.elementCount, { color: theme.placeholder }]}>
-                {` (${section.elements?.filter(e => !completedElements[e.id]).length || 0})`}
-              </Text>
-            )}
-          </Text>
-        </Pressable>
-        {(isCreator || isEditor) && (
-          <RNView style={styles.sectionActions}>
-            <Button
-              title="+"
-              type="clear"
-              onPress={() => handleAddElement(section.id)}
-            />
             <Icon
-              name="trash"
+              name={collapsedSections[section.id] ? 'chevron-up' : 'chevron-down'}
               type="font-awesome-5"
-              size={16}
-              color={theme.error}
-              onPress={() => handleDeleteSection(section)}
-              containerStyle={styles.deleteIcon}
+              size={14}
+              color={theme.text}
+              containerStyle={styles.collapseIcon}
             />
-          </RNView>
+            <Text 
+              style={[styles.sectionTitle, { flex: 1 }]}
+              numberOfLines={1} 
+              ellipsizeMode="tail"
+            >
+              {section.name}
+            </Text>
+            <View style={styles.elementCountContainer}>
+              <View style={{
+                backgroundColor: theme.button,
+                width: 24,
+                height: 24,
+                borderRadius: 12,
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginRight: spacing.sm
+              }}>
+                <Text style={[
+                  styles.elementCount,
+                  { 
+                    color: theme.buttonText,
+                    fontWeight: '600'
+                  }
+                ]}>
+                  {section.elements?.filter(e => !completedElements[e.id]).length || 0}
+                </Text>
+              </View>
+              {(isCreator || isEditor) && !editingState.sections[section.id] && (
+                <Icon
+                  name="plus"
+                  type="font-awesome-5"
+                  size={16}
+                  color={theme.text}
+                  onPress={() => handleAddElement(section.id)}
+                />
+              )}
+            </View>
+          </Pressable>
         )}
       </View>
       {!collapsedSections[section.id] && (
@@ -1876,18 +1964,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: spacing.xl,
   },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  sectionTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    height: '100%',
-    cursor: 'pointer',
-  },
   collapseIcon: {
     marginRight: spacing.sm,
   },
@@ -1960,6 +2036,11 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontWeight: 'normal',
   },
+  elementCountContainer: {
+    marginLeft: 'auto', // This pushes it to the right
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   commentHeaderActions: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2024,5 +2105,21 @@ const styles = StyleSheet.create({
   },
   dialogHeaderAction: {
     paddingTop: 5, // Align with the first line of text
+  },
+  sectionEditInput: {
+    flex: 1,
+    marginBottom: -spacing.lg,
+    marginLeft: -spacing.sm,
+  },
+  editIcon: {
+    padding: spacing.xs,
+    marginLeft: spacing.sm,
+  },
+  sectionActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginLeft: spacing.sm,
+    paddingVertical: spacing.xs,
   },
 });

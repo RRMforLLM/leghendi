@@ -364,6 +364,30 @@ FOR DELETE USING (
     )
 );
 
+DROP POLICY IF EXISTS "section_update" ON "Agenda Section";
+
+CREATE POLICY "section_update" ON "Agenda Section"
+FOR UPDATE USING (
+    agenda_id IN (
+        SELECT id FROM "Agenda"
+        WHERE creator_id = auth.uid()
+        OR id IN (
+            SELECT agenda_id FROM "Agenda Editor"
+            WHERE user_id = auth.uid()
+        )
+    )
+)
+WITH CHECK (
+    agenda_id IN (
+        SELECT id FROM "Agenda"
+        WHERE creator_id = auth.uid()
+        OR id IN (
+            SELECT agenda_id FROM "Agenda Editor"
+            WHERE user_id = auth.uid()
+        )
+    )
+);
+
 DROP POLICY IF EXISTS "element_select" ON "Agenda Element";
 DROP POLICY IF EXISTS "element_access" ON "Agenda Element";
 DROP POLICY IF EXISTS "element_delete" ON "Agenda Element";
