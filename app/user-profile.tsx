@@ -694,7 +694,9 @@ const UserProfileScreen = () => {
 
               <View style={styles.commentsList}>
                 {comments.map((comment) => (
-                  renderComment({ item: comment })  // <-- Use the renderComment function
+                  <View key={`comment-${comment.id}`}>
+                    {renderComment({ item: comment })}
+                  </View>
                 ))}
                 {comments.length === 0 && (
                   <Text style={[typography.body, { color: theme.placeholder }]}>
