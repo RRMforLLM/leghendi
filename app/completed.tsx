@@ -81,20 +81,27 @@ export default function CompletedScreen() {
     <Pressable 
       onPress={() => handleUncomplete(item.elementId)}
       style={({ pressed }) => [
-        styles.completedCard,
+        styles.elementCard, 
         { 
           backgroundColor: theme.card,
           opacity: pressed ? 0.7 : 1
         }
       ]}
     >
-      <Text style={[typography.h3, { color: theme.text }]}>{item.subject}</Text>
-      <Text style={[typography.caption, { color: theme.placeholder }]}>
-        {item.agendaName} • {t('agenda.due')}: {new Date(item.deadline).toLocaleDateString(language)}
-      </Text>
-      <Text style={[typography.caption, { color: theme.tint, marginTop: spacing.xs }]}>
-        {t('completed.tapToUncomplete')}
-      </Text>
+      <View style={styles.elementHeader}>
+        <View style={styles.elementContent}>
+          <View style={styles.titleRow}>
+            <View style={styles.titleMain}>
+              <Text style={[styles.elementTitle, { color: theme.text }]}>
+                {item.subject}
+              </Text>
+              <Text style={[styles.deadline, { color: theme.placeholder }]}>
+                {t('agenda.due')}: {new Date(item.deadline).toLocaleDateString(language)}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
     </Pressable>
   );
 
@@ -118,12 +125,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.lg,
   },
-  completedCard: {
-    padding: spacing.md,
-    borderRadius: 12,
-    marginBottom: spacing.sm,
-    borderLeftWidth: 4,
+  elementCard: {
+    marginBottom: spacing.xs,
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderLeftWidth: 3,
     borderLeftColor: Colors.light.tint,
     width: '100%',
+  },
+  elementHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: spacing.sm,
+  },
+  elementContent: {
+    flex: 1,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  titleMain: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  elementTitle: {
+    ...typography.h3,
+    fontSize: 15,
+    marginBottom: 2,
+  },
+  deadline: {
+    ...typography.caption,
+    fontSize: 12,
+    opacity: 0.7,
   },
 });

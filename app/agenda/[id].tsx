@@ -642,7 +642,7 @@ export default function AgendaScreen() {
     },
     elementHeader: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'center', // Changed from 'flex-start' to 'center'
       padding: spacing.sm,
     },
     elementControls: {
@@ -650,6 +650,7 @@ export default function AgendaScreen() {
       alignItems: 'center',
       gap: spacing.xs,
       marginRight: spacing.sm,
+      alignSelf: 'center', // Added this to ensure vertical centering
     },
     urgentButton: {
       width: 32,
@@ -670,7 +671,7 @@ export default function AgendaScreen() {
     titleRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'flex-start',
+      alignItems: 'center', // Changed from 'flex-start' to 'center'
     },
     titleMain: {
       flex: 1,
@@ -745,25 +746,6 @@ export default function AgendaScreen() {
               <Pressable
                 onPress={(e) => {
                   e.stopPropagation();
-                  toggleElementState(item.id, 'urgent');
-                }}
-                style={({ pressed }) => [
-                  elementStyles.urgentButton,
-                  { opacity: pressed ? 0.7 : 1 }
-                ]}
-              >
-                <Icon
-                  name="flag"
-                  type="font-awesome-5"
-                  size={16}
-                  color={isUrgent ? theme.error : theme.placeholder}
-                  solid={isUrgent}
-                />
-              </Pressable>
-  
-              <Pressable
-                onPress={(e) => {
-                  e.stopPropagation();
                   toggleElementState(item.id, 'completed');
                 }}
                 style={({ pressed }) => [
@@ -800,6 +782,24 @@ export default function AgendaScreen() {
                     </Text>
                   )}
                 </View>
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    toggleElementState(item.id, 'urgent');
+                  }}
+                  style={({ pressed }) => [
+                    elementStyles.urgentButton,
+                    { opacity: pressed ? 0.7 : 1 }
+                  ]}
+                >
+                  <Icon
+                    name="flag"
+                    type="font-awesome-5"
+                    size={16}
+                    color={isUrgent ? theme.error : theme.placeholder}
+                    solid={isUrgent}
+                  />
+                </Pressable>
               </View>
               
               {isExpanded && (
