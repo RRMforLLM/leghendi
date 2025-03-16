@@ -38,16 +38,13 @@ const ElementDetailsDialog = ({ element, isVisible, onClose, theme, t, language 
     <Dialog
       isVisible={isVisible}
       onBackdropPress={onClose}
-      overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
+      overlayStyle={[styles.dayDialog, { backgroundColor: theme.card }]}
     >
       <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
-        <ScrollView 
-          style={styles.elementDialogScroll}
-          showsVerticalScrollIndicator={true}
-        >
-          <Text style={[styles.dialogTitle, { color: theme.text }]}>
-            {element.subject}
-          </Text>
+        <Text style={[styles.dialogTitle, { color: theme.text }]}>
+          {element.subject}
+        </Text>
+        <ScrollView style={styles.dayDialogScroll}>
           {element.details && (
             <Text style={[styles.dialogDetails, { color: theme.text }]}>
               {element.details}
@@ -165,6 +162,35 @@ export default function HomeScreen() {
   const [showDayDialog, setShowDayDialog] = useState(false);
   const [selectedElement, setSelectedElement] = useState<AgendaElement | null>(null);
   const weekScrollRef = useRef<ScrollView>(null);
+  
+  // Add these new state variables
+  const [isCreateNameValid, setIsCreateNameValid] = useState(true);
+  const [isJoinNameValid, setIsJoinNameValid] = useState(true);
+
+  // Add these new handler functions
+  const handleCreateNameChange = (text: string) => {
+    setNewAgendaData(prev => ({ ...prev, name: text }));
+    const trimmed = text.trim();
+    // Only validate length if there's actual text
+    if (trimmed) {
+      setIsCreateNameValid(trimmed.length <= 15);
+    } else {
+      // Reset validation state when empty
+      setIsCreateNameValid(true);
+    }
+  };
+
+  const handleJoinNameChange = (text: string) => {
+    setJoinAgendaData(prev => ({ ...prev, name: text }));
+    const trimmed = text.trim();
+    // Only validate length if there's actual text
+    if (trimmed) {
+      setIsJoinNameValid(trimmed.length <= 15);
+    } else {
+      // Reset validation state when empty
+      setIsJoinNameValid(true);
+    }
+  };
 
   const resetState = useCallback(() => {
     setAgendas([])
@@ -587,20 +613,13 @@ export default function HomeScreen() {
   }, [fetchAgendas, fetchAgendaElements])
 
   const handleJoinAgenda = async () => {
-    if (!session?.user?.id || !joinAgendaData.name || !joinAgendaData.key) return
+    if (!session?.user?.id || !joinAgendaData.name || !joinAgendaData.key) return;
     
     const trimmedName = joinAgendaData.name.trim();
+    setIsJoinNameValid(trimmedName.length <= 15);
 
-    if (trimmedName.length > 15) {
-      Alert.alert(t('settings.error'), t('home.error.nameTooLong'));
-      return;
-    }
+    if (!isJoinNameValid) return;
 
-    if (!/^[a-zA-Z0-9\s]+$/.test(trimmedName)) {
-      Alert.alert(t('settings.error'), t('home.error.invalidChars'));
-      return;
-    }
-    
     try {
       const trimmedName = joinAgendaData.name.trim()
       const trimmedKey = joinAgendaData.key.trim()
@@ -706,22 +725,16 @@ export default function HomeScreen() {
   const handleCreateAgenda = async () => {
     if (!session?.user?.id || !newAgendaData.name) return;
 
-    const cleanName = newAgendaData.name.trim();
-    if (cleanName.length > 15) {
-      Alert.alert(t('settings.error'), t('home.error.nameTooLong'));
-      return;
-    }
+    const trimmedName = newAgendaData.name.trim();
+    setIsCreateNameValid(trimmedName.length <= 15);
 
-    if (!/^[a-zA-Z0-9\s]+$/.test(cleanName)) {
-      Alert.alert(t('settings.error'), t('home.error.invalidChars'));
-      return;
-    }
-    
+    if (!isCreateNameValid) return;
+
     try {
       const { data, error } = await supabase
         .from("Agenda")
         .insert([{
-          name: cleanName,
+          name: newAgendaData.name.trim(),
           key: newAgendaData.key || Math.random().toString(36).substring(2, 8),
           key_visible: newAgendaData.key_visible,
           creator_id: session.user.id
@@ -824,7 +837,7 @@ export default function HomeScreen() {
   const renderCalendarDay = (date: Date) => {
     const dateKey = date.toDateString();
     const dayElements = elementsByDay[dateKey] || [];
-    const sortedElements = sortElementsByUrgency(dayElements);
+    const sortedElements = sortElementsByUrgencyAndDeadline(dayElements);
     const isToday = new Date().toDateString() === dateKey;
     const MAX_VISIBLE_ELEMENTS = 2;
   
@@ -857,29 +870,36 @@ export default function HomeScreen() {
               key={`${element.id}-${index}`}
               onPress={() => setSelectedElement(element)}
               style={({ pressed }) => [
-                styles.elementItem,
+                styles.elementCard,
                 { 
                   backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)',
-                  opacity: pressed ? 0.7 : 1 
+                  opacity: pressed ? 0.7 : 1,
+                  borderLeftColor: element.isUrgent ? theme.error : theme.border
                 },
                 element.isUrgent && {
                   backgroundColor: Colors[colorScheme ?? 'light'].error + '20',
-                  borderLeftWidth: 2,
-                  borderLeftColor: Colors[colorScheme ?? 'light'].error
                 }
               ]}
             >
-              <Text 
-                style={[
-                  styles.elementText,
-                  { color: theme.text },
-                  element.isUrgent && { color: Colors[colorScheme ?? 'light'].error }
-                ]}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {element.subject}
-              </Text>
+              <View style={styles.elementHeader}>
+                <View style={styles.elementContent}>
+                  <View style={styles.titleRow}>
+                    <View style={styles.titleMain}>
+                      <Text 
+                        style={[
+                          styles.elementTitle,
+                          { color: theme.text },
+                          element.isUrgent && { color: Colors[colorScheme ?? 'light'].error }
+                        ]}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                      >
+                        {element.subject}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
             </Pressable>
           ))}
           {sortedElements.length > MAX_VISIBLE_ELEMENTS && (
@@ -920,21 +940,22 @@ export default function HomeScreen() {
     <Pressable
       onPress={() => router.push(`/agenda/${item.section.agenda.id}`)}
       style={({ pressed }) => [
-        styles.elementCard, 
+        styles.urgentCard, 
         { 
           backgroundColor: theme.card,
-          opacity: pressed ? 0.7 : 1
+          opacity: pressed ? 0.7 : 1,
+          borderLeftColor: theme.error
         }
       ]}
     >
-      <View style={styles.elementHeader}>
-        <View style={styles.elementContent}>
-          <View style={styles.titleRow}>
-            <View style={styles.titleMain}>
-              <Text style={[styles.elementTitle, { color: theme.text }]}>
+      <View style={styles.urgentHeader}>
+        <View style={styles.urgentContent}>
+          <View style={styles.urgentTitleRow}>
+            <View style={styles.urgentTitleMain}>
+              <Text style={[styles.urgentTitle, { color: theme.text }]}>
                 {item.subject}
               </Text>
-              <Text style={[styles.deadline, { color: theme.placeholder }]}>
+              <Text style={[styles.urgentDeadline, { color: theme.placeholder }]}>
                 {item.agendaName} • {t('agenda.due')}: {new Date(item.deadline).toLocaleDateString(language)}
               </Text>
             </View>
@@ -971,6 +992,21 @@ export default function HomeScreen() {
       </View>
     );
   }
+
+  // Add these before the return statement
+  const inputErrorStyles = {
+    invalidInput: {
+      color: theme.error,
+    },
+    errorText: {
+      color: theme.error,
+      fontSize: 12,
+      marginTop: 4,
+    },
+    errorBorder: {
+      borderBottomColor: theme.error,
+    }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -1103,7 +1139,7 @@ export default function HomeScreen() {
         <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
           <View style={[styles.dialogHeader, { backgroundColor: theme.card }]}>
             <View style={[{ flex: 1 }, { backgroundColor: theme.card }]}>
-              <Text style={[typography.h3, { color: theme.text }]}>
+              <Text style={[styles.dialogHeaderTitle, { color: theme.text }]}>
                 {t('home.createAgendaTitle')}
               </Text>
             </View>
@@ -1112,13 +1148,19 @@ export default function HomeScreen() {
           <Input
             placeholder={t('home.agendaName')}
             value={newAgendaData.name}
-            onChangeText={(text) => setNewAgendaData(prev => ({ ...prev, name: text }))}
+            onChangeText={handleCreateNameChange}
             inputStyle={[
               { color: theme.text },
               { minHeight: 40 },
-              styles.inputField
+              styles.inputField,
+              !isCreateNameValid && newAgendaData.name.trim() && inputErrorStyles.invalidInput
             ]}
-            inputContainerStyle={{ paddingVertical: spacing.xs }}
+            errorMessage={newAgendaData.name.trim() && !isCreateNameValid ? t('home.error.nameTooLong') : ''}
+            errorStyle={inputErrorStyles.errorText}
+            inputContainerStyle={[
+              { paddingVertical: spacing.xs },
+              !isCreateNameValid && newAgendaData.name.trim() && inputErrorStyles.errorBorder
+            ]}
             containerStyle={styles.dialogInput}
           />
           <Input
@@ -1167,7 +1209,7 @@ export default function HomeScreen() {
         <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
           <View style={[styles.dialogHeader, { backgroundColor: theme.card }]}>
             <View style={[{ flex: 1 }, { backgroundColor: theme.card }]}>
-              <Text style={[typography.h3, { color: theme.text }]}>
+              <Text style={[styles.dialogHeaderTitle, { color: theme.text }]}>
                 {t('home.joinAgendaTitle')}
               </Text>
             </View>
@@ -1176,13 +1218,19 @@ export default function HomeScreen() {
           <Input
             placeholder={t('home.agendaName')}
             value={joinAgendaData.name}
-            onChangeText={(text) => setJoinAgendaData(prev => ({ ...prev, name: text }))}
+            onChangeText={handleJoinNameChange}
             inputStyle={[
               { color: theme.text },
               { minHeight: 40 },
-              styles.inputField
+              styles.inputField,
+              !isJoinNameValid && joinAgendaData.name.trim() && inputErrorStyles.invalidInput
             ]}
-            inputContainerStyle={{ paddingVertical: spacing.xs }}
+            errorMessage={joinAgendaData.name.trim() && !isJoinNameValid ? t('home.error.nameTooLong') : ''}
+            errorStyle={inputErrorStyles.errorText}
+            inputContainerStyle={[
+              { paddingVertical: spacing.xs },
+              !isJoinNameValid && joinAgendaData.name.trim() && inputErrorStyles.errorBorder
+            ]}
             containerStyle={styles.dialogInput}
           />
           <Input
@@ -1341,7 +1389,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   dialogContent: {
-    padding: spacing.lg,
+    padding: spacing.lg,  // Changed from spacing.md to spacing.lg to match [id].tsx
   },
   dialogTitle: {
     ...typography.h2,
@@ -1350,9 +1398,11 @@ const styles = StyleSheet.create({
   dialogDetails: {
     ...typography.body,
     marginBottom: spacing.md,
+    lineHeight: 20,
   },
   dialogDeadline: {
     ...typography.caption,
+    opacity: 0.7,
   },
   dayDialog: {
     width: '90%',
@@ -1362,6 +1412,7 @@ const styles = StyleSheet.create({
   },
   dayDialogScroll: {
     maxHeight: 300,
+    marginBottom: spacing.md,
   },
   dayDialogElement: {
     padding: spacing.sm,
@@ -1532,6 +1583,7 @@ const styles = StyleSheet.create({
   },
   dayDialogScroll: {
     maxHeight: 300,
+    marginBottom: spacing.md,
   },
   dayDialogElement: {
     padding: spacing.sm,
@@ -1583,13 +1635,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
     borderLeftWidth: 3,
-    borderLeftColor: Colors.light.error,
     width: '100%',
   },
   elementHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: spacing.sm,
+    alignItems: 'center',
+    padding: spacing.xs,
   },
   elementContent: {
     flex: 1,
@@ -1597,33 +1648,50 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   titleMain: {
     flex: 1,
-    marginRight: spacing.sm,
+    marginRight: spacing.xs,
   },
   elementTitle: {
+    ...typography.h3,
+    fontSize: 13,
+  },
+  // Urgent items specific styles
+  urgentCard: {
+    marginBottom: spacing.xs,
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderLeftWidth: 3,
+    width: '100%',
+  },
+  urgentHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: spacing.sm,
+  },
+  urgentContent: {
+    flex: 1,
+  },
+  urgentTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  urgentTitleMain: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  urgentTitle: {
     ...typography.h3,
     fontSize: 15,
     marginBottom: 2,
   },
-  deadline: {
+  urgentDeadline: {
     ...typography.caption,
     fontSize: 12,
     opacity: 0.7,
-  },
-  dialogHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.md,
-  },
-  dialogInput: {
-    paddingHorizontal: 0,
-  },
-  inputField: {
-    padding: spacing.sm,
   },
   dialogFooter: {
     borderTopWidth: 1,
@@ -1634,5 +1702,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     paddingHorizontal: spacing.lg,
+  },
+  dialogHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.md,
+  },
+  dialogHeaderTitle: {
+    ...typography.h3,
   },
 })
