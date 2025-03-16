@@ -88,58 +88,66 @@ const sortElementsByUrgencyAndDeadline = (elements: AgendaElement[]) => {
   });
 };
 
-const DayElementsDialog = ({ elements, isVisible, onClose, onElementPress, theme, t, colorScheme, language }) => (
-  <Dialog
-    isVisible={isVisible}
-    onBackdropPress={onClose}
-    overlayStyle={[styles.dayDialog, { backgroundColor: theme.card }]}
-  >
-    <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
-      <Text style={[styles.dialogTitle, { color: theme.text }]}>
-        {elements[0] && new Date(elements[0].deadline).toLocaleDateString(language)}
-      </Text>
-      <ScrollView style={styles.dayDialogScroll}>
-        {sortElementsByUrgency(elements).map((element, index) => (
-          <Pressable
-            key={`${element.id}-${index}`}
-            onPress={() => onElementPress(element)}
-            style={({ pressed }) => [
-              styles.elementCard,
-              { 
-                backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)',
-                opacity: pressed ? 0.7 : 1,
-                borderLeftColor: element.isUrgent ? theme.error : theme.border
-              },
-              element.isUrgent && {
-                backgroundColor: Colors[colorScheme ?? 'light'].error + '20',
-              }
-            ]}
-          >
-            <View style={styles.elementHeader}>
-              <View style={styles.elementContent}>
-                <View style={styles.titleRow}>
-                  <View style={styles.titleMain}>
-                    <Text 
-                      style={[
-                        styles.elementTitle,
-                        { color: theme.text },
-                        element.isUrgent && { color: Colors[colorScheme ?? 'light'].error }
-                      ]}
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                    >
-                      {element.subject}
-                    </Text>
+const DayElementsDialog = ({ elements, isVisible, onClose, onElementPress, theme, t, colorScheme, language }) => {
+  const dateKey = elements[0]?.deadline ? new Date(elements[0].deadline).toDateString() : '';
+  const sortedElements = sortElementsByUrgencyAndDeadline(elements);
+  const date = elements[0]?.deadline ? new Date(elements[0].deadline) : new Date();
+
+  return (
+    <Dialog
+      isVisible={isVisible}
+      onBackdropPress={onClose}
+      overlayStyle={styles.dayDialog}
+    >
+      <View style={[styles.dialogDayContainer, { backgroundColor: theme.card }]}>
+        <Text style={[styles.dayHeader, { color: theme.text }]}>
+          {t(`calendar.days.${['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][date.getDay()]}`)}
+          {'\n'}
+          {date.getDate()}
+        </Text>
+        <ScrollView style={styles.dialogElementsContainer}>
+          {sortedElements.map((element, index) => (
+            <Pressable 
+              key={`${element.id}-${index}`}
+              onPress={() => onElementPress(element)}
+              style={({ pressed }) => [
+                styles.elementCard,
+                { 
+                  backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)',
+                  opacity: pressed ? 0.7 : 1,
+                  borderLeftColor: element.isUrgent ? theme.error : theme.border
+                },
+                element.isUrgent && {
+                  backgroundColor: Colors[colorScheme ?? 'light'].error + '20',
+                }
+              ]}
+            >
+              <View style={styles.elementHeader}>
+                <View style={styles.elementContent}>
+                  <View style={[styles.titleRow, { alignItems: 'center' }]}>
+                    <View style={styles.titleMain}>
+                      <Text 
+                        style={[
+                          styles.elementTitle,
+                          { color: theme.text },
+                          element.isUrgent && { color: Colors[colorScheme ?? 'light'].error }
+                        ]}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                      >
+                        {element.subject}
+                      </Text>
+                    </View>
                   </View>
                 </View>
               </View>
-            </View>
-          </Pressable>
-        ))}
-      </ScrollView>
-    </View>
-  </Dialog>
-);
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
+    </Dialog>
+  );
+};
 
 export default function HomeScreen() {
   const { t, language } = useLanguage();
@@ -175,6 +183,7 @@ export default function HomeScreen() {
   // Add these new state variables
   const [isCreateNameValid, setIsCreateNameValid] = useState(true);
   const [isJoinNameValid, setIsJoinNameValid] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   // Add these new handler functions
   const handleCreateNameChange = (text: string) => {
@@ -848,6 +857,7 @@ export default function HomeScreen() {
     const dayElements = elementsByDay[dateKey] || [];
     const sortedElements = sortElementsByUrgencyAndDeadline(dayElements);
     const isToday = new Date().toDateString() === dateKey;
+    const isSelected = dateKey === selectedDate;
     const MAX_VISIBLE_ELEMENTS = 2;
   
     return (
@@ -855,6 +865,7 @@ export default function HomeScreen() {
         key={dateKey}
         onPress={() => {
           if (dayElements.length > 0) {
+            setSelectedDate(dateKey);
             setSelectedDayElements(dayElements);
             setShowDayDialog(true);
           }
@@ -863,7 +874,7 @@ export default function HomeScreen() {
           styles.dayContainer,
           { 
             backgroundColor: theme.card,
-            opacity: pressed ? 0.7 : 1
+            opacity: isSelected ? 0.1 : pressed ? 0.7 : 1
           },
           isToday && { borderColor: theme.tint, borderWidth: 1 }
         ]}
@@ -1274,10 +1285,14 @@ export default function HomeScreen() {
       <DayElementsDialog
         elements={selectedDayElements}
         isVisible={showDayDialog}
-        onClose={() => setShowDayDialog(false)}
+        onClose={() => {
+          setShowDayDialog(false);
+          setSelectedDate(null);
+        }}
         onElementPress={(element) => {
           setSelectedElement(element);
           setShowDayDialog(false);
+          setSelectedDate(null);
         }}
         theme={theme}
         t={t}
@@ -1415,13 +1430,25 @@ const styles = StyleSheet.create({
   },
   dayDialog: {
     width: '90%',
-    borderRadius: 12,
     padding: spacing.md,
     maxHeight: '80%',
+    backgroundColor: 'transparent',
+    shadowColor: 'transparent',
   },
-  dayDialogScroll: {
-    maxHeight: 300,
-    marginBottom: spacing.md,
+  dialogDayContainer: {
+    width: '100%',
+    borderRadius: 12,
+    padding: spacing.md,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  dialogElementsContainer: {
+    minHeight: 400,
+    maxHeight: 400, // Make it taller than the calendar version
+    overflow: 'hidden',
   },
   elementTextContainer: {
     flex: 1,
