@@ -19,6 +19,7 @@ interface CompletedItem {
   agendaName: string;
   agendaId: string;
   elementId: number;
+  completed_at: string;  // Add this field
 }
 
 export default function CompletedScreen() {
@@ -33,11 +34,24 @@ export default function CompletedScreen() {
     const initializeItems = async () => {
       if (items) {
         const parsedItems = JSON.parse(decodeURIComponent(items as string));
-        setCompletedItems(parsedItems);
-        await storeData(KEYS.COMPLETED_ITEMS, parsedItems);
+        // Sort items by completion timestamp (most recent first)
+        const sortedItems = [...parsedItems].sort((a, b) => {
+          const dateA = new Date(a.completed_at).getTime();
+          const dateB = new Date(b.completed_at).getTime();
+          return dateB - dateA;  // Descending order (newest first)
+        });
+        setCompletedItems(sortedItems);
+        await storeData(KEYS.COMPLETED_ITEMS, sortedItems);
       } else {
         const cachedItems = await getData(KEYS.COMPLETED_ITEMS);
-        setCompletedItems(cachedItems || []);
+        if (cachedItems) {
+          const sortedItems = [...cachedItems].sort((a, b) => {
+            const dateA = new Date(a.completed_at).getTime();
+            const dateB = new Date(b.completed_at).getTime();
+            return dateB - dateA;
+          });
+          setCompletedItems(sortedItems);
+        }
       }
     };
 

@@ -104,6 +104,11 @@ export default function AgendaScreen() {
   const [editingState, setEditingState] = useState<AgendaEditingState>({ sections: {} });
   const [editingSectionName, setEditingSectionName] = useState<{ [key: string]: string }>({});
 
+  const [isNewSectionNameValid, setIsNewSectionNameValid] = useState(true);
+  const [isNewElementSubjectValid, setIsNewElementSubjectValid] = useState(true);
+  const [isEditingSectionNameValid, setIsEditingSectionNameValid] = useState(true);
+  const [isEditingElementSubjectValid, setIsEditingElementSubjectValid] = useState(true);
+
   useEffect(() => {
     navigation.setOptions({
       title: t('agenda.header'),
@@ -431,10 +436,30 @@ export default function AgendaScreen() {
     }, [session?.user?.id, isOnline])
   );
 
+  const handleSectionNameChange = (text: string) => {
+    setNewSectionName(text);
+    setIsNewSectionNameValid(text.trim().length <= 15);
+  };
+
+  const handleElementSubjectChange = (text: string) => {
+    setNewElementData(prev => ({ ...prev, subject: text }));
+    setIsNewElementSubjectValid(text.trim().length <= 15);
+  };
+
+  const handleEditSectionNameChange = (sectionId: string, text: string) => {
+    setEditingSectionName(prev => ({ ...prev, [sectionId]: text }));
+    setIsEditingSectionNameValid(text.trim().length <= 15);
+  };
+
+  const handleEditElementSubjectChange = (text: string) => {
+    setEditingElement(prev => prev ? { ...prev, subject: text } : null);
+    setIsEditingElementSubjectValid(text.trim().length <= 15);
+  };
+
   const addSection = async () => {
     const cleanName = newSectionName.trim();
     if (cleanName.length > 15) {
-      Alert.alert(t('agenda.error'), t('agenda.error.sectionNameTooLong'));
+      setIsNewSectionNameValid(false);
       return;
     }
 
@@ -461,7 +486,7 @@ export default function AgendaScreen() {
   const addElement = async () => {
     const cleanSubject = newElementData.subject.trim();
     if (cleanSubject.length > 15) {
-      Alert.alert(t('agenda.error'), t('agenda.error.elementSubjectTooLong'));
+      setIsNewElementSubjectValid(false);
       return;
     }
 
@@ -600,6 +625,11 @@ export default function AgendaScreen() {
   const handleEditElement = async () => {
     if (!editingElement) return;
   
+    if (editingElement.subject.trim().length > 15) {
+      setIsEditingElementSubjectValid(false);
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from("Agenda Element")
@@ -826,24 +856,29 @@ export default function AgendaScreen() {
     }));
   };
 
-  const sortElementsByUrgency = (elements: AgendaElement[]) => {
+  const sortElementsByUrgencyAndDeadline = (elements: AgendaElement[]) => {
     return [...elements].sort((a, b) => {
+      // First sort by urgency
       if (a.isUrgent && !b.isUrgent) return -1;
       if (!a.isUrgent && b.isUrgent) return 1;
-      return 0;
+      
+      // If both have same urgency status, sort by deadline
+      const dateA = new Date(a.deadline).getTime();
+      const dateB = new Date(b.deadline).getTime();
+      return dateA - dateB;
     });
   };
 
   const handleEditSection = async (sectionId: string, newName: string) => {
     if (!session?.user?.id) return;
     
-    try {
-      const cleanName = newName.trim();
-      if (cleanName.length > 15) {
-        Alert.alert(t('agenda.error'), t('agenda.error.sectionNameTooLong'));
-        return;
-      }
+    const cleanName = newName.trim();
+    if (cleanName.length > 15) {
+      setIsEditingSectionNameValid(false);
+      return;
+    }
 
+    try {
       const { error } = await supabase
         .from("Agenda Section")
         .update({ name: cleanName })
@@ -877,9 +912,18 @@ export default function AgendaScreen() {
         {editingState.sections[section.id] ? (
           <Input
             value={editingSectionName[section.id] || section.name}
-            onChangeText={(text) => setEditingSectionName(prev => ({ ...prev, [section.id]: text }))}
+            onChangeText={(text) => handleEditSectionNameChange(section.id, text)}
             containerStyle={styles.sectionEditInput}
-            inputStyle={{ color: theme.text }}
+            inputStyle={[
+              { color: theme.text },
+              !isEditingSectionNameValid && inputErrorStyles.invalidInput
+            ]}
+            errorMessage={!isEditingSectionNameValid ? t('agenda.error.sectionNameTooLong') : ''}
+            errorStyle={inputErrorStyles.errorText}
+            inputContainerStyle={[
+              { borderBottomColor: theme.border },
+              !isEditingSectionNameValid && inputErrorStyles.errorBorder
+            ]}
             autoFocus
             onSubmitEditing={() => handleEditSection(section.id, editingSectionName[section.id] || section.name)}
             rightIcon={
@@ -970,7 +1014,7 @@ export default function AgendaScreen() {
       </View>
       {!collapsedSections[section.id] && (
         <FlatList
-          data={sortElementsByUrgency(section.elements.map(element => ({
+          data={sortElementsByUrgencyAndDeadline(section.elements.map(element => ({
             ...element,
             isUrgent: urgentElements[element.id]
           })))}
@@ -1183,6 +1227,7 @@ export default function AgendaScreen() {
           .from('Completed Element')
           .select(`
             element_id,
+            created_at,
             element:"Agenda Element"!inner (
               id,
               subject,
@@ -1200,7 +1245,7 @@ export default function AgendaScreen() {
           .eq('user_id', session.user.id)
           .eq('agenda_id', id);
         if (error) throw error;
-2
+
         const formattedItems = completedData?.map(item => ({
           id: item.element.id,
           elementId: item.element_id,
@@ -1208,7 +1253,8 @@ export default function AgendaScreen() {
           deadline: item.element.deadline,
           agendaName: item.element.section.agenda.name,
           agendaId: item.element.section.agenda.id,
-          sectionId: item.element.section.id
+          sectionId: item.element.section.id,
+          completed_at: item.created_at // Add the completion timestamp
         })) || [];
 
         await storeAgendaData(id as string, {
@@ -1365,6 +1411,21 @@ export default function AgendaScreen() {
       </View>
     );
   }
+
+  // Add these style objects near the Dialog components
+  const inputErrorStyles = {
+    invalidInput: {
+      color: theme.error,
+    },
+    errorText: {
+      color: theme.error,
+      fontSize: 12,
+      marginTop: 4,
+    },
+    errorBorder: {
+      borderBottomColor: theme.error,
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -1635,13 +1696,19 @@ export default function AgendaScreen() {
           <Input
             placeholder={t('agenda.newSection')}
             value={newSectionName}
-            onChangeText={setNewSectionName}
+            onChangeText={handleSectionNameChange}
             inputStyle={[
               { color: theme.text },
               { minHeight: 40 },
-              styles.inputField
+              styles.inputField,
+              !isNewSectionNameValid && inputErrorStyles.invalidInput
             ]}
-            inputContainerStyle={{ paddingVertical: spacing.xs }}
+            errorMessage={!isNewSectionNameValid ? t('agenda.error.sectionNameTooLong') : ''}
+            errorStyle={inputErrorStyles.errorText}
+            inputContainerStyle={[
+              { paddingVertical: spacing.xs },
+              !isNewSectionNameValid && inputErrorStyles.errorBorder
+            ]}
             containerStyle={styles.dialogInput}
           />
 
@@ -1678,8 +1745,17 @@ export default function AgendaScreen() {
           <Input
             placeholder={t('agenda.elementSubject')}
             value={newElementData.subject}
-            onChangeText={(text) => setNewElementData(prev => ({ ...prev, subject: text }))}
-            inputStyle={{ color: theme.text }}
+            onChangeText={handleElementSubjectChange}
+            inputStyle={[
+              { color: theme.text },
+              !isNewElementSubjectValid && inputErrorStyles.invalidInput
+            ]}
+            errorMessage={!isNewElementSubjectValid ? t('agenda.error.elementSubjectTooLong') : ''}
+            errorStyle={inputErrorStyles.errorText}
+            inputContainerStyle={[
+              { borderBottomColor: theme.border },
+              !isNewElementSubjectValid && inputErrorStyles.errorBorder
+            ]}
             containerStyle={styles.dialogInput}
           />
           
@@ -1757,8 +1833,17 @@ export default function AgendaScreen() {
           <Input
             placeholder={t('agenda.elementSubject')}
             value={editingElement?.subject}
-            onChangeText={(text) => setEditingElement(prev => prev ? { ...prev, subject: text } : null)}
-            inputStyle={{ color: theme.text }}
+            onChangeText={handleEditElementSubjectChange}
+            inputStyle={[
+              { color: theme.text },
+              !isEditingElementSubjectValid && inputErrorStyles.invalidInput
+            ]}
+            errorMessage={!isEditingElementSubjectValid ? t('agenda.error.elementSubjectTooLong') : ''}
+            errorStyle={inputErrorStyles.errorText}
+            inputContainerStyle={[
+              { borderBottomColor: theme.border },
+              !isEditingElementSubjectValid && inputErrorStyles.errorBorder
+            ]}
             containerStyle={styles.dialogInput}
           />
           
