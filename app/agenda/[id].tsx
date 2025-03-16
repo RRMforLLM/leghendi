@@ -1978,14 +1978,13 @@ const styles = StyleSheet.create({
   },
   dialogInput: {
     paddingHorizontal: 0,
-    marginBottom: spacing.md,
   },
   inputField: {
     padding: spacing.sm,
   },
   dialogFooter: {
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
+    borderTopColor: 'transparent',
     marginHorizontal: -spacing.lg,
     marginBottom: -spacing.lg,
     paddingVertical: spacing.xs,

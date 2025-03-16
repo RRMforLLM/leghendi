@@ -1100,21 +1100,38 @@ export default function HomeScreen() {
         onBackdropPress={() => setShowCreateDialog(false)}
         overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
       >
-        <View style={[styles.dialogContent, , { backgroundColor: theme.card }]}>
-          <Text style={[typography.h3, { color: theme.text }]}>
-            {t('home.createAgendaTitle')}
-          </Text>
+        <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
+          <View style={[styles.dialogHeader, { backgroundColor: theme.card }]}>
+            <View style={[{ flex: 1 }, { backgroundColor: theme.card }]}>
+              <Text style={[typography.h3, { color: theme.text }]}>
+                {t('home.createAgendaTitle')}
+              </Text>
+            </View>
+          </View>
+          
           <Input
             placeholder={t('home.agendaName')}
             value={newAgendaData.name}
             onChangeText={(text) => setNewAgendaData(prev => ({ ...prev, name: text }))}
-            inputStyle={{ color: theme.text }}
+            inputStyle={[
+              { color: theme.text },
+              { minHeight: 40 },
+              styles.inputField
+            ]}
+            inputContainerStyle={{ paddingVertical: spacing.xs }}
+            containerStyle={styles.dialogInput}
           />
           <Input
             placeholder={t('home.agendaCode')}
             value={newAgendaData.key}
             onChangeText={(text) => setNewAgendaData(prev => ({ ...prev, key: text }))}
-            inputStyle={{ color: theme.text }}
+            inputStyle={[
+              { color: theme.text },
+              { minHeight: 40 },
+              styles.inputField
+            ]}
+            inputContainerStyle={{ paddingVertical: spacing.xs }}
+            containerStyle={styles.dialogInput}
           />
           <View style={[styles.switchContainer, { backgroundColor: theme.card }]}>
             <Text style={{ color: theme.text }}>{t('home.atype')}</Text>
@@ -1125,7 +1142,10 @@ export default function HomeScreen() {
               thumbColor={theme.buttonText}
             />
           </View>
-          <View style={[{ flexDirection: 'row', justifyContent: 'flex-end' }, { backgroundColor: theme.card }]}>
+        </View>
+
+        <View style={styles.dialogFooter}>
+          <View style={styles.dialogMainActions}>
             <DialogButton onPress={() => setShowCreateDialog(false)}>
               {t('agenda.cancel')}
             </DialogButton>
@@ -1145,22 +1165,42 @@ export default function HomeScreen() {
         overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
       >
         <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
-          <Text style={[typography.h3, { color: theme.text }]}>
-            {t('home.joinAgendaTitle')}
-          </Text>
+          <View style={[styles.dialogHeader, { backgroundColor: theme.card }]}>
+            <View style={[{ flex: 1 }, { backgroundColor: theme.card }]}>
+              <Text style={[typography.h3, { color: theme.text }]}>
+                {t('home.joinAgendaTitle')}
+              </Text>
+            </View>
+          </View>
+          
           <Input
             placeholder={t('home.agendaName')}
             value={joinAgendaData.name}
             onChangeText={(text) => setJoinAgendaData(prev => ({ ...prev, name: text }))}
-            inputStyle={{ color: theme.text }}
+            inputStyle={[
+              { color: theme.text },
+              { minHeight: 40 },
+              styles.inputField
+            ]}
+            inputContainerStyle={{ paddingVertical: spacing.xs }}
+            containerStyle={styles.dialogInput}
           />
           <Input
             placeholder={t('home.agendaCode')}
             value={joinAgendaData.key}
             onChangeText={(text) => setJoinAgendaData(prev => ({ ...prev, key: text }))}
-            inputStyle={{ color: theme.text }}
+            inputStyle={[
+              { color: theme.text },
+              { minHeight: 40 },
+              styles.inputField
+            ]}
+            inputContainerStyle={{ paddingVertical: spacing.xs }}
+            containerStyle={styles.dialogInput}
           />
-          <View style={[{ flexDirection: 'row', justifyContent: 'flex-end' }, { backgroundColor: theme.card }]}>
+        </View>
+
+        <View style={styles.dialogFooter}>
+          <View style={styles.dialogMainActions}>
             <DialogButton onPress={() => setShowJoinDialog(false)}>
               {t('agenda.cancel')}
             </DialogButton>
@@ -1287,7 +1327,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.md,
     paddingHorizontal: spacing.sm,
   },
   buttonGroup: {
@@ -1298,10 +1337,11 @@ const styles = StyleSheet.create({
   dialog: {
     width: '90%',
     borderRadius: 12,
-    padding: spacing.md,
+    padding: 0,
+    overflow: 'hidden',
   },
   dialogContent: {
-    padding: spacing.md,
+    padding: spacing.lg,
   },
   dialogTitle: {
     ...typography.h2,
@@ -1572,5 +1612,27 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontSize: 12,
     opacity: 0.7,
+  },
+  dialogHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.md,
+  },
+  dialogInput: {
+    paddingHorizontal: 0,
+  },
+  inputField: {
+    padding: spacing.sm,
+  },
+  dialogFooter: {
+    borderTopWidth: 1,
+    borderTopColor: 'transparent',
+    paddingVertical: spacing.xs,
+  },
+  dialogMainActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: spacing.lg,
   },
 })
