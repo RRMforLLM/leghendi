@@ -104,27 +104,36 @@ const DayElementsDialog = ({ elements, isVisible, onClose, onElementPress, theme
             key={`${element.id}-${index}`}
             onPress={() => onElementPress(element)}
             style={({ pressed }) => [
-              styles.dayDialogElement,
-              { backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)' },
+              styles.elementCard,
+              { 
+                backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)',
+                opacity: pressed ? 0.7 : 1,
+                borderLeftColor: element.isUrgent ? theme.error : theme.border
+              },
               element.isUrgent && {
                 backgroundColor: Colors[colorScheme ?? 'light'].error + '20',
-                borderLeftWidth: 2,
-                borderLeftColor: Colors[colorScheme ?? 'light'].error
-              },
-              { opacity: pressed ? 0.7 : 1 }
+              }
             ]}
           >
-            <Text
-              style={[
-                styles.dayDialogElementText,
-                { color: theme.text },
-                element.isUrgent && { color: Colors[colorScheme ?? 'light'].error }
-              ]}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {element.subject}
-            </Text>
+            <View style={styles.elementHeader}>
+              <View style={styles.elementContent}>
+                <View style={styles.titleRow}>
+                  <View style={styles.titleMain}>
+                    <Text 
+                      style={[
+                        styles.elementTitle,
+                        { color: theme.text },
+                        element.isUrgent && { color: Colors[colorScheme ?? 'light'].error }
+                      ]}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
+                      {element.subject}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </View>
           </Pressable>
         ))}
       </ScrollView>
@@ -883,7 +892,7 @@ export default function HomeScreen() {
             >
               <View style={styles.elementHeader}>
                 <View style={styles.elementContent}>
-                  <View style={styles.titleRow}>
+                  <View style={[styles.titleRow, { alignItems: 'center' }]}>
                     <View style={styles.titleMain}>
                       <Text 
                         style={[
@@ -1414,21 +1423,6 @@ const styles = StyleSheet.create({
     maxHeight: 300,
     marginBottom: spacing.md,
   },
-  dayDialogElement: {
-    padding: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: 8,
-    marginBottom: spacing.xs,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  dayDialogElementText: {
-    ...typography.caption,
-    fontSize: 12,
-  },
   elementTextContainer: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.05)',
@@ -1575,30 +1569,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
   },
-  dayDialog: {
-    width: '90%',
-    borderRadius: 12,
-    padding: spacing.md,
-    maxHeight: '80%',
-  },
-  dayDialogScroll: {
-    maxHeight: 300,
-    marginBottom: spacing.md,
-  },
-  dayDialogElement: {
-    padding: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: 8,
-    marginBottom: spacing.xs,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  dayDialogElementText: {
-    ...typography.body,
-  },
   welcomeContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -1652,11 +1622,13 @@ const styles = StyleSheet.create({
   },
   titleMain: {
     flex: 1,
-    marginRight: spacing.xs,
   },
   elementTitle: {
     ...typography.h3,
     fontSize: 13,
+    marginBottom: 4,
+    marginTop: 4,
+    margin: 3
   },
   // Urgent items specific styles
   urgentCard: {
