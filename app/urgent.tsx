@@ -31,11 +31,19 @@ export default function UrgentScreen() {
     const initializeItems = async () => {
       if (items) {
         const parsedItems = JSON.parse(decodeURIComponent(items as string));
-        setUrgentItems(parsedItems);
-        await storeData(KEYS.URGENT_ITEMS, parsedItems);
+        const sortedItems = [...parsedItems].sort((a, b) => 
+          new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
+        );
+        setUrgentItems(sortedItems);
+        await storeData(KEYS.URGENT_ITEMS, sortedItems);
       } else {
         const cachedItems = await getData(KEYS.URGENT_ITEMS);
-        setUrgentItems(cachedItems || []);
+        if (cachedItems) {
+          const sortedItems = [...cachedItems].sort((a, b) => 
+            new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
+          );
+          setUrgentItems(sortedItems);
+        }
       }
     };
 
@@ -46,17 +54,27 @@ export default function UrgentScreen() {
     <Pressable 
       onPress={() => router.push(`/agenda/${item.agendaId}`)}
       style={({ pressed }) => [
-        styles.urgentCard,
+        styles.elementCard, 
         { 
           backgroundColor: theme.card,
           opacity: pressed ? 0.7 : 1
         }
       ]}
     >
-      <Text style={[typography.h3, { color: theme.text }]}>{item.subject}</Text>
-      <Text style={[typography.caption, { color: theme.placeholder }]}>
-        {item.agendaName} • {t('agenda.due')}: {new Date(item.deadline).toLocaleDateString(language)}
-      </Text>
+      <View style={styles.elementHeader}>
+        <View style={styles.elementContent}>
+          <View style={styles.titleRow}>
+            <View style={styles.titleMain}>
+              <Text style={[styles.elementTitle, { color: theme.text }]}>
+                {item.subject}
+              </Text>
+              <Text style={[styles.deadline, { color: theme.placeholder }]}>
+                {item.agendaName} • {t('agenda.due')}: {new Date(item.deadline).toLocaleDateString(language)}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
     </Pressable>
   );
 
@@ -80,21 +98,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.lg,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  separator: {
-    marginVertical: 30,
-    height: 1,
-    width: '80%',
-  },
-  urgentCard: {
-    padding: spacing.md,
-    borderRadius: 12,
-    marginBottom: spacing.sm,
-    borderLeftWidth: 4,
+  elementCard: {
+    marginBottom: spacing.xs,
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderLeftWidth: 3,
     borderLeftColor: Colors.light.error,
     width: '100%',
+  },
+  elementHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: spacing.sm,
+  },
+  elementContent: {
+    flex: 1,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  titleMain: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  elementTitle: {
+    ...typography.h3,
+    fontSize: 15,
+    marginBottom: 2,
+  },
+  deadline: {
+    ...typography.caption,
+    fontSize: 12,
+    opacity: 0.7,
   },
 });

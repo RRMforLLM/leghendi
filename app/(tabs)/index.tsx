@@ -80,6 +80,17 @@ const sortElementsByUrgency = (elements: AgendaElement[]) => {
   });
 };
 
+const sortElementsByUrgencyAndDeadline = (elements: AgendaElement[]) => {
+  return [...elements].sort((a, b) => {
+    // First sort by urgency
+    if (a.isUrgent && !b.isUrgent) return -1;
+    if (!a.isUrgent && b.isUrgent) return 1;
+    
+    // Then sort by deadline
+    return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+  });
+};
+
 const DayElementsDialog = ({ elements, isVisible, onClose, onElementPress, theme, t, colorScheme, language }) => (
   <Dialog
     isVisible={isVisible}
@@ -765,24 +776,6 @@ export default function HomeScreen() {
     </View>
   )
 
-  const renderUrgentItem = ({ item }: { item: AgendaElement }) => (
-    <View style={[styles.urgentCardBase, { 
-      backgroundColor: theme.card,
-      borderLeftColor: Colors.light.error,
-    }]}>
-      <Text style={[typography.h3, { color: theme.text }]}>{item.subject}</Text>
-      <Text style={[typography.caption, { color: theme.placeholder }]}>
-        {item.agendaName} • {t('agenda.due')}: {new Date(item.deadline).toLocaleDateString(language)}
-      </Text>
-      <Button
-        title={t('home.viewAgenda')}
-        type="clear"
-        titleStyle={{ color: theme.tint }}
-        onPress={() => router.push(`/agenda/${item.section.agenda.id}`)}
-      />
-    </View>
-  );
-
   const handleLeaveAgenda = async () => {
     if (!session?.user?.id) return;
 
@@ -923,6 +916,34 @@ export default function HomeScreen() {
     }
   }, [currentWeek]);
 
+  const renderUrgentItem = ({ item }: { item: AgendaElement }) => (
+    <Pressable
+      onPress={() => router.push(`/agenda/${item.section.agenda.id}`)}
+      style={({ pressed }) => [
+        styles.elementCard, 
+        { 
+          backgroundColor: theme.card,
+          opacity: pressed ? 0.7 : 1
+        }
+      ]}
+    >
+      <View style={styles.elementHeader}>
+        <View style={styles.elementContent}>
+          <View style={styles.titleRow}>
+            <View style={styles.titleMain}>
+              <Text style={[styles.elementTitle, { color: theme.text }]}>
+                {item.subject}
+              </Text>
+              <Text style={[styles.deadline, { color: theme.placeholder }]}>
+                {item.agendaName} • {t('agenda.due')}: {new Date(item.deadline).toLocaleDateString(language)}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    </Pressable>
+  );
+
   if (!session) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -974,7 +995,7 @@ export default function HomeScreen() {
         {!loading && agendaElements.length > 0 && (
           <View style={styles.section}>
             <View>
-              {agendaElements.slice(0, 2).map((item) => (
+              {sortElementsByUrgencyAndDeadline(agendaElements).slice(0, 4).map((item) => (
                 <View key={item.id}>
                   {renderUrgentItem({ item })}
                 </View>
@@ -1516,5 +1537,40 @@ const styles = StyleSheet.create({
   elementDialogScroll: {
     maxHeight: 300,
     marginBottom: spacing.md,
+  },
+  elementCard: {
+    marginBottom: spacing.xs,
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.light.error,
+    width: '100%',
+  },
+  elementHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: spacing.sm,
+  },
+  elementContent: {
+    flex: 1,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  titleMain: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  elementTitle: {
+    ...typography.h3,
+    fontSize: 15,
+    marginBottom: 2,
+  },
+  deadline: {
+    ...typography.caption,
+    fontSize: 12,
+    opacity: 0.7,
   },
 })
