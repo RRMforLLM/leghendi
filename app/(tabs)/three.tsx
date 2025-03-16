@@ -841,19 +841,18 @@ function Account({
                 />
               </RNView>
             ) : (
-              <RNView style={styles.usernameRow}>
+              <Pressable
+                onLongPress={() => setIsEditingUsername(true)}
+                delayLongPress={LONG_PRESS_DURATION}
+                style={({ pressed }) => [
+                  styles.usernameRow,
+                  { opacity: pressed ? 0.7 : 1 }
+                ]}
+              >
                 <Text style={[typography.h2, { color: theme.text }]}>
                   {loading ? "Loading..." : username || session.user.email}
                 </Text>
-                <Icon
-                  name="edit"
-                  type="font-awesome"
-                  color={theme.text}
-                  size={20}
-                  onPress={() => setIsEditingUsername(true)}
-                  containerStyle={styles.editIcon}
-                />
-              </RNView>
+              </Pressable>
             )}
           </View>
 
@@ -882,19 +881,18 @@ function Account({
                 />
               </RNView>
             ) : (
-              <RNView style={styles.descriptionRow}>
+              <Pressable
+                onLongPress={() => setIsEditingDescription(true)}
+                delayLongPress={LONG_PRESS_DURATION}
+                style={({ pressed }) => [
+                  styles.descriptionRow,
+                  { opacity: pressed ? 0.7 : 1 }
+                ]}
+              >
                 <Text style={[typography.body, { color: theme.text }]}>
                   {description || translations.noDescription}
                 </Text>
-                <Icon
-                  name="edit"
-                  type="font-awesome"
-                  color={theme.text}
-                  size={16}
-                  onPress={() => setIsEditingDescription(true)}
-                  containerStyle={styles.editIcon}
-                />
-              </RNView>
+              </Pressable>
             )}
           </View>
 
@@ -1100,9 +1098,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   usernameRow: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    justifyContent: 'center',
   },
   editIcon: {
     padding: spacing.xs,
@@ -1120,9 +1117,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   descriptionRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.xs,
+    alignItems: 'center',
     paddingHorizontal: spacing.md,
   },
   descriptionEditContainer: {
