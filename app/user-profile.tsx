@@ -27,6 +27,8 @@ const REACTION_COSTS = {
   hug: 0
 } as const;
 
+const LONG_PRESS_DURATION = 500;
+
 interface ProfileComment {
   id: number;
   text: string;
@@ -81,6 +83,7 @@ const UserProfileScreen = () => {
   const [activeAnimations, setActiveAnimations] = useState<Array<{ id: number; type: 'hug' | 'heart' | 'kiss' }>>([]);
   const animationIdCounter = useRef(0);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [pressedCommentId, setPressedCommentId] = useState<number | null>(null);
 
   const reactionTypeToStatKey = {
     'hug': 'hugs',
@@ -467,48 +470,88 @@ const UserProfileScreen = () => {
     }
   };
 
-  const renderComment = ({ item }: { item: ProfileComment }) => (
-    <RNView style={[styles.commentContainer, { backgroundColor: theme.card }]}>
-      <RNView style={styles.commentHeader}>
-        <RNView style={styles.commentAuthor}>
-          <Pressable 
-            onPress={() => {
-              if (currentUserId === item.author.id) {
-                // Navigate to own profile
-                router.push('/three');
-              } else if (id === item.author.id) {
-                // Already viewing this user's profile, do nothing
-                return;
-              } else {
-                // Navigate to another user's profile
-                router.push({
-                  pathname: "/user-profile",
-                  params: { id: item.author.id }
-                });
-              }
-            }}
-            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-          >
-            <RNView style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Avatar
-                size={24}
-                rounded
-                source={{ uri: item.author.avatar_url || DEFAULT_AVATAR }}
-                containerStyle={styles.commentAvatar}
-              />
-              <Text style={[typography.caption, { color: theme.text }]}>
-                {item.author.username}
-              </Text>
+  const handleDeleteComment = async (commentId: number) => {
+    try {
+      const { error } = await supabase
+        .from('Profile Comment')
+        .delete()
+        .eq('id', commentId);
+
+      if (error) throw error;
+      
+      setComments(prev => prev.filter(comment => comment.id !== commentId));
+      setPressedCommentId(null);
+    } catch (error) {
+      console.error('Delete comment error:', error);
+      Alert.alert(t('settings.error'), t('profile.error.deleteComment'));
+    }
+  };
+
+  const renderComment = ({ item }: { item: ProfileComment }) => {
+    const isOwnComment = currentUserId === item.author.id;
+    const canDelete = isOwnComment;
+
+    return (
+      <Pressable 
+        onLongPress={canDelete ? () => {
+          setPressedCommentId(item.id);
+        } : undefined}
+        onPress={() => setPressedCommentId(null)}
+        delayLongPress={LONG_PRESS_DURATION}
+      >
+        <View style={[styles.commentCard, { backgroundColor: theme.card }]}>
+          <RNView style={styles.commentHeader}>
+            <RNView style={styles.commentAuthor}>
+              <Pressable 
+                onPress={() => {
+                  if (currentUserId === item.author.id) {
+                    router.push('/three');
+                  } else if (id === item.author.id) {
+                    return;
+                  } else {
+                    router.push({
+                      pathname: "/user-profile",
+                      params: { id: item.author.id }
+                    });
+                  }
+                }}
+                style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+              >
+                <RNView style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Avatar
+                    size={24}
+                    rounded
+                    source={{ uri: item.author.avatar_url || DEFAULT_AVATAR }}
+                    containerStyle={styles.commentAvatar}
+                  />
+                  <Text style={[typography.caption, { color: theme.text }]}>
+                    {item.author.username}
+                    {isOwnComment && ` (${t('agenda.you')})`}
+                  </Text>
+                </RNView>
+              </Pressable>
             </RNView>
-          </Pressable>
-        </RNView>
-        <Text style={[typography.caption, { color: theme.placeholder }]}>
-          {getRelativeTime(item.created_at, t, language)}
-        </Text>
-      </RNView>
-      <TruncatedComment text={item.text} />
-    </RNView>
-  );
+            <RNView style={styles.commentActions}>
+              <Text style={[typography.caption, { color: theme.placeholder }]}>
+                {getRelativeTime(item.created_at, t, language)}
+              </Text>
+              {pressedCommentId === item.id && canDelete && (
+                <Icon
+                  name="eraser"
+                  type="font-awesome-5"
+                  size={14}
+                  color={theme.error}
+                  onPress={() => handleDeleteComment(item.id)}
+                  containerStyle={[styles.actionIcon, { marginLeft: spacing.sm }]}
+                />
+              )}
+            </RNView>
+          </RNView>
+          <TruncatedText text={item.text} />
+        </View>
+      </Pressable>
+    );
+  };
 
   if (loading) {
     return (
@@ -651,46 +694,7 @@ const UserProfileScreen = () => {
 
               <View style={styles.commentsList}>
                 {comments.map((comment) => (
-                  <View key={comment.id.toString()} style={[styles.commentCard, { backgroundColor: theme.card }]}>
-                    <RNView style={styles.commentHeader}>
-                      <RNView style={styles.commentAuthor}>
-                        <Pressable 
-                          onPress={() => {
-                            if (currentUserId === comment.author.id) {
-                              // Navigate to own profile
-                              router.push('/three');
-                            } else if (id === comment.author.id) {
-                              // Already viewing this user's profile, do nothing
-                              return;
-                            } else {
-                              // Navigate to another user's profile
-                              router.push({
-                                pathname: "/user-profile",
-                                params: { id: comment.author.id }
-                              });
-                            }
-                          }}
-                          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-                        >
-                          <RNView style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <Avatar
-                              size={24}
-                              rounded
-                              source={{ uri: comment.author.avatar_url || DEFAULT_AVATAR }}
-                              containerStyle={styles.commentAvatar}
-                            />
-                            <Text style={[typography.caption, { color: theme.text }]}>
-                              {comment.author.username}
-                            </Text>
-                          </RNView>
-                        </Pressable>
-                      </RNView>
-                      <Text style={[typography.caption, { color: theme.placeholder }]}>
-                        {getRelativeTime(comment.created_at, t, language)}
-                      </Text>
-                    </RNView>
-                    <TruncatedText text={comment.text} />
-                  </View>
+                  renderComment({ item: comment })  // <-- Use the renderComment function
                 ))}
                 {comments.length === 0 && (
                   <Text style={[typography.body, { color: theme.placeholder }]}>
@@ -858,5 +862,12 @@ const styles = StyleSheet.create({
     width: '80%',
     aspectRatio: 1,
     borderRadius: 20,
+  },
+  commentActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionIcon: {
+    padding: spacing.xs,
   },
 });

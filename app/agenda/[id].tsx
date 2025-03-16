@@ -1934,14 +1934,6 @@ const styles = StyleSheet.create({
   sectionContainer: {
     marginBottom: spacing.lg,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-    borderBottomWidth: 1,
-    paddingBottom: spacing.xs,
-  },
   sectionTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2021,19 +2013,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing.xs,
   },
-  commentInputContainer: {
-    marginBottom: spacing.md,
-  },
-  commentInput: {
-    marginBottom: -spacing.lg,
-  },
   commentsList: {
     width: '100%',
-  },
-  commentActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
   },
   commentAuthor: {
     flexDirection: 'row',
@@ -2059,9 +2040,6 @@ const styles = StyleSheet.create({
   commentText: {
     ...typography.body,
     lineHeight: 20,
-  },
-  commentsList: {
-    width: '100%',
   },
   contentContainer: {
     flex: 1,

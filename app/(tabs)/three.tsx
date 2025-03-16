@@ -21,6 +21,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import TruncatedText from '@/components/TruncatedText';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg"
+const LONG_PRESS_DURATION = 500;
 
 interface ProfileComment {
   id: number
@@ -615,6 +616,7 @@ function Account({
 
   const [profile, setProfile] = useState<ProfileState>({ comments: true });
   const [isDestructiveMode, setIsDestructiveMode] = useState(false);
+  const [pressedCommentId, setPressedCommentId] = useState<number | null>(null);
 
   const updateUsername = async () => {
     if (!session?.user?.id || !newUsername.trim()) return
@@ -734,52 +736,59 @@ function Account({
   };
 
   const renderComment = ({ item }: { item: AgendaComment }) => (
-    <View key={item.id.toString()} style={[styles.commentContainer, { backgroundColor: theme.card }]}>
-      <RNView style={styles.commentHeader}>
-        <RNView style={styles.commentAuthor}>
-          <Pressable 
-            onPress={() => {
-              if (session?.user?.id === comment.author.id) {
-                return; // Stay on current profile
-              }
-              router.push({
-                pathname: "/user-profile",
-                params: { id: comment.author.id }
-              });
-            }}
-            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-          >
-            <RNView style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Avatar
-                size={24}
-                rounded
-                source={{ uri: comment.author.avatar_url || DEFAULT_AVATAR }}
-                containerStyle={styles.commentAvatar}
+    <Pressable 
+      onLongPress={() => setPressedCommentId(item.id)}
+      onPress={() => setPressedCommentId(null)}
+      delayLongPress={LONG_PRESS_DURATION}
+    >
+      <RNView style={[styles.commentContainer, { backgroundColor: theme.card }]}>
+        <RNView style={styles.commentHeader}>
+          <RNView style={styles.commentAuthor}>
+            <Pressable 
+              onPress={() => {
+                if (session?.user?.id === item.author.id) {
+                  return; // Stay on current profile
+                }
+                router.push({
+                  pathname: "/user-profile",
+                  params: { id: item.author.id }
+                });
+              }}
+              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+            >
+              <RNView style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Avatar
+                  size={24}
+                  rounded
+                  source={{ uri: item.author.avatar_url || DEFAULT_AVATAR }}
+                  containerStyle={styles.commentAvatar}
+                />
+                <Text style={[typography.caption, { color: theme.text }]}>
+                  {item.author.username}
+                  {session?.user?.id === item.author.id && ` (${t('agenda.you')})`}
+                </Text>
+              </RNView>
+            </Pressable>
+          </RNView>
+          <RNView style={styles.commentActions}>
+            <Text style={[typography.caption, { color: theme.placeholder }]}>
+              {getRelativeTime(item.created_at, t, language)}
+            </Text>
+            {pressedCommentId === item.id && (
+              <Icon
+                name="eraser"
+                type="font-awesome-5"
+                size={14}
+                color={theme.error}
+                onPress={() => handleDeleteComment(item.id)}
+                containerStyle={[styles.actionIcon, { marginLeft: spacing.sm }]}
               />
-              <Text style={[typography.caption, { color: theme.text }]}>
-                {comment.author.username}
-              </Text>
-            </RNView>
-          </Pressable>
+            )}
+          </RNView>
         </RNView>
-        <RNView style={styles.commentActions}>
-          <Text style={[typography.caption, { color: theme.placeholder }]}>
-            {getRelativeTime(comment.created_at, t, language)}
-          </Text>
-          {isDestructiveMode && (
-            <Icon
-              name="eraser"
-              type="font-awesome-5"
-              size={14}
-              color={theme.error}
-              onPress={() => handleDeleteComment(comment.id)}
-              containerStyle={{ marginLeft: spacing.sm }}
-            />
-          )}
-        </RNView>
+        <TruncatedText text={item.text} />
       </RNView>
-      <TruncatedText text={comment.text} />
-    </View>
+    </Pressable>
   );
 
   return (
@@ -935,14 +944,6 @@ function Account({
                   color={profile.comments ? theme.tint : theme.placeholder}
                   onPress={toggleComments}
                 />
-                <Icon
-                  name="bomb"
-                  type="font-awesome-5"
-                  size={20}
-                  color={isDestructiveMode ? theme.error : theme.placeholder}
-                  onPress={() => setIsDestructiveMode(!isDestructiveMode)}
-                  containerStyle={{ marginLeft: spacing.sm }}
-                />
               </RNView>
             </View>
             
@@ -975,52 +976,60 @@ function Account({
 
                 <View style={styles.commentsList}>
                   {comments.map((comment) => (
-                    <View key={comment.id.toString()} style={[styles.commentContainer, { backgroundColor: theme.card }]}>
-                      <RNView style={styles.commentHeader}>
-                        <RNView style={styles.commentAuthor}>
-                          <Pressable 
-                            onPress={() => {
-                              if (session?.user?.id === comment.author.id) {
-                                return; // Stay on current profile
-                              }
-                              router.push({
-                                pathname: "/user-profile",
-                                params: { id: comment.author.id }
-                              });
-                            }}
-                            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-                          >
-                            <RNView style={{ flexDirection: 'row', alignItems: 'center' }}>
-                              <Avatar
-                                size={24}
-                                rounded
-                                source={{ uri: comment.author.avatar_url || DEFAULT_AVATAR }}
-                                containerStyle={styles.commentAvatar}
+                    <Pressable 
+                      key={comment.id.toString()}
+                      onLongPress={() => setPressedCommentId(comment.id)}
+                      onPress={() => setPressedCommentId(null)}
+                      delayLongPress={LONG_PRESS_DURATION}
+                    >
+                      <View style={[styles.commentContainer, { backgroundColor: theme.card }]}>
+                        <RNView style={styles.commentHeader}>
+                          <RNView style={styles.commentAuthor}>
+                            <Pressable 
+                              onPress={() => {
+                                if (session?.user?.id === comment.author.id) {
+                                  return; // Stay on current profile
+                                }
+                                router.push({
+                                  pathname: "/user-profile",
+                                  params: { id: comment.author.id }
+                                });
+                              }}
+                              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                            >
+                              <RNView style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <Avatar
+                                  size={24}
+                                  rounded
+                                  source={{ uri: comment.author.avatar_url || DEFAULT_AVATAR }}
+                                  containerStyle={styles.commentAvatar}
+                                />
+                                <Text style={[typography.caption, { color: theme.text }]}>
+                                  {comment.author.username}
+                                  {session?.user?.id === comment.author.id && ` (${t('agenda.you')})`}
+                                </Text>
+                              </RNView>
+                            </Pressable>
+                          </RNView>
+                          <RNView style={styles.commentActions}>
+                            <Text style={[typography.caption, { color: theme.placeholder }]}>
+                              {getRelativeTime(comment.created_at, t, language)}
+                            </Text>
+                            {pressedCommentId === comment.id && (
+                              <Icon
+                                name="eraser"
+                                type="font-awesome-5"
+                                size={14}
+                                color={theme.error}
+                                onPress={() => handleDeleteComment(comment.id)}
+                                containerStyle={[styles.actionIcon, { marginLeft: spacing.sm }]}
                               />
-                              <Text style={[typography.caption, { color: theme.text }]}>
-                                {comment.author.username}
-                              </Text>
-                            </RNView>
-                          </Pressable>
+                            )}
+                          </RNView>
                         </RNView>
-                        <RNView style={styles.commentActions}>
-                          <Text style={[typography.caption, { color: theme.placeholder }]}>
-                            {getRelativeTime(comment.created_at, t, language)}
-                          </Text>
-                          {isDestructiveMode && (
-                            <Icon
-                              name="eraser"
-                              type="font-awesome-5"
-                              size={14}
-                              color={theme.error}
-                              onPress={() => handleDeleteComment(comment.id)}
-                              containerStyle={{ marginLeft: spacing.sm }}
-                            />
-                          )}
-                        </RNView>
-                      </RNView>
-                      <TruncatedText text={comment.text} />
-                    </View>
+                        <TruncatedText text={comment.text} />
+                      </View>
+                    </Pressable>
                   ))}
                   {comments.length === 0 && (
                     <Text style={[typography.body, { color: theme.placeholder }]}>
@@ -1205,7 +1214,6 @@ const styles = StyleSheet.create({
   commentActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
   },
   actionIcon: {
     padding: spacing.xs,
