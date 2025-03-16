@@ -224,12 +224,14 @@ export default function MembersManagementScreen() {
             <Button
               title={t('members.demote')}
               type="clear"
+              titleStyle={{ color: theme.button }}  // Change to use primary color
               onPress={() => handleMemberAction(member.id, 'demote')}
             />
           ) : (
             <Button
               title={t('members.promote')}
               type="clear"
+              titleStyle={{ color: theme.button }}  // Change to use primary color
               onPress={() => handleMemberAction(member.id, 'promote')}
             />
           )}

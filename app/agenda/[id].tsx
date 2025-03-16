@@ -16,6 +16,7 @@ import OfflineBanner from '@/components/OfflineBanner';
 import { useLanguage } from '@/contexts/LanguageContext';
 import DatePickerInput from '@/components/DatePickerInput';
 import TruncatedText from '@/components/TruncatedText';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg"
 const LONG_PRESS_DURATION = 500; // 500ms = 0.5 seconds
@@ -1448,6 +1449,7 @@ export default function AgendaScreen() {
               <Button
                 title={t('agenda.addSection')}
                 type="clear"
+                titleStyle={{ color: theme.button }}  // Change to use primary color
                 onPress={() => setShowSectionDialog(true)}
               />
             )}
@@ -1471,22 +1473,30 @@ export default function AgendaScreen() {
             onPress={navigateToCompleted}
             style={({ pressed }) => [
               styles.actionButton,
-              { 
-                backgroundColor: theme.card, 
-                opacity: pressed ? 0.7 : 1
-              }
+              { opacity: pressed ? 0.7 : 1 }
             ]}
           >
-            <Icon
-              name="check-circle"
-              type="font-awesome-5"
-              size={16}
-              color={theme.tint}
-              containerStyle={{ marginRight: spacing.xs }}
-            />
-            <Text style={[typography.body, { color: theme.text }]}>
-              {t('agenda.viewCompleted').replace('{count}', Object.keys(completedElements).length.toString())}
-            </Text>
+            <LinearGradient
+              colors={[
+                Colors.light.button,
+                Colors.light.secondaryColor,
+                Colors.light.tertiaryColor
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.gradientButton}
+            >
+              <Icon
+                name="check-circle"
+                type="font-awesome-5"
+                size={16}
+                color="white"
+                containerStyle={{ marginRight: spacing.xs }}
+              />
+              <Text style={[typography.body, { color: 'white' }]}>
+                {t('agenda.viewCompleted').replace('{count}', Object.keys(completedElements).length.toString())}
+              </Text>
+            </LinearGradient>
           </Pressable>
         )}
 
@@ -2100,10 +2110,6 @@ const styles = StyleSheet.create({
     padding: spacing.xs,
   },
   actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.md,
     borderRadius: 12,
     marginTop: spacing.md,
     marginBottom: spacing.lg,
@@ -2112,6 +2118,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    overflow: 'hidden',  // Important for the gradient
+  },
+  gradientButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.md,
+    width: '100%',
   },
   commentsSectionHeader: {
     flexDirection: 'row',
@@ -2199,7 +2213,7 @@ const styles = StyleSheet.create({
     ...typography.h3,
   },
   dialogHeaderAction: {
-    paddingTop: 5, // Align with the first line of text
+    paddingTop: 5,
   },
   sectionEditInput: {
     flex: 1,
