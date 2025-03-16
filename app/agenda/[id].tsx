@@ -438,11 +438,6 @@ export default function AgendaScreen() {
       return;
     }
 
-    if (!/^[a-zA-Z0-9\s]+$/.test(cleanName)) {
-      Alert.alert(t('agenda.error'), t('agenda.error.sectionNameInvalid'));
-      return;
-    }
-
     try {
       const { error } = await supabase
         .from("Agenda Section")
@@ -467,11 +462,6 @@ export default function AgendaScreen() {
     const cleanSubject = newElementData.subject.trim();
     if (cleanSubject.length > 15) {
       Alert.alert(t('agenda.error'), t('agenda.error.elementSubjectTooLong'));
-      return;
-    }
-
-    if (!/^[a-zA-Z0-9\s]+$/.test(cleanSubject)) {
-      Alert.alert(t('agenda.error'), t('agenda.error.elementSubjectInvalid'));
       return;
     }
 
@@ -671,7 +661,7 @@ export default function AgendaScreen() {
     titleRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'center', // Changed from 'flex-start' to 'center'
+      alignItems: 'center',
     },
     titleMain: {
       flex: 1,
@@ -709,27 +699,25 @@ export default function AgendaScreen() {
     const isCompleted = completedElements[item.id];
     const isExpanded = expandedElements[item.id];
     const hasDetails = item.details && item.details.trim().length > 0;
-  
-    const ElementContainer = hasDetails ? Pressable : View;
     
     return (
-      <ElementContainer
-        {...(hasDetails ? {
-          onPress: () => {
+      <Pressable
+        onPress={() => {
+          if (hasDetails) {
             setExpandedElements(prev => ({
               ...prev,
               [item.id]: !prev[item.id]
             }));
-          },
-          onLongPress: (isCreator || isEditor) ? () => {
-            setEditingElement(item);
-            setShowEditElementDialog(true);
-          } : undefined,
-          delayLongPress: LONG_PRESS_DURATION,
-          style: ({ pressed }) => ({ 
-            opacity: pressed ? 0.7 : 1
-          })  
-        } : {})}
+          }
+        }}
+        onLongPress={(isCreator || isEditor) ? () => {
+          setEditingElement(item);
+          setShowEditElementDialog(true);
+        } : undefined}
+        delayLongPress={LONG_PRESS_DURATION}
+        style={({ pressed }) => ({ 
+          opacity: pressed ? 0.7 : 1
+        })}
       >
         <View 
           style={[
@@ -821,11 +809,17 @@ export default function AgendaScreen() {
             </View>
           </View>
         </View>
-      </ElementContainer>
+      </Pressable>
     );
   };
 
-  const toggleSection = (sectionId: string) => {
+  const getSectionElements = useCallback((section) => {
+    return section.elements?.filter(e => !completedElements[e.id]) || [];
+  }, [completedElements]);
+
+  const toggleSection = (sectionId: string, elementCount: number) => {
+    if (elementCount === 0) return; // Prevent toggling empty sections
+    
     setCollapsedSections(prev => ({
       ...prev,
       [sectionId]: !prev[sectionId]
@@ -847,11 +841,6 @@ export default function AgendaScreen() {
       const cleanName = newName.trim();
       if (cleanName.length > 15) {
         Alert.alert(t('agenda.error'), t('agenda.error.sectionNameTooLong'));
-        return;
-      }
-
-      if (!/^[a-zA-Z0-9\s]+$/.test(cleanName)) {
-        Alert.alert(t('agenda.error'), t('agenda.error.sectionNameInvalid'));
         return;
       }
 
@@ -914,7 +903,7 @@ export default function AgendaScreen() {
           />
         ) : (
           <Pressable 
-            onPress={() => toggleSection(section.id)}
+            onPress={() => toggleSection(section.id, getSectionElements(section).length)}
             onLongPress={(isCreator || isEditor) ? () => {
               setEditingState(prev => ({
                 ...prev,
@@ -933,40 +922,39 @@ export default function AgendaScreen() {
               styles.sectionTitleContainer
             ]}
           >
-            <Icon
-              name={collapsedSections[section.id] ? 'chevron-up' : 'chevron-down'}
-              type="font-awesome-5"
-              size={14}
-              color={theme.text}
-              containerStyle={styles.collapseIcon}
-            />
-            <Text 
-              style={[styles.sectionTitle, { flex: 1 }]}
-              numberOfLines={1} 
-              ellipsizeMode="tail"
-            >
-              {section.name}
-            </Text>
-            <View style={styles.elementCountContainer}>
-              <View style={{
-                backgroundColor: theme.button,
-                width: 24,
-                height: 24,
-                borderRadius: 12,
-                justifyContent: 'center',
-                alignItems: 'center',
-                marginRight: spacing.sm
-              }}>
-                <Text style={[
-                  styles.elementCount,
+            <View style={styles.sectionLeftContent}>
+              <Icon
+                name={collapsedSections[section.id] ? 'chevron-up' : 'chevron-down'}
+                type="font-awesome-5"
+                size={14}
+                color={getSectionElements(section).length === 0 ? theme.placeholder : theme.text}
+                containerStyle={styles.collapseIcon}
+              />
+              <Text 
+                style={[
+                  styles.sectionTitle, 
                   { 
-                    color: theme.buttonText,
-                    fontWeight: '600'
+                    flex: 1,
+                    color: theme.text  // Keep section title color normal
                   }
-                ]}>
-                  {section.elements?.filter(e => !completedElements[e.id]).length || 0}
-                </Text>
-              </View>
+                ]}
+                numberOfLines={1} 
+                ellipsizeMode="tail"
+              >
+                {section.name}
+              </Text>
+            </View>
+            <View style={styles.elementCountContainer}>
+              <Text style={[
+                styles.elementCount,
+                { 
+                  color: getSectionElements(section).length === 0 
+                    ? theme.placeholder  // Gray out only when zero
+                    : theme.button       // Use button color for non-zero
+                }
+              ]}>
+                {getSectionElements(section).length}
+              </Text>
               {(isCreator || isEditor) && !editingState.sections[section.id] && (
                 <Icon
                   name="plus"
@@ -1345,6 +1333,22 @@ export default function AgendaScreen() {
       setRefreshing(false);
     });
   }, [fetchAgenda, fetchElementStates, checkEditorStatus]);
+
+  useEffect(() => {
+    if (agenda?.sections) {
+      const initialCollapsedState = {};
+      agenda.sections.forEach(section => {
+        const elementCount = getSectionElements(section).length;
+        if (elementCount === 0) {
+          initialCollapsedState[section.id] = true;
+        }
+      });
+      setCollapsedSections(prev => ({
+        ...prev,
+        ...initialCollapsedState
+      }));
+    }
+  }, [agenda?.sections, getSectionElements]);
 
   if (loading) {
     return (
@@ -1842,7 +1846,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     height: '100%',
-    cursor: 'pointer',
+    justifyContent: 'space-between', // Add this
+  },
+  sectionLeftContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   elementsList: {
     marginLeft: spacing.sm,
@@ -2034,10 +2043,11 @@ const styles = StyleSheet.create({
   },
   elementCount: {
     ...typography.caption,
-    fontWeight: 'normal',
+    fontSize: 16,
+    fontWeight: '600',
+    marginRight: spacing.sm
   },
   elementCountContainer: {
-    marginLeft: 'auto', // This pushes it to the right
     flexDirection: 'row',
     alignItems: 'center',
   },
