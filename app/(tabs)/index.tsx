@@ -38,32 +38,55 @@ const ElementDetailsDialog = ({ element, isVisible, onClose, theme, t, language 
     <Dialog
       isVisible={isVisible}
       onBackdropPress={onClose}
-      overlayStyle={[styles.dayDialog, { backgroundColor: theme.card }]}
+      overlayStyle={styles.dayDialog}
     >
-      <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
-        <Text style={[styles.dialogTitle, { color: theme.text }]}>
-          {element.subject}
-        </Text>
-        <ScrollView style={styles.dayDialogScroll}>
-          {element.details && (
-            <Text style={[styles.dialogDetails, { color: theme.text }]}>
-              {element.details}
+      <View style={[styles.dialogDayContainer, { backgroundColor: 'transparent' }]}>
+        <View style={[styles.elementCard, { 
+          backgroundColor: theme.background,
+          borderLeftColor: element.isUrgent ? theme.error : theme.border,
+          marginBottom: 0
+        }]}>
+          <View style={[styles.elementHeader, { padding: spacing.md }]}>
+            <View style={styles.elementContent}>
+              <View style={[styles.titleRow, { alignItems: 'center' }]}>
+                <View style={styles.titleMain}>
+                  <Text 
+                    style={[
+                      styles.elementDetailsTitle,
+                      { color: theme.text },
+                      element.isUrgent && { color: theme.error }
+                    ]}
+                  >
+                    {element.subject}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          <ScrollView style={[styles.elementDialogScroll, { padding: spacing.md }]}>
+            {element.details && (
+              <Text style={[styles.dialogDetails, { color: theme.text }]}>
+                {element.details}
+              </Text>
+            )}
+            <Text style={[styles.dialogDeadline, { color: theme.placeholder }]}>
+              {t('agenda.due')}: {new Date(element.deadline).toLocaleDateString(language)}
             </Text>
-          )}
-          <Text style={[styles.dialogDeadline, { color: theme.placeholder }]}>
-            {t('agenda.due')}: {new Date(element.deadline).toLocaleDateString(language)}
-          </Text>
-        </ScrollView>
-        <Button
-          title={t('home.viewAgenda')}
-          type="clear"
-          titleStyle={{ color: theme.tint }}
-          containerStyle={styles.viewAgendaButton}
-          onPress={() => {
-            onClose();
-            router.push(`/agenda/${element.section.agenda.id}`);
-          }}
-        />
+          </ScrollView>
+
+          <View style={[styles.dialogFooterActions, { justifyContent: 'flex-end' }]}>
+            <Button
+              title={t('home.viewAgenda')}
+              type="clear"
+              titleStyle={{ color: theme.tint }}
+              onPress={() => {
+                onClose();
+                router.push(`/agenda/${element.section.agenda.id}`);
+              }}
+            />
+          </View>
+        </View>
       </View>
     </Dialog>
   );
@@ -186,29 +209,25 @@ export default function HomeScreen() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   // Add these new handler functions
-  const handleCreateNameChange = (text: string) => {
+  const handleCreateNameChange = useCallback((text: string) => {
     setNewAgendaData(prev => ({ ...prev, name: text }));
     const trimmed = text.trim();
-    // Only validate length if there's actual text
     if (trimmed) {
       setIsCreateNameValid(trimmed.length <= 15);
     } else {
-      // Reset validation state when empty
       setIsCreateNameValid(true);
     }
-  };
+  }, []);
 
-  const handleJoinNameChange = (text: string) => {
+  const handleJoinNameChange = useCallback((text: string) => {
     setJoinAgendaData(prev => ({ ...prev, name: text }));
     const trimmed = text.trim();
-    // Only validate length if there's actual text
     if (trimmed) {
       setIsJoinNameValid(trimmed.length <= 15);
     } else {
-      // Reset validation state when empty
       setIsJoinNameValid(true);
     }
-  };
+  }, []);
 
   const resetState = useCallback(() => {
     setAgendas([])
@@ -1439,7 +1458,7 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 12,
     padding: spacing.md,
-    shadowColor: "#000",
+    shadowColor: "transparent",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -1625,7 +1644,6 @@ const styles = StyleSheet.create({
   },
   elementDialogScroll: {
     maxHeight: 300,
-    marginBottom: spacing.md,
   },
   elementCard: {
     marginBottom: spacing.xs,
@@ -1711,4 +1729,21 @@ const styles = StyleSheet.create({
   dialogHeaderTitle: {
     ...typography.h3,
   },
-})
+  dialogFooterActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    paddingTop: 0,
+    borderTopWidth: 1,
+    borderTopColor: 'transparent',
+  },
+  elementFlags: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  elementDetailsTitle: {
+    ...typography.h3,
+    fontSize: 20,
+    marginBottom: 0,
+  },
+});
