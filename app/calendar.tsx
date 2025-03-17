@@ -384,7 +384,7 @@ export default function CalendarScreen() {
     const filteredElements = sortElementsByUrgency(getFilteredElements(dayElements));
     const isToday = new Date().toDateString() === dateKey;
     const isSelected = dateKey === selectedDate;
-    const MAX_VISIBLE_ELEMENTS = 2;
+    const MAX_VISIBLE_ELEMENTS = 12;
 
     return (
       <Pressable

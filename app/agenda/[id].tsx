@@ -1997,7 +1997,7 @@ const styles = StyleSheet.create({
   commentsSection: {
     width: '100%',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
+    borderTopColor: 'transparent',
     paddingTop: spacing.lg,
     marginTop: spacing.xl,
   },
@@ -2057,7 +2057,7 @@ const styles = StyleSheet.create({
   membersSection: {
     width: '100%',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
+    borderTopColor: 'transparent',
     paddingTop: spacing.lg,
     paddingBottom: spacing.lg,
   },
