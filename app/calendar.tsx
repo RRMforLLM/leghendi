@@ -29,89 +29,140 @@ const ElementDetailsDialog = ({ element, isVisible, onClose, theme, t, language 
     <Dialog
       isVisible={isVisible}
       onBackdropPress={onClose}
-      overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
+      overlayStyle={styles.dayDialog}
     >
-      <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
-        <ScrollView 
-          style={styles.elementDialogScroll}
-          showsVerticalScrollIndicator={true}
-        >
-          <Text style={[styles.dialogTitle, { color: theme.text }]}>
-            {element.subject}
-          </Text>
-          {element.details && (
-            <Text style={[styles.dialogDetails, { color: theme.text }]}>
-              {element.details}
+      <View style={[styles.dialogDayContainer, { backgroundColor: 'transparent' }]}>
+        <View style={[styles.elementCard, { 
+          backgroundColor: theme.background,
+          borderLeftColor: element.isUrgent ? theme.error : theme.border,
+          marginBottom: 0
+        }]}>
+          <View style={[styles.elementHeader, { padding: spacing.md }]}>
+            <View style={styles.elementContent}>
+              <View style={[styles.titleRow, { alignItems: 'center' }]}>
+                <View style={styles.titleMain}>
+                  <Text 
+                    style={[
+                      styles.elementDetailsTitle,
+                      { color: theme.text },
+                      element.isUrgent && { color: theme.error }
+                    ]}
+                  >
+                    {element.subject}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          <ScrollView style={[styles.elementDialogScroll, { padding: spacing.md }]}>
+            {element.details && (
+              <Text style={[styles.dialogDetails, { color: theme.text }]}>
+                {element.details}
+              </Text>
+            )}
+            <Text style={[styles.dialogDeadline, { color: theme.placeholder }]}>
+              {t('agenda.due')}: {new Date(element.deadline).toLocaleDateString(language)}
             </Text>
-          )}
-          <Text style={[styles.dialogDeadline, { color: theme.placeholder }]}>
-            {t('agenda.due')}: {new Date(element.deadline).toLocaleDateString(language)}
-          </Text>
-        </ScrollView>
-        <Button
-          title={t('calendar.viewAgenda')}
-          type="clear"
-          titleStyle={{ color: theme.tint }}
-          containerStyle={styles.viewAgendaButton}
-          onPress={() => {
-            onClose();
-            router.push(`/agenda/${element.section.agenda.id}`);
-          }}
-        />
+          </ScrollView>
+
+          <View style={[styles.dialogFooterActions, { justifyContent: 'flex-end' }]}>
+            <Button
+              title={t('calendar.viewAgenda')}
+              type="clear"
+              titleStyle={{ color: theme.tint }}
+              onPress={() => {
+                onClose();
+                router.push(`/agenda/${element.section.agenda.id}`);
+              }}
+            />
+          </View>
+        </View>
       </View>
     </Dialog>
   );
 };
 
-const DayElementsDialog = ({ elements, isVisible, onClose, onElementPress, theme, t, colorScheme, language }) => (
-  <Dialog
-    isVisible={isVisible}
-    onBackdropPress={onClose}
-    overlayStyle={[styles.dayDialog, { backgroundColor: theme.card }]}
-  >
-    <View style={[styles.dialogContent, { backgroundColor: theme.card }]}>
-      <Text style={[styles.dialogTitle, { color: theme.text }]}>
-        {new Date(elements[0]?.deadline).toLocaleDateString(language)}
-      </Text>
-      <ScrollView style={styles.dayDialogScroll}>
-        {sortElementsByUrgency(elements).map((element, index) => (
-          <Pressable
-            key={`${element.id}-${index}`}
-            onPress={() => onElementPress(element)}
-            style={({ pressed }) => [
-              styles.dayDialogElement,
-              { backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)' },
-              element.isUrgent && {
-                backgroundColor: Colors[colorScheme ?? 'light'].error + '20',
-                borderLeftWidth: 2,
-                borderLeftColor: Colors[colorScheme ?? 'light'].error
-              },
-              { opacity: pressed ? 0.7 : 1 }
-            ]}
-          >
-            <Text
-              style={[
-                styles.dayDialogElementText,
-                { color: theme.text },
-                element.isUrgent && { color: Colors[colorScheme ?? 'light'].error }
+const DayElementsDialog = ({ elements, isVisible, onClose, onElementPress, theme, t, colorScheme, language }) => {
+  const date = elements[0]?.deadline ? new Date(elements[0].deadline) : new Date();
+  const sortedElements = sortElementsByUrgencyAndDeadline(elements);
+
+  return (
+    <Dialog
+      isVisible={isVisible}
+      onBackdropPress={onClose}
+      overlayStyle={[styles.dialog, { 
+        padding: 0, 
+        backgroundColor: 'transparent',
+        width: '85%' // Changed from 90% to 85%
+      }]}
+    >
+      <View style={[styles.dialogDayContainer, { backgroundColor: theme.card }]}>
+        <Text style={[styles.dayHeader, { color: theme.text }]}>
+          {t(`calendar.days.${['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][date.getDay()]}`)}
+          {'\n'}
+          {date.getDate()}
+        </Text>
+        <ScrollView style={styles.dialogElementsContainer}>
+          {sortedElements.map((element, index) => (
+            <Pressable 
+              key={`${element.id}-${index}`}
+              onPress={() => onElementPress(element)}
+              style={({ pressed }) => [
+                styles.elementCard,
+                { 
+                  backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)',
+                  opacity: pressed ? 0.7 : 1,
+                  borderLeftColor: element.isUrgent ? theme.error : theme.border
+                },
+                element.isUrgent && {
+                  backgroundColor: Colors[colorScheme ?? 'light'].error + '20',
+                }
               ]}
-              numberOfLines={1}
-              ellipsizeMode="tail"
             >
-              {element.subject}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-    </View>
-  </Dialog>
-);
+              <View style={styles.elementHeader}>
+                <View style={styles.elementContent}>
+                  <View style={[styles.titleRow, { alignItems: 'center' }]}>
+                    <View style={styles.titleMain}>
+                      <Text 
+                        style={[
+                          styles.elementTitle,
+                          { color: theme.text },
+                          element.isUrgent && { color: Colors[colorScheme ?? 'light'].error }
+                        ]}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                      >
+                        {element.subject}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
+    </Dialog>
+  );
+};
 
 const sortElementsByUrgency = (elements: CalendarElement[]) => {
   return [...elements].sort((a, b) => {
     if (a.isUrgent && !b.isUrgent) return -1;
     if (!a.isUrgent && b.isUrgent) return 1;
     return 0;
+  });
+};
+
+const sortElementsByUrgencyAndDeadline = (elements: CalendarElement[]) => {
+  return [...elements].sort((a, b) => {
+    // First sort by urgency
+    if (a.isUrgent && !b.isUrgent) return -1;
+    if (!a.isUrgent && b.isUrgent) return 1;
+    
+    // Then sort by deadline
+    return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
   });
 };
 
@@ -133,6 +184,7 @@ export default function CalendarScreen() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDayElements, setSelectedDayElements] = useState<CalendarElement[]>([]);
   const [showDayDialog, setShowDayDialog] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const navigatePeriod = (direction: 'prev' | 'next') => {
     const newDate = new Date(currentDate);
@@ -331,57 +383,69 @@ export default function CalendarScreen() {
     const dayElements = elementsByDay[dateKey] || [];
     const filteredElements = sortElementsByUrgency(getFilteredElements(dayElements));
     const isToday = new Date().toDateString() === dateKey;
-    const MAX_VISIBLE_ELEMENTS = 12;
+    const isSelected = dateKey === selectedDate;
+    const MAX_VISIBLE_ELEMENTS = 2;
 
     return (
       <Pressable
         key={dateKey}
-        style={[
-          styles.dayContainer,
-          { backgroundColor: theme.card },
-          isToday && { borderColor: theme.tint, borderWidth: 1 }
-        ]}
         onPress={() => {
           if (filteredElements.length > 0) {
+            setSelectedDate(dateKey);
             setSelectedDayElements(filteredElements);
             setShowDayDialog(true);
           }
         }}
+        style={({ pressed }) => [
+          styles.dayContainer,
+          { 
+            backgroundColor: theme.card,
+            opacity: isSelected ? 0.1 : pressed ? 0.7 : 1
+          },
+          isToday && { borderColor: theme.tint, borderWidth: 1 }
+        ]}
       >
         <Text style={[styles.dayHeader, { color: theme.text }]}>
-          {getDayName(date)}
+          {t(`calendar.days.${['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][date.getDay()]}`)}
           {'\n'}
           {date.getDate()}
         </Text>
         <ScrollView style={styles.elementsContainer}>
-          {filteredElements.slice(0, MAX_VISIBLE_ELEMENTS).map((element, index) => (
+          {sortElementsByUrgencyAndDeadline(filteredElements).slice(0, MAX_VISIBLE_ELEMENTS).map((element, index) => (
             <Pressable 
               key={`${element.id}-${index}`}
               onPress={() => setSelectedElement(element)}
               style={({ pressed }) => [
-                styles.elementItem,
+                styles.elementCard,
                 { 
                   backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)',
-                  opacity: pressed ? 0.7 : 1 
+                  opacity: pressed ? 0.7 : 1,
+                  borderLeftColor: element.isUrgent ? theme.error : theme.border
                 },
                 element.isUrgent && {
                   backgroundColor: Colors[colorScheme ?? 'light'].error + '20',
-                  borderLeftWidth: 2,
-                  borderLeftColor: Colors[colorScheme ?? 'light'].error
                 }
               ]}
             >
-              <Text 
-                style={[
-                  styles.elementText,
-                  { color: theme.text },
-                  element.isUrgent && { color: Colors[colorScheme ?? 'light'].error }
-                ]}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {element.subject}
-              </Text>
+              <View style={styles.elementHeader}>
+                <View style={styles.elementContent}>
+                  <View style={[styles.titleRow, { alignItems: 'center' }]}>
+                    <View style={styles.titleMain}>
+                      <Text 
+                        style={[
+                          styles.elementTitle,
+                          { color: theme.text },
+                          element.isUrgent && { color: Colors[colorScheme ?? 'light'].error }
+                        ]}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                      >
+                        {element.subject}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
             </Pressable>
           ))}
           {filteredElements.length > MAX_VISIBLE_ELEMENTS && (
@@ -530,10 +594,14 @@ export default function CalendarScreen() {
       <DayElementsDialog
         elements={selectedDayElements}
         isVisible={showDayDialog}
-        onClose={() => setShowDayDialog(false)}
+        onClose={() => {
+          setShowDayDialog(false);
+          setSelectedDate(null); // Reset the selected date when closing
+        }}
         onElementPress={(element) => {
           setSelectedElement(element);
           setShowDayDialog(false);
+          setSelectedDate(null); // Also reset when selecting an element
         }}
         theme={theme}
         t={t}
@@ -606,9 +674,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   dialog: {
-    width: '90%',
     borderRadius: 12,
-    padding: spacing.md,
+    overflow: 'hidden',
+    width: '85%'  // Changed from 90% to 85%
   },
   dialogContent: {
     padding: spacing.md,
@@ -698,8 +766,25 @@ const styles = StyleSheet.create({
   dayDialog: {
     width: '90%',
     borderRadius: 12,
-    padding: spacing.md,
+    padding: 0,  // Changed from spacing.md to 0
     maxHeight: '80%',
+    backgroundColor: 'transparent',  // Added this
+    shadowColor: 'transparent',      // Added this
+  },
+  dialogDayContainer: {
+    width: '100%',
+    borderRadius: 12,
+    padding: spacing.md,
+    shadowColor: "transparent",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  dialogElementsContainer: {
+    minHeight: 300,     // Changed from 400
+    maxHeight: 300,     // Changed from 400
+    overflow: 'hidden',
   },
   dayDialogScroll: {
     maxHeight: 300,
@@ -757,5 +842,63 @@ const styles = StyleSheet.create({
   elementDialogScroll: {
     maxHeight: 300,
     marginBottom: spacing.md,
+  },
+  elementCard: {
+    marginBottom: spacing.xs,
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderLeftWidth: 3,
+    width: '100%',
+  },
+  elementHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.xs,
+  },
+  elementContent: {
+    flex: 1,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  titleMain: {
+    flex: 1,
+  },
+  elementTitle: {
+    ...typography.h3,
+    fontSize: 13,
+    marginBottom: 4,
+    marginTop: 4,
+    margin: 3
+  },
+  elementDetailsTitle: {
+    ...typography.h3,
+    fontSize: 20,
+    marginBottom: 0,
+  },
+  dialogDayContainer: {
+    width: '100%',
+    borderRadius: 12,
+    padding: spacing.md,
+    shadowColor: "transparent",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  dialogElementsContainer: {
+    minHeight: 400,
+    maxHeight: 400,
+    overflow: 'hidden',
+  },
+  dialogFooterActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    paddingTop: 0,
+    borderTopWidth: 1,
+    borderTopColor: 'transparent',
   },
 });

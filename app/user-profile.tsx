@@ -15,7 +15,6 @@ import VibesDisplay from '@/components/VibesDisplay';
 import { useLanguage } from '@/contexts/LanguageContext';
 import RainingIcons from '@/components/RainingIcons';
 import ReactionRain from '@/components/ReactionRain';
-import TruncatedComment from '@/components/TruncatedComment';
 import TruncatedText from '@/components/TruncatedText';
 import { Language, translations } from '@/constants/Translations';
 
