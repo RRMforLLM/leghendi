@@ -19,6 +19,7 @@ import { useCredits } from '@/hooks/useCredits';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLanguage } from '@/contexts/LanguageContext';
 import TruncatedText from '@/components/TruncatedText';
+import { getAuthErrorMessage } from '@/utils/authErrorTranslator';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg"
 const LONG_PRESS_DURATION = 500;
@@ -59,6 +60,31 @@ export default function ProfileScreen() {
   const [isPostingComment, setIsPostingComment] = useState(false)
   const [commentText, setCommentText] = useState("")
   const { credits, setCredits, fetchCredits } = useCredits();
+  const [isEmailValid, setIsEmailValid] = useState(true);
+  const [isPasswordValid, setIsPasswordValid] = useState(true);
+  
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleEmailChange = (text: string) => {
+    setEmail(text);
+    if (text.trim()) {
+      setIsEmailValid(validateEmail(text));
+    } else {
+      setIsEmailValid(true);
+    }
+  };
+
+  const handlePasswordChange = (text: string) => {
+    setPassword(text);
+    if (text.trim()) {
+      setIsPasswordValid(text.length >= 6);
+    } else {
+      setIsPasswordValid(true);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -227,13 +253,10 @@ export default function ProfileScreen() {
         password,
       })
 
-      if (error) {
-        throw error
-      }
+      if (error) throw error
     } catch (error) {
-      const message = error?.message || 'An error occurred during sign in'
-      console.error("Sign in error:", message)
-      Alert.alert("Error", message)
+      console.error("Sign in error:", error)
+      Alert.alert(t('settings.error'), getAuthErrorMessage(error, t))
     } finally {
       setAuthLoading(false)
     }
@@ -241,7 +264,7 @@ export default function ProfileScreen() {
 
   async function signUpWithEmail() {
     if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields")
+      Alert.alert(t('settings.error'), t('profile.error.fields'))
       return
     }
 
@@ -280,7 +303,7 @@ export default function ProfileScreen() {
       router.replace('/(tabs)/')
     } catch (error) {
       console.error("Sign up error:", error)
-      Alert.alert("Error", "Failed to sign up")
+      Alert.alert(t('settings.error'), getAuthErrorMessage(error, t))
     } finally {
       setAuthLoading(false)
     }
@@ -467,6 +490,20 @@ export default function ProfileScreen() {
   }
 
   if (!session) {
+    const inputErrorStyles = {
+      invalidInput: {
+        color: theme.error,
+      },
+      errorText: {
+        color: theme.error,
+        fontSize: 12,
+        marginTop: 4,
+      },
+      errorBorder: {
+        borderBottomColor: theme.error,
+      }
+    };
+
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <ScrollView 
@@ -480,29 +517,53 @@ export default function ProfileScreen() {
             <Input
               label={t('profile.email')}
               leftIcon={{ type: "font-awesome", name: "envelope", color: theme.text }}
-              onChangeText={setEmail}
+              onChangeText={handleEmailChange}
               value={email}
               placeholder={t('profile.emailPlaceholder')}
               autoCapitalize="none"
               containerStyle={[styles.input, { marginBottom: spacing.sm }]}
-              inputStyle={{ color: theme.text }}
+              inputStyle={[
+                { color: theme.text },
+                !isEmailValid && email.trim() && inputErrorStyles.invalidInput
+              ]}
+              errorMessage={email.trim() && !isEmailValid ? t('profile.error.invalidEmail') : ''}
+              errorStyle={inputErrorStyles.errorText}
+              inputContainerStyle={[
+                { borderBottomColor: theme.border },
+                !isEmailValid && email.trim() && inputErrorStyles.errorBorder
+              ]}
               placeholderTextColor={theme.placeholder}
             />
             <Input
               label={t('profile.password')}
               leftIcon={{ type: "font-awesome", name: "lock", color: theme.text }}
-              onChangeText={setPassword}
+              onChangeText={handlePasswordChange}
               value={password}
               secureTextEntry={true}
               placeholder={t('profile.passwordPlaceholder')}
               autoCapitalize="none"
               containerStyle={[styles.input, { marginBottom: spacing.lg }]}
-              inputStyle={{ color: theme.text }}
+              inputStyle={[
+                { color: theme.text },
+                !isPasswordValid && password.trim() && inputErrorStyles.invalidInput
+              ]}
+              errorMessage={password.trim() && !isPasswordValid ? t('profile.error.passwordTooShort') : ''}
+              errorStyle={inputErrorStyles.errorText}
+              inputContainerStyle={[
+                { borderBottomColor: theme.border },
+                !isPasswordValid && password.trim() && inputErrorStyles.errorBorder
+              ]}
               placeholderTextColor={theme.placeholder}
             />
             <Button
               title={isSignUp ? t('profile.signUp') : t('profile.signIn')}
-              disabled={authLoading}
+              disabled={Boolean(
+                authLoading || 
+                !email.trim() || // Disable if email is empty
+                !password.trim() || // Disable if password is empty
+                (!isEmailValid && email.trim()) || // Disable if email is invalid
+                (!isPasswordValid && password.trim()) // Disable if password is invalid
+              )}
               onPress={isSignUp ? signUpWithEmail : signInWithEmail}
               containerStyle={[styles.button, { marginBottom: spacing.md }]}
               buttonStyle={{ backgroundColor: theme.button }}
@@ -511,7 +572,13 @@ export default function ProfileScreen() {
             <Button
               title={isSignUp ? t('profile.switchToSignIn') : t('profile.switchToSignUp')}
               type="clear"
-              onPress={() => setIsSignUp(!isSignUp)}
+              onPress={() => {
+                setIsSignUp(!isSignUp);
+                setEmail('');
+                setPassword('');
+                setIsEmailValid(true);
+                setIsPasswordValid(true);
+              }}
               containerStyle={styles.switchButton}
               titleStyle={{ color: theme.text }}
             />

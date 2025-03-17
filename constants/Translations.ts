@@ -48,6 +48,8 @@ type TranslationKey =
   | 'profile.error.fields'
   | 'profile.emailPlaceholder'
   | 'profile.passwordPlaceholder'
+  | 'profile.error.invalidEmail'
+  |  'profile.error.passwordTooShort'
   | 'feed.loading'
   | 'userList.loading'
   | 'userList.noUsers'
@@ -203,7 +205,13 @@ type TranslationKey =
   | 'reactions.hug'
   | 'reactions.heart'
   | 'reactions.kiss'
-  | 'agenda.you';
+  | 'agenda.you'
+  | 'auth.error.invalidLogin'
+  | 'auth.error.emailInUse'
+  | 'auth.error.weakPassword'
+  | 'auth.error.invalidEmail'
+  | 'auth.error.missingFields'
+  | 'auth.error.generic';
 
 export const SUPPORTED_LANGUAGES = {
   en: 'English',
@@ -265,6 +273,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'profile.commentsDisabled': 'Comments are disabled for this profile',
     'profile.emailPlaceholder': 'email@address.com',
     'profile.passwordPlaceholder': 'Password',
+    'profile.error.invalidEmail': 'Please enter a valid email address',
+    'profile.error.passwordTooShort': 'Password must be at least 6 characters',
     'feed.loading': 'Loading feed...',
     'userList.loading': 'Loading users...',
     'userList.noUsers': 'No users found',
@@ -420,6 +430,12 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'reactions.heart': 'heart',
     'reactions.kiss': 'kiss',
     'agenda.you': 'You',
+    'auth.error.invalidLogin': 'Invalid email or password',
+    'auth.error.emailInUse': 'Email is already in use',
+    'auth.error.weakPassword': 'Password is too weak',
+    'auth.error.invalidEmail': 'Invalid email format',
+    'auth.error.missingFields': 'Please fill in all fields',
+    'auth.error.generic': 'An error occurred. Please try again',
   },
   es: {
     'settings.title': 'Ajustes de Cuenta',
@@ -472,6 +488,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'profile.commentsDisabled': 'Los comentarios están desactivados para este perfil',
     'profile.emailPlaceholder': 'correo@ejemplo.com',
     'profile.passwordPlaceholder': 'Contraseña',
+    'profile.error.invalidEmail': 'Por favor ingrese un correo válido',
+    'profile.error.passwordTooShort': 'La contraseña debe tener al menos 6 caracteres',
     'feed.loading': 'Cargando feed...',
     'userList.loading': 'Cargando usuarios...',
     'userList.noUsers': 'No se encontraron usuarios',
@@ -627,6 +645,12 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'reactions.heart': 'corazón',
     'reactions.kiss': 'beso',
     'agenda.you': 'Tú',
+    'auth.error.invalidLogin': 'Correo o contraseña inválidos',
+    'auth.error.emailInUse': 'El correo ya está en uso',
+    'auth.error.weakPassword': 'La contraseña es demasiado débil',
+    'auth.error.invalidEmail': 'Formato de correo inválido',
+    'auth.error.missingFields': 'Por favor complete todos los campos',
+    'auth.error.generic': 'Ocurrió un error. Por favor intente de nuevo',
   },
   fr: {
     'settings.title': 'Paramètres du Compte',
@@ -679,6 +703,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'profile.commentsDisabled': 'Les commentaires sont désactivés pour ce profil',
     'profile.emailPlaceholder': 'email@exemple.com',
     'profile.passwordPlaceholder': 'Mot de passe',
+    'profile.error.invalidEmail': 'Veuillez entrer une adresse email valide',
+    'profile.error.passwordTooShort': 'Le mot de passe doit contenir au moins 6 caractères',
     'feed.loading': 'Chargement du fil...',
     'userList.loading': 'Chargement des utilisateurs...',
     'userList.noUsers': 'Aucun utilisateur trouvé',
@@ -834,5 +860,11 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     'reactions.heart': 'cœur',
     'reactions.kiss': 'bisou',
     'agenda.you': 'Vous',
+    'auth.error.invalidLogin': 'Email ou mot de passe invalide',
+    'auth.error.emailInUse': 'Cet email est déjà utilisé',
+    'auth.error.weakPassword': 'Le mot de passe est trop faible',
+    'auth.error.invalidEmail': 'Format d\'email invalide',
+    'auth.error.missingFields': 'Veuillez remplir tous les champs',
+    'auth.error.generic': 'Une erreur est survenue. Veuillez réessayer',
   }
 };
