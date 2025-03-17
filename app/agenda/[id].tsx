@@ -1464,8 +1464,18 @@ export default function AgendaScreen() {
               <Button
                 title={t('agenda.addSection')}
                 type="clear"
-                titleStyle={{ color: theme.button }}  // Change to use primary color
+                titleStyle={{ color: theme.button }}
                 onPress={() => setShowSectionDialog(true)}
+              />
+            )}
+            {showCompletedButton && (
+              <Icon
+                name="check-circle"
+                type="font-awesome-5"
+                size={20}
+                color={theme.text}
+                onPress={navigateToCompleted}
+                containerStyle={{ marginHorizontal: spacing.sm }}
               />
             )}
             {renderCalendarButton()}
@@ -1482,38 +1492,6 @@ export default function AgendaScreen() {
             )}
           />
         </View>
-
-        {completedElements && Object.keys(completedElements).length > 0 && (
-          <Pressable 
-            onPress={navigateToCompleted}
-            style={({ pressed }) => [
-              styles.actionButton,
-              { opacity: pressed ? 0.7 : 1 }
-            ]}
-          >
-            <LinearGradient
-              colors={[
-                Colors.light.button,
-                Colors.light.secondaryColor,
-                Colors.light.tertiaryColor
-              ]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.gradientButton}
-            >
-              <Icon
-                name="check-circle"
-                type="font-awesome-5"
-                size={16}
-                color="white"
-                containerStyle={{ marginRight: spacing.xs }}
-              />
-              <Text style={[typography.body, { color: 'white' }]}>
-                {t('agenda.viewCompleted').replace('{count}', Object.keys(completedElements).length.toString())}
-              </Text>
-            </LinearGradient>
-          </Pressable>
-        )}
 
         <View style={[styles.membersSection, { marginTop: spacing.xl }]}>
           <RNView style={styles.sectionHeader}>
@@ -2115,7 +2093,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: spacing.md,
-    paddingHorizontal: spacing.sm,
   },
   disabledMessage: {
     ...typography.body,
@@ -2132,6 +2109,7 @@ const styles = StyleSheet.create({
   elementCountContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginRight: spacing.sm
   },
   commentHeaderActions: {
     flexDirection: 'row',
@@ -2201,6 +2179,7 @@ const styles = StyleSheet.create({
   sectionEditInput: {
     flex: 1,
     marginBottom: -spacing.lg,
+    padding: spacing.xs,
     marginLeft: -spacing.sm,
   },
   editIcon: {
