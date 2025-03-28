@@ -1,22 +1,23 @@
-import { StyleSheet, FlatList, RefreshControl, Alert, Switch, Pressable, ScrollView, Clipboard } from "react-native"
-import { View, Text } from "@/components/Themed"
-import { useEffect, useState, useCallback, useRef } from "react"
-import { supabase } from "@/lib/supabase"
-import type { Agenda, AgendaElement } from "@/types"
-import { Button, Input, Dialog, Icon } from "@rneui/themed"
-import { router, Link } from "expo-router"
-import type { Session } from "@supabase/supabase-js"
-import Colors from "@/constants/Colors"
-import { typography, spacing } from "@/constants/Typography"
-import { useColorScheme } from "@/components/useColorScheme"
-import { useFocusEffect } from '@react-navigation/native';
-import { useNetworkState } from '@/hooks/useNetworkState';
-import { storeData, getData, KEYS } from '@/utils/offlineStorage';
-import OfflineBanner from '@/components/OfflineBanner';
-import VibesDisplay from '@/components/VibesDisplay';
-import { useCredits } from '@/hooks/useCredits';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { StyleSheet, FlatList, RefreshControl, Alert, Switch, Pressable, ScrollView, Clipboard } from "react-native";
+import { View, Text } from "@/components/Themed";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { supabase } from "@/lib/supabase";
+import type { Agenda, AgendaElement } from "@/types";
+import { Button, Input, Dialog, Icon } from "@rneui/themed";
+import { router, Link } from "expo-router";
+import type { Session } from "@supabase/supabase-js";
+import Colors from "@/constants/Colors";
+import { typography, spacing } from "@/constants/Typography";
+import { useColorScheme } from "@/components/useColorScheme";
+import { useFocusEffect } from "@react-navigation/native";
+import { useNetworkState } from "@/hooks/useNetworkState";
+import { storeData, getData, KEYS } from "@/utils/offlineStorage";
+import OfflineBanner from "@/components/OfflineBanner";
+import VibesDisplay from "@/components/VibesDisplay";
+import { useCredits } from "@/hooks/useCredits";
+import { useLanguage } from "@/contexts/LanguageContext";
 
+// Component: DialogButton
 const DialogButton = ({ onPress, disabled = false, children }: {
   onPress: () => void;
   disabled?: boolean;
@@ -31,30 +32,41 @@ const DialogButton = ({ onPress, disabled = false, children }: {
   />
 );
 
-const ElementDetailsDialog = ({ element, isVisible, onClose, theme, t, language }) => {
+// Component: ElementDetailsDialog
+const ElementDetailsDialog = ({ 
+  element, 
+  isVisible, 
+  onClose, 
+  theme, 
+  t, 
+  language 
+}) => {
   if (!element) return null;
-  
+
   return (
     <Dialog
       isVisible={isVisible}
       onBackdropPress={onClose}
       overlayStyle={styles.dayDialog}
     >
-      <View style={[styles.dialogDayContainer, { backgroundColor: 'transparent' }]}>
-        <View style={[styles.elementCard, { 
-          backgroundColor: theme.background,
-          borderLeftColor: element.isUrgent ? theme.error : theme.border,
-          marginBottom: 0
-        }]}>
+      <View style={[styles.dialogDayContainer, { backgroundColor: "transparent" }]}>
+        <View style={[
+          styles.elementCard,
+          {
+            backgroundColor: theme.background,
+            borderLeftColor: element.isUrgent ? theme.error : theme.border,
+            marginBottom: 0,
+          },
+        ]}>
           <View style={[styles.elementHeader, { padding: spacing.md }]}>
             <View style={styles.elementContent}>
-              <View style={[styles.titleRow, { alignItems: 'center' }]}>
+              <View style={[styles.titleRow, { alignItems: "center" }]}>
                 <View style={styles.titleMain}>
-                  <Text 
+                  <Text
                     style={[
                       styles.elementDetailsTitle,
                       { color: theme.text },
-                      element.isUrgent && { color: theme.error }
+                      element.isUrgent && { color: theme.error },
                     ]}
                   >
                     {element.subject}
@@ -71,13 +83,13 @@ const ElementDetailsDialog = ({ element, isVisible, onClose, theme, t, language 
               </Text>
             )}
             <Text style={[styles.dialogDeadline, { color: theme.placeholder }]}>
-              {t('agenda.due')}: {new Date(element.deadline).toLocaleDateString(language)}
+              {t("agenda.due")}: {new Date(element.deadline).toLocaleDateString(language)}
             </Text>
           </ScrollView>
 
-          <View style={[styles.dialogFooterActions, { justifyContent: 'flex-end' }]}>
+          <View style={[styles.dialogFooterActions, { justifyContent: "flex-end" }]}>
             <Button
-              title={t('home.viewAgenda')}
+              title={t("home.viewAgenda")}
               type="clear"
               titleStyle={{ color: theme.tint }}
               onPress={() => {
@@ -92,27 +104,25 @@ const ElementDetailsDialog = ({ element, isVisible, onClose, theme, t, language 
   );
 };
 
-const sortElementsByUrgency = (elements: AgendaElement[]) => {
-  return [...elements].sort((a, b) => {
-    if (a.isUrgent && !b.isUrgent) return -1;
-    if (!a.isUrgent && b.isUrgent) return 1;
-    return 0;
-  });
-};
-
+// Utility Functions
 const sortElementsByUrgencyAndDeadline = (elements: AgendaElement[]) => {
   return [...elements].sort((a, b) => {
-    // First sort by urgency
     if (a.isUrgent && !b.isUrgent) return -1;
     if (!a.isUrgent && b.isUrgent) return 1;
-    
-    // Then sort by deadline
     return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
   });
 };
 
-const DayElementsDialog = ({ elements, isVisible, onClose, onElementPress, theme, t, colorScheme, language }) => {
-  const dateKey = elements[0]?.deadline ? new Date(elements[0].deadline).toDateString() : '';
+// Component: DayElementsDialog
+const DayElementsDialog = ({ 
+  elements, 
+  isVisible, 
+  onClose, 
+  onElementPress, 
+  theme, 
+  t, 
+  colorScheme
+}) => {
   const sortedElements = sortElementsByUrgencyAndDeadline(elements);
   const date = elements[0]?.deadline ? new Date(elements[0].deadline) : new Date();
 
@@ -124,36 +134,36 @@ const DayElementsDialog = ({ elements, isVisible, onClose, onElementPress, theme
     >
       <View style={[styles.dialogDayContainer, { backgroundColor: theme.card }]}>
         <Text style={[styles.dayHeader, { color: theme.text }]}>
-          {t(`calendar.days.${['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][date.getDay()]}`)}
-          {'\n'}
+          {t(`calendar.days.${["sun", "mon", "tue", "wed", "thu", "fri", "sat"][date.getDay()]}`)}
+          {"\n"}
           {date.getDate()}
         </Text>
         <ScrollView style={styles.dialogElementsContainer}>
           {sortedElements.map((element, index) => (
-            <Pressable 
+            <Pressable
               key={`${element.id}-${index}`}
               onPress={() => onElementPress(element)}
               style={({ pressed }) => [
                 styles.elementCard,
-                { 
-                  backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)',
+                {
+                  backgroundColor: colorScheme === "dark" ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.05)",
                   opacity: pressed ? 0.7 : 1,
-                  borderLeftColor: element.isUrgent ? theme.error : theme.border
+                  borderLeftColor: element.isUrgent ? theme.error : theme.border,
                 },
                 element.isUrgent && {
-                  backgroundColor: Colors[colorScheme ?? 'light'].error + '20',
-                }
+                  backgroundColor: Colors[colorScheme ?? "light"].error + "20",
+                },
               ]}
             >
               <View style={styles.elementHeader}>
                 <View style={styles.elementContent}>
-                  <View style={[styles.titleRow, { alignItems: 'center' }]}>
+                  <View style={[styles.titleRow, { alignItems: "center" }]}>
                     <View style={styles.titleMain}>
-                      <Text 
+                      <Text
                         style={[
                           styles.elementTitle,
                           { color: theme.text },
-                          element.isUrgent && { color: Colors[colorScheme ?? 'light'].error }
+                          element.isUrgent && { color: Colors[colorScheme ?? "light"].error },
                         ]}
                         numberOfLines={1}
                         ellipsizeMode="tail"
@@ -172,116 +182,149 @@ const DayElementsDialog = ({ elements, isVisible, onClose, onElementPress, theme
   );
 };
 
+// Main Component
 export default function HomeScreen() {
   const { t, language } = useLanguage();
-  const colorScheme = useColorScheme()
-  const theme = Colors[colorScheme ?? 'light'];
-  const [agendas, setAgendas] = useState<Agenda[]>([])
-  const [session, setSession] = useState<Session | null>(null)
-  const [refreshing, setRefreshing] = useState(false)
-  const [key, setKey] = useState("")
-  const [agendaElements, setAgendaElements] = useState<AgendaElement[]>([])
-  const [completedElements, setCompletedElements] = useState<AgendaElement[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme ?? "light"];
+  const [agendas, setAgendas] = useState<Agenda[]>([]);
+  const [session, setSession] = useState<Session | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [key, setKey] = useState("");
+  const [agendaElements, setAgendaElements] = useState<AgendaElement[]>([]);
+  const [completedElements, setCompletedElements] = useState<AgendaElement[]>([]);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newAgendaData, setNewAgendaData] = useState({
-    name: '',
-    key: '',
-    key_visible: true
-  })
-  const [showJoinDialog, setShowJoinDialog] = useState(false)
+    name: "",
+    key: "",
+    key_visible: true,
+  });
+  const [showJoinDialog, setShowJoinDialog] = useState(false);
   const [joinAgendaData, setJoinAgendaData] = useState({
-    name: '',
-    key: ''
-  })
+    name: "",
+    key: "",
+  });
   const isOnline = useNetworkState();
   const { credits, setCredits, fetchCredits } = useCredits();
   const [currentWeek, setCurrentWeek] = useState<Date[]>([]);
-  const [elementsByDay, setElementsByDay] = useState<{[key: string]: AgendaElement[]}>({});
+  const [elementsByDay, setElementsByDay] = useState<{ [key: string]: AgendaElement[] }>({});
   const [selectedDayElements, setSelectedDayElements] = useState<AgendaElement[]>([]);
   const [showDayDialog, setShowDayDialog] = useState(false);
   const [selectedElement, setSelectedElement] = useState<AgendaElement | null>(null);
   const weekScrollRef = useRef<ScrollView>(null);
-  
-  // Add these new state variables
   const [isCreateNameValid, setIsCreateNameValid] = useState(true);
   const [isJoinNameValid, setIsJoinNameValid] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  // Add these new handler functions
+  // Handlers (unchanged from original)
   const handleCreateNameChange = useCallback((text: string) => {
-    setNewAgendaData(prev => ({ ...prev, name: text }));
+    setNewAgendaData((prev) => ({ ...prev, name: text }));
     const trimmed = text.trim();
-    if (trimmed) {
-      setIsCreateNameValid(trimmed.length <= 15);
-    } else {
-      setIsCreateNameValid(true);
-    }
+    setIsCreateNameValid(trimmed ? trimmed.length <= 15 : true);
   }, []);
 
   const handleJoinNameChange = useCallback((text: string) => {
-    setJoinAgendaData(prev => ({ ...prev, name: text }));
+    setJoinAgendaData((prev) => ({ ...prev, name: text }));
     const trimmed = text.trim();
-    if (trimmed) {
-      setIsJoinNameValid(trimmed.length <= 15);
-    } else {
-      setIsJoinNameValid(true);
-    }
+    setIsJoinNameValid(trimmed ? trimmed.length <= 15 : true);
   }, []);
 
   const resetState = useCallback(() => {
-    setAgendas([])
-    setAgendaElements([])
-    setCompletedElements([])
-    setKey("")
-    setShowCreateDialog(false)
-    setShowJoinDialog(false)
-    setNewAgendaData({ name: '', key: '', key_visible: true })
-    setJoinAgendaData({ name: '', key: '' })
-  }, [])
+    setAgendas([]);
+    setAgendaElements([]);
+    setCompletedElements([]);
+    setKey("");
+    setShowCreateDialog(false);
+    setShowJoinDialog(false);
+    setNewAgendaData({ name: "", key: "", key_visible: true });
+    setJoinAgendaData({ name: "", key: "" });
+  }, []);
 
   const clearSupabaseCache = useCallback(async () => {
     try {
       await Promise.all([
         supabase.auth.refreshSession(),
-        supabase.from('Agenda').select().abortSignal,
-        supabase.from('Agenda Section').select().abortSignal,
-        supabase.from('Agenda Element').select().abortSignal,
+        supabase.from("Agenda").select().abortSignal,
+        supabase.from("Agenda Section").select().abortSignal,
+        supabase.from("Agenda Element").select().abortSignal,
       ]);
     } catch (error) {
-      console.log('Cache clear error:', error);
+      console.log("Cache clear error:", error);
     }
-  });
+  }, []);
 
+  // Load Cached Data First
+  const loadCachedData = useCallback(async () => {
+    try {
+      const [cachedAgendas, cachedElements, cachedCompleted, cachedElementsByDay] = await Promise.all([
+        getData(KEYS.AGENDAS),
+        getData(KEYS.AGENDA_ELEMENTS),
+        getData(KEYS.COMPLETED_ELEMENTS),
+        getData(KEYS.INDIVIDUAL_AGENDAS),
+      ]);
+
+      if (cachedAgendas?.length > 0) setAgendas(cachedAgendas);
+      if (cachedElements?.length > 0) setAgendaElements(cachedElements);
+      if (cachedCompleted?.length > 0) setCompletedElements(cachedCompleted);
+
+      if (cachedElementsByDay) {
+        const organized: { [key: string]: AgendaElement[] } = {};
+        Object.values(cachedElementsByDay).forEach((agendaData: any) => {
+          if (agendaData?.data?.agenda?.sections) {
+            agendaData.data.agenda.sections.forEach((section) => {
+              section.elements?.forEach((element) => {
+                if (!cachedCompleted?.find((ce) => ce.id === element.id)) {
+                  const dateKey = new Date(element.deadline).toDateString();
+                  if (!organized[dateKey]) organized[dateKey] = [];
+                  organized[dateKey].push({
+                    ...element,
+                    isUrgent: cachedElements?.some((ue) => ue.id === element.id),
+                    sectionId: section.id,
+                    sectionName: section.name,
+                  });
+                }
+              });
+            });
+          }
+        });
+        setElementsByDay(organized);
+        setCurrentWeek(getWeekDates(new Date()));
+      }
+    } catch (error) {
+      console.error("Error loading cached data:", error);
+    }
+  }, []);
+
+  // Effects
   useEffect(() => {
+    // Load cached data immediately
+    loadCachedData();
+
+    // Handle auth state changes
     supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT') {
+      if (event === "SIGNED_OUT") {
         await clearSupabaseCache();
         resetState();
         setSession(null);
-        router.replace('/three');
+        router.replace("/three");
         return;
       }
 
       if (session) {
         setSession(session);
-        setLoading(true);
-
+        // Fetch fresh data in background
         try {
           await Promise.all([
             fetchAgendas(session),
             fetchAgendaElements(session),
-            fetchUserCredits(session)
+            fetchUserCredits(session),
           ]);
         } catch (error) {
-          console.error('Auth change error:', error);
-          Alert.alert('Error', 'Failed to load data');
-        } finally {
-          setLoading(false);
+          console.error("Auth change fetch error:", error);
         }
       }
     });
-  }, []);
+  }, [loadCachedData, clearSupabaseCache, resetState]);
 
   useEffect(() => {
     let mounted = true;
@@ -292,54 +335,36 @@ export default function HomeScreen() {
         if (!mounted) return;
 
         if (error) {
-          console.error('Session error:', error);
+          console.error("Session error:", error);
           return;
         }
 
         setSession(session);
-        
-        if (!session) {
-          setLoading(false);
-          return;
-        }
 
-        await Promise.all([
-          fetchAgendas(session),
-          fetchAgendaElements(session),
-          fetchUserCredits(session)
-        ]);
+        if (!session) return;
+
+        // Load cached data first, then fetch fresh data
+        await loadCachedData();
+        if (isOnline) {
+          await Promise.all([
+            fetchAgendas(session),
+            fetchAgendaElements(session),
+            fetchUserCredits(session),
+          ]);
+        }
       } catch (error) {
-        console.error('Init error:', error);
-        if (mounted) {
-          Alert.alert('Error', 'Failed to initialize');
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+        console.error("Init error:", error);
       }
     };
 
     initialize();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!mounted) return;
-      setSession(session);
-      if (session) {
-        await Promise.all([
-          fetchAgendas(session),
-          fetchAgendaElements(session),
-          fetchUserCredits(session)
-        ]);
-      }
-    });
-
-    return () => { 
+    return () => {
       mounted = false;
-      subscription.unsubscribe();
     };
-  }, []);
+  }, [isOnline, loadCachedData]);
 
+  // Data Fetching
   const clearAgendas = useCallback(async () => {
     setAgendas([]);
     await storeData(KEYS.AGENDAS, []);
@@ -348,16 +373,14 @@ export default function HomeScreen() {
   const fetchAgendas = useCallback(async (currentSession?: Session | null) => {
     const userSession = currentSession || session;
     if (!userSession?.user?.id) return;
-    
+
     try {
-      setLoading(true);
-      
       if (isOnline) {
         const [{ data: ownedAgendas }, { data: memberAgendas }] = await Promise.all([
           supabase
             .from("Agenda")
             .select(`*, sections:"Agenda Section"(*)`)
-            .eq('creator_id', userSession.user.id),
+            .eq("creator_id", userSession.user.id),
           supabase
             .from("Agenda Member")
             .select(`
@@ -366,113 +389,51 @@ export default function HomeScreen() {
                 sections:"Agenda Section"(*)
               )
             `)
-            .eq('user_id', userSession.user.id)
+            .eq("user_id", userSession.user.id),
         ]);
 
         const combined = [
           ...(ownedAgendas || []),
-          ...(memberAgendas?.map(m => m.agenda) || [])
+          ...(memberAgendas?.map((m) => m.agenda) || []),
         ];
 
-        const uniqueAgendas = Array.from(new Map(
-          combined.map(item => [item.id, item])
-        ).values());
+        const uniqueAgendas = Array.from(
+          new Map(combined.map((item) => [item.id, item])).values()
+        );
 
-        if (uniqueAgendas.length === 0) {
-          await clearAgendas();
-        } else {
-          setAgendas(uniqueAgendas);
-          await storeData(KEYS.AGENDAS, uniqueAgendas);
-        }
-        return;
+        setAgendas(uniqueAgendas);
+        await storeData(KEYS.AGENDAS, uniqueAgendas);
       }
-
-      const cachedAgendas = await getData(KEYS.AGENDAS);
-      if (cachedAgendas?.length > 0) {
-        setAgendas(cachedAgendas);
-      } else {
-        await clearAgendas();
-      }
-      
     } catch (error) {
-      console.error('Fetch agendas error:', error);
-      const cachedAgendas = await getData(KEYS.AGENDAS);
-      if (cachedAgendas?.length > 0) {
-        setAgendas(cachedAgendas);
-      } else {
-        await clearAgendas();
-      }
-    } finally {
-      setLoading(false);
+      console.error("Fetch agendas error:", error);
     }
-  }, [session, isOnline, clearAgendas]);
+  }, [session, isOnline]);
 
   const fetchAgendaElements = useCallback(async (currentSession?: Session | null) => {
     const userSession = currentSession || session;
     if (!userSession?.user?.id) return;
 
     try {
-      if (!isOnline) {
-        const [cachedElements, cachedCompleted, cachedElementsByDay] = await Promise.all([
-          getData(KEYS.AGENDA_ELEMENTS),
-          getData(KEYS.COMPLETED_ELEMENTS),
-          getData(KEYS.INDIVIDUAL_AGENDAS)
-        ]);
-
-        if (cachedElements) {
-          setAgendaElements(cachedElements);
-        }
-
-        if (cachedCompleted) {
-          setCompletedElements(cachedCompleted);
-        }
-
-        if (cachedElementsByDay) {
-          const organized: {[key: string]: AgendaElement[]} = {};
-          Object.values(cachedElementsByDay).forEach(agendaData => {
-            if (agendaData?.data?.agenda?.sections) {
-              agendaData.data.agenda.sections.forEach(section => {
-                section.elements?.forEach(element => {
-                  if (!cachedCompleted?.find(ce => ce.id === element.id)) {
-                    const dateKey = new Date(element.deadline).toDateString();
-                    if (!organized[dateKey]) {
-                      organized[dateKey] = [];
-                    }
-                    organized[dateKey].push({
-                      ...element,
-                      isUrgent: cachedElements?.some(ue => ue.id === element.id),
-                      sectionId: section.id,
-                      sectionName: section.name
-                    });
-                  }
-                });
-              });
-            }
-          });
-          setElementsByDay(organized);
-          setCurrentWeek(getWeekDates(new Date()));
-        }
-        return;
-      }
+      if (!isOnline) return;
 
       const [{ data: memberAgendas }, { data: ownedAgendas }] = await Promise.all([
         supabase
-          .from('Agenda Member')
-          .select('agenda_id')
-          .eq('user_id', userSession.user.id),
+          .from("Agenda Member")
+          .select("agenda_id")
+          .eq("user_id", userSession.user.id),
         supabase
-          .from('Agenda')
-          .select('id')
-          .eq('creator_id', userSession.user.id)
+          .from("Agenda")
+          .select("id")
+          .eq("creator_id", userSession.user.id),
       ]);
 
       const allAgendaIds = [
-        ...(memberAgendas?.map(m => m.agenda_id) || []),
-        ...(ownedAgendas?.map(a => a.id) || [])
+        ...(memberAgendas?.map((m) => m.agenda_id) || []),
+        ...(ownedAgendas?.map((a) => a.id) || []),
       ];
 
       const { data: sections } = await supabase
-        .from('Agenda Section')
+        .from("Agenda Section")
         .select(`
           id,
           name,
@@ -481,39 +442,37 @@ export default function HomeScreen() {
             name
           )
         `)
-        .in('agenda_id', allAgendaIds);
+        .in("agenda_id", allAgendaIds);
 
       if (!sections?.length) return;
 
       const { data: completed } = await supabase
-        .from('Completed Element')
-        .select('element_id')
-        .eq('user_id', userSession.user.id);
+        .from("Completed Element")
+        .select("element_id")
+        .eq("user_id", userSession.user.id);
 
-      const completedIds = new Set(completed?.map(c => c.element_id) || []);
+      const completedIds = new Set(completed?.map((c) => c.element_id) || []);
 
       const { data: elements } = await supabase
-        .from('Agenda Element')
-        .select('*')
-        .in('section_id', sections.map(s => s.id));
+        .from("Agenda Element")
+        .select("*")
+        .in("section_id", sections.map((s) => s.id));
 
       const { data: urgentData } = await supabase
-        .from('Urgent Element')
-        .select('element_id')
-        .eq('user_id', userSession.user.id);
+        .from("Urgent Element")
+        .select("element_id")
+        .eq("user_id", userSession.user.id);
 
-      const urgentIds = new Set(urgentData?.map(u => u.element_id) || []);
+      const urgentIds = new Set(urgentData?.map((u) => u.element_id) || []);
 
-      const organized: {[key: string]: AgendaElement[]} = {};
-      elements?.forEach(element => {
+      const organized: { [key: string]: AgendaElement[] } = {};
+      elements?.forEach((element) => {
         if (completedIds.has(element.id)) return;
-        
-        const dateKey = new Date(element.deadline).toDateString();
-        if (!organized[dateKey]) {
-          organized[dateKey] = [];
-        }
 
-        const section = sections.find(s => s.id === element.section_id);
+        const dateKey = new Date(element.deadline).toDateString();
+        if (!organized[dateKey]) organized[dateKey] = [];
+
+        const section = sections.find((s) => s.id === element.section_id);
         if (!section) return;
 
         organized[dateKey].push({
@@ -521,20 +480,20 @@ export default function HomeScreen() {
           section: {
             id: section.id,
             name: section.name,
-            agenda: section.agenda
+            agenda: section.agenda,
           },
           sectionId: section.id,
           sectionName: section.name,
           agendaName: section.agenda.name,
-          isUrgent: urgentIds.has(element.id)
+          isUrgent: urgentIds.has(element.id),
         });
       });
 
       setElementsByDay(organized);
       setCurrentWeek(getWeekDates(new Date()));
 
-      const { data: urgentElements, error: urgentError } = await supabase
-        .from('Urgent Element')
+      const { data: urgentElements } = await supabase
+        .from("Urgent Element")
         .select(`
           element_id,
           element:"Agenda Element" (
@@ -553,22 +512,20 @@ export default function HomeScreen() {
             )
           )
         `)
-        .eq('user_id', userSession.user.id)
-        .order('created_at', { ascending: false });
-
-      if (urgentError) throw urgentError;
+        .eq("user_id", userSession.user.id)
+        .order("created_at", { ascending: false });
 
       const urgentItems = urgentElements
-        ?.filter(ue => ue.element)
-        .map(ue => ({
+        ?.filter((ue) => ue.element)
+        .map((ue) => ({
           ...ue.element,
-          agendaName: ue.element.section.agenda.name
+          agendaName: ue.element.section.agenda.name,
         }));
 
       setAgendaElements(urgentItems || []);
 
-      const { data: completedElements, error: completedError } = await supabase
-        .from('Completed Element')
+      const { data: completedElements } = await supabase
+        .from("Completed Element")
         .select(`
           element_id,
           element:"Agenda Element" (
@@ -587,30 +544,24 @@ export default function HomeScreen() {
             )
           )
         `)
-        .eq('user_id', userSession.user.id)
-        .order('created_at', { ascending: false });
-
-      if (completedError) throw completedError;
+        .eq("user_id", userSession.user.id)
+        .order("created_at", { ascending: false });
 
       const completedItems = completedElements
-        ?.filter(ce => ce.element)
-        .map(ce => ({
+        ?.filter((ce) => ce.element)
+        .map((ce) => ({
           ...ce.element,
-          agendaName: ce.element.section.agenda.name
+          agendaName: ce.element.section.agenda.name,
         }));
 
       setCompletedElements(completedItems || []);
 
       await Promise.all([
         storeData(KEYS.AGENDA_ELEMENTS, urgentItems || []),
-        storeData(KEYS.COMPLETED_ELEMENTS, completedItems || [])
+        storeData(KEYS.COMPLETED_ELEMENTS, completedItems || []),
       ]);
     } catch (error) {
-      console.error('Error fetching elements:', error);
-      const cachedElements = await getData(KEYS.AGENDA_ELEMENTS);
-      const cachedCompleted = await getData(KEYS.COMPLETED_ELEMENTS);
-      if (cachedElements) setAgendaElements(cachedElements);
-      if (cachedCompleted) setCompletedElements(cachedCompleted);
+      console.error("Error fetching elements:", error);
     }
   }, [session, isOnline]);
 
@@ -628,79 +579,47 @@ export default function HomeScreen() {
         if (isOnline) {
           fetchAgendas(session);
           fetchAgendaElements(session);
-        } else {
-          getData(KEYS.AGENDAS).then(cachedAgendas => {
-            if (cachedAgendas?.length > 0) {
-              setAgendas(cachedAgendas);
-            } else {
-              clearAgendas();
-            }
-          });
         }
       }
-    }, [session?.user?.id, fetchCredits, isOnline, clearAgendas])
+    }, [session?.user?.id, fetchCredits, isOnline])
   );
 
+  // Handlers (unchanged from original)
   const onRefresh = useCallback(() => {
-    setRefreshing(true)
-    Promise.all([
-      fetchAgendas(),
-      fetchAgendaElements()
-    ]).finally(() => setRefreshing(false))
-  }, [fetchAgendas, fetchAgendaElements])
+    setRefreshing(true);
+    Promise.all([fetchAgendas(), fetchAgendaElements()]).finally(() =>
+      setRefreshing(false)
+    );
+  }, [fetchAgendas, fetchAgendaElements]);
 
   const handleJoinAgenda = async () => {
     if (!session?.user?.id || !joinAgendaData.name || !joinAgendaData.key) return;
-    
+
     const trimmedName = joinAgendaData.name.trim();
     setIsJoinNameValid(trimmedName.length <= 15);
-
     if (!isJoinNameValid) return;
 
     try {
-      const trimmedName = joinAgendaData.name.trim()
-      const trimmedKey = joinAgendaData.key.trim()
-  
-      console.log('Debug - Exact values being searched:', {
-        name: trimmedName,
-        key: trimmedKey,
-        length: {
-          name: trimmedName.length,
-          key: trimmedKey.length
-        }
-      })
+      const trimmedKey = joinAgendaData.key.trim();
 
       const { data: foundAgendas, error: searchError } = await supabase
         .from("Agenda")
         .select("*")
         .eq("key", trimmedKey)
-        .ilike("name", trimmedName)
-  
-      console.log('Debug - Raw Supabase response:', {
-        data: foundAgendas,
-        error: searchError,
-        query: supabase
-          .from("Agenda")
-          .select("*")
-          .eq("key", trimmedKey)
-          .ilike("name", trimmedName)
-      })
-  
-      if (searchError) {
-        console.error('Search error:', searchError)
-        throw searchError
-      }
+        .ilike("name", trimmedName);
 
-      const agenda = foundAgendas[0]
+      if (searchError) throw searchError;
+
+      const agenda = foundAgendas[0];
 
       if (agenda.creator_id === session.user.id) {
-        Alert.alert(t('settings.error'), t('home.error.alreadyOwner'));
-        return
+        Alert.alert(t("settings.error"), t("home.error.alreadyOwner"));
+        return;
       }
 
       if (!agenda.key_visible) {
-        Alert.alert(t('settings.error'), t('home.error.privateKey'));
-        return
+        Alert.alert(t("settings.error"), t("home.error.privateKey"));
+        return;
       }
 
       const { data: existingMember } = await supabase
@@ -708,105 +627,84 @@ export default function HomeScreen() {
         .select("*")
         .eq("user_id", session.user.id)
         .eq("agenda_id", agenda.id)
-        .maybeSingle()
+        .maybeSingle();
 
       if (existingMember) {
-        Alert.alert(t('settings.error'), t('home.error.alreadyMember'));
-        return
+        Alert.alert(t("settings.error"), t("home.error.alreadyMember"));
+        return;
       }
 
       const { error: joinError } = await supabase
         .from("Agenda Member")
         .insert({
           user_id: session.user.id,
-          agenda_id: agenda.id
-        })
+          agenda_id: agenda.id,
+        });
 
-      if (joinError) throw joinError
+      if (joinError) throw joinError;
 
-      await fetchAgendas()
-      setShowJoinDialog(false)
-      setJoinAgendaData({ name: '', key: '' })
-      Alert.alert(t('settings.success'), t('home.success.joined').replace('{name}', agenda.name));
-
+      await fetchAgendas();
+      setShowJoinDialog(false);
+      setJoinAgendaData({ name: "", key: "" });
+      Alert.alert(t("settings.success"), t("home.success.joined").replace("{name}", agenda.name));
     } catch (error) {
-      console.error('Join error:', error)
-      Alert.alert(
-        t('settings.error'), 
-        t('home.error.join')
-      )
+      console.error("Join error:", error);
+      Alert.alert(t("settings.error"), t("home.error.join"));
     }
-  }
-
-  const createTestAgenda = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("Agenda")
-        .insert([{
-          name: "Test Agenda",
-          key: "test123",
-          key_visible: true,
-          creator_id: session?.user?.id
-        }])
-        .select()
-        .single()
-
-      if (error) throw error
-      console.log('Created test agenda:', data)
-      await fetchAgendas()
-    } catch (error) {
-      console.error('Test agenda creation error:', error)
-    }
-  }
+  };
 
   const handleCreateAgenda = async () => {
     if (!session?.user?.id || !newAgendaData.name) return;
 
     const trimmedName = newAgendaData.name.trim();
     setIsCreateNameValid(trimmedName.length <= 15);
-
     if (!isCreateNameValid) return;
 
     try {
       const { data, error } = await supabase
         .from("Agenda")
-        .insert([{
-          name: newAgendaData.name.trim(),
-          key: newAgendaData.key || Math.random().toString(36).substring(2, 8),
-          key_visible: newAgendaData.key_visible,
-          creator_id: session.user.id
-        }])
+        .insert([
+          {
+            name: trimmedName,
+            key: newAgendaData.key || Math.random().toString(36).substring(2, 8),
+            key_visible: newAgendaData.key_visible,
+            creator_id: session.user.id,
+          },
+        ])
         .select()
-        .single()
+        .single();
 
-      if (error) throw error
+      if (error) throw error;
 
-      setShowCreateDialog(false)
-      setNewAgendaData({ name: '', key: '', key_visible: true })
-      fetchAgendas()
-      Alert.alert(t('settings.success'), t('home.success.created'));
+      setShowCreateDialog(false);
+      setNewAgendaData({ name: "", key: "", key_visible: true });
+      fetchAgendas();
+      Alert.alert(t("settings.success"), t("home.success.created"));
     } catch (error) {
-      console.error('Create agenda error:', error)
-      Alert.alert(t('settings.error'), t('home.error.create'));
+      console.error("Create agenda error:", error);
+      Alert.alert(t("settings.error"), t("home.error.create"));
     }
-  }
+  };
 
+  // Render Functions (unchanged from original except for loading condition removal)
   const renderAgendaItem = ({ item }: { item: Agenda }) => (
     <View style={[styles.card, { backgroundColor: theme.card }]}>
-      <Text style={[typography.h3, { color: theme.text }]}>{item.name || "Untitled"}</Text>
+      <Text style={[typography.h3, { color: theme.text }]}>
+        {item.name || "Untitled"}
+      </Text>
       {item.key_visible && (
-        <Pressable 
+        <Pressable
           onPress={() => {
             Clipboard.setString(item.key);
-            Alert.alert(t('settings.success'), t('home.keyCopied'));
+            Alert.alert(t("settings.success"), t("home.keyCopied"));
           }}
           style={({ pressed }) => [
             styles.keyContainer,
-            { opacity: pressed ? 0.5 : 1 }
+            { opacity: pressed ? 0.5 : 1 },
           ]}
         >
           <Text style={[typography.caption, { color: theme.text }]}>
-            {t('home.agendaCode')}: {item.key}
+            {t("home.agendaCode")}: {item.key}
           </Text>
           <Icon
             name="copy"
@@ -818,54 +716,13 @@ export default function HomeScreen() {
         </Pressable>
       )}
       <Button
-        title={t('userProfile.action.viewAgenda')}
+        title={t("userProfile.action.viewAgenda")}
         type="clear"
         titleStyle={{ color: theme.tint }}
         onPress={() => router.push(`/agenda/${item.id}`)}
       />
     </View>
-  )
-
-  const handleLeaveAgenda = async () => {
-    if (!session?.user?.id) return;
-
-    Alert.alert(
-      "Leave Agenda",
-      "Are you sure you want to leave this agenda? This will remove all your data from this agenda.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Leave",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const { error } = await supabase
-                .from("Agenda Member")
-                .delete()
-                .eq('user_id', session.user.id)
-                .eq('agenda_id', id);
-
-              if (error) throw error;
-
-              try {
-                const cachedData = await getData(KEYS.AGENDAS) || [];
-                const updatedAgendas = cachedData.filter(a => a.id !== id);
-                await storeData(KEYS.AGENDAS, updatedAgendas);
-                await storeAgendaData(id as string, null);
-              } catch (storageError) {
-                console.log('Cache update error:', storageError);
-              }
-
-              router.replace("/");
-            } catch (error) {
-              console.error("Leave agenda error:", error);
-              Alert.alert("Error", "Failed to leave agenda");
-            }
-          }
-        }
-      ]
-    );
-  };
+  );
 
   useEffect(() => {
     setCurrentWeek(getWeekDates(new Date()));
@@ -878,7 +735,7 @@ export default function HomeScreen() {
     const isToday = new Date().toDateString() === dateKey;
     const isSelected = dateKey === selectedDate;
     const MAX_VISIBLE_ELEMENTS = 2;
-  
+
     return (
       <Pressable
         key={dateKey}
@@ -891,44 +748,44 @@ export default function HomeScreen() {
         }}
         style={({ pressed }) => [
           styles.dayContainer,
-          { 
+          {
             backgroundColor: theme.card,
-            opacity: isSelected ? 0.1 : pressed ? 0.7 : 1
+            opacity: isSelected ? 0.1 : pressed ? 0.7 : 1,
           },
-          isToday && { borderColor: theme.tint, borderWidth: 1 }
+          isToday && { borderColor: theme.tint, borderWidth: 1 },
         ]}
       >
         <Text style={[styles.dayHeader, { color: theme.text }]}>
-          {t(`calendar.days.${['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][date.getDay()]}`)}
-          {'\n'}
+          {t(`calendar.days.${["sun", "mon", "tue", "wed", "thu", "fri", "sat"][date.getDay()]}`)}
+          {"\n"}
           {date.getDate()}
         </Text>
         <ScrollView style={styles.elementsContainer}>
           {sortedElements.slice(0, MAX_VISIBLE_ELEMENTS).map((element, index) => (
-            <Pressable 
+            <Pressable
               key={`${element.id}-${index}`}
               onPress={() => setSelectedElement(element)}
               style={({ pressed }) => [
                 styles.elementCard,
-                { 
-                  backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)',
+                {
+                  backgroundColor: colorScheme === "dark" ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.05)",
                   opacity: pressed ? 0.7 : 1,
-                  borderLeftColor: element.isUrgent ? theme.error : theme.border
+                  borderLeftColor: element.isUrgent ? theme.error : theme.border,
                 },
                 element.isUrgent && {
-                  backgroundColor: Colors[colorScheme ?? 'light'].error + '20',
-                }
+                  backgroundColor: Colors[colorScheme ?? "light"].error + "20",
+                },
               ]}
             >
               <View style={styles.elementHeader}>
                 <View style={styles.elementContent}>
-                  <View style={[styles.titleRow, { alignItems: 'center' }]}>
+                  <View style={[styles.titleRow, { alignItems: "center" }]}>
                     <View style={styles.titleMain}>
-                      <Text 
+                      <Text
                         style={[
                           styles.elementTitle,
                           { color: theme.text },
-                          element.isUrgent && { color: Colors[colorScheme ?? 'light'].error }
+                          element.isUrgent && { color: Colors[colorScheme ?? "light"].error },
                         ]}
                         numberOfLines={1}
                         ellipsizeMode="tail"
@@ -943,7 +800,7 @@ export default function HomeScreen() {
           ))}
           {sortedElements.length > MAX_VISIBLE_ELEMENTS && (
             <View style={[styles.moreContainer, { backgroundColor: theme.tint }]}>
-              <Text style={[styles.moreText, { color: colorScheme === 'dark' ? 'black' : 'white' }]}>
+              <Text style={[styles.moreText, { color: colorScheme === "dark" ? "black" : "white" }]}>
                 +{sortedElements.length - MAX_VISIBLE_ELEMENTS}
               </Text>
             </View>
@@ -969,7 +826,7 @@ export default function HomeScreen() {
       setTimeout(() => {
         weekScrollRef.current?.scrollTo({
           x: (120 + 4) * 3,
-          animated: false
+          animated: false,
         });
       }, 0);
     }
@@ -979,12 +836,12 @@ export default function HomeScreen() {
     <Pressable
       onPress={() => router.push(`/agenda/${item.section.agenda.id}`)}
       style={({ pressed }) => [
-        styles.urgentCard, 
-        { 
+        styles.urgentCard,
+        {
           backgroundColor: theme.card,
           opacity: pressed ? 0.7 : 1,
-          borderLeftColor: theme.error
-        }
+          borderLeftColor: theme.error,
+        },
       ]}
     >
       <View style={styles.urgentHeader}>
@@ -995,7 +852,7 @@ export default function HomeScreen() {
                 {item.subject}
               </Text>
               <Text style={[styles.urgentDeadline, { color: theme.placeholder }]}>
-                {item.agendaName} • {t('agenda.due')}: {new Date(item.deadline).toLocaleDateString(language)}
+                {item.agendaName} • {t("agenda.due")}: {new Date(item.deadline).toLocaleDateString(language)}
               </Text>
             </View>
           </View>
@@ -1004,25 +861,38 @@ export default function HomeScreen() {
     </Pressable>
   );
 
+  // Input Error Styles (unchanged)
+  const inputErrorStyles = {
+    invalidInput: { color: theme.error },
+    errorText: { color: theme.error, fontSize: 12, marginTop: 4 },
+    errorBorder: { borderBottomColor: theme.error },
+  };
+
+  // Render
   if (!session) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={styles.welcomeContainer}>
           <Text style={[typography.h1, { color: theme.text, marginBottom: spacing.lg }]}>
-            {t('home.notLoggedIn')}
+            {t("home.notLoggedIn")}
           </Text>
-          <Text style={[typography.body, { 
-            color: theme.placeholder, 
-            textAlign: 'center',
-            marginBottom: spacing.xl,
-            paddingHorizontal: spacing.lg,
-            maxWidth: 500
-          }]}>
-            {t('home.loginRequired')}
+          <Text
+            style={[
+              typography.body,
+              {
+                color: theme.placeholder,
+                textAlign: "center",
+                marginBottom: spacing.xl,
+                paddingHorizontal: spacing.lg,
+                maxWidth: 500,
+              },
+            ]}
+          >
+            {t("home.loginRequired")}
           </Text>
           <Button
-            title={t('home.goToLogin')}
-            onPress={() => router.push('/three')}
+            title={t("home.goToLogin")}
+            onPress={() => router.push("/three")}
             containerStyle={styles.loginButton}
             buttonStyle={{ backgroundColor: theme.button, paddingHorizontal: spacing.xl }}
             titleStyle={{ color: theme.buttonText }}
@@ -1032,28 +902,13 @@ export default function HomeScreen() {
     );
   }
 
-  // Add these before the return statement
-  const inputErrorStyles = {
-    invalidInput: {
-      color: theme.error,
-    },
-    errorText: {
-      color: theme.error,
-      fontSize: 12,
-      marginTop: 4,
-    },
-    errorBorder: {
-      borderBottomColor: theme.error,
-    }
-  };
-
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {!isOnline && <OfflineBanner />}
       <View style={styles.headerRow}>
         <VibesDisplay amount={credits} />
       </View>
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
@@ -1064,31 +919,33 @@ export default function HomeScreen() {
           />
         }
       >
-        {/* Rest of the content */}
-        {/* Remove the headerRow from here */}
-        {/* Urgent section */}
-        {!loading && agendaElements.length > 0 && (
+        {/* Urgent Section */}
+        {agendaElements.length > 0 && (
           <View style={styles.section}>
             <View>
-              {sortElementsByUrgencyAndDeadline(agendaElements).slice(0, 4).map((item) => (
-                <View key={item.id}>
-                  {renderUrgentItem({ item })}
-                </View>
-              ))}
+              {sortElementsByUrgencyAndDeadline(agendaElements)
+                .slice(0, 4)
+                .map((item) => (
+                  <View key={item.id}>{renderUrgentItem({ item })}</View>
+                ))}
               {agendaElements.length > 2 && (
-                <Link 
+                <Link
                   href={{
                     pathname: "/urgent",
                     params: {
-                      items: encodeURIComponent(JSON.stringify(agendaElements.map(item => ({
-                        id: item.id,
-                        subject: item.subject,
-                        deadline: item.deadline,
-                        agendaName: item.agendaName,
-                        agendaId: item.section.agenda.id
-                      }))))
-                    }
-                  }} 
+                      items: encodeURIComponent(
+                        JSON.stringify(
+                          agendaElements.map((item) => ({
+                            id: item.id,
+                            subject: item.subject,
+                            deadline: item.deadline,
+                            agendaName: item.agendaName,
+                            agendaId: item.section.agenda.id,
+                          }))
+                        )
+                      ),
+                    },
+                  }}
                   asChild
                 >
                   <Pressable>
@@ -1096,13 +953,13 @@ export default function HomeScreen() {
                       <Text
                         style={[
                           typography.body,
-                          { 
+                          {
                             color: theme.text,
                             opacity: pressed ? 0.5 : 1,
-                            textAlign: 'center',
+                            textAlign: "center",
                             padding: spacing.sm,
-                            fontSize: 20 
-                          }
+                            fontSize: 20,
+                          },
                         ]}
                       >
                         •••
@@ -1115,13 +972,11 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Your Agendas section */}
+        {/* Agendas Section */}
         <View style={styles.section}>
-          {loading ? (
-            <Text style={{ color: theme.text }}>{t('home.loading')}</Text>
-          ) : agendas.length === 0 ? (
+          {agendas.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Text style={{ color: theme.text }}>{t('home.noAgendas')}</Text>
+              <Text style={{ color: theme.text }}>{t("home.noAgendas")}</Text>
             </View>
           ) : (
             <FlatList
@@ -1134,17 +989,19 @@ export default function HomeScreen() {
             />
           )}
         </View>
+
+        {/* Buttons Section */}
         <View style={[styles.section, styles.bottomSection]}>
           <View style={styles.buttonGroup}>
             <Button
-              title={t('home.createAgenda')}
+              title={t("home.createAgenda")}
               onPress={() => setShowCreateDialog(true)}
               containerStyle={styles.button}
               buttonStyle={{ backgroundColor: theme.button }}
               titleStyle={{ color: theme.buttonText }}
             />
             <Button
-              title={t('home.joinAgenda')}
+              title={t("home.joinAgenda")}
               type="outline"
               onPress={() => setShowJoinDialog(true)}
               containerStyle={styles.button}
@@ -1154,22 +1011,23 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Add mini calendar just before the dialogs */}
+        {/* Mini Calendar */}
         <View style={styles.miniCalendar}>
           <Text style={[typography.h3, { color: theme.text, marginBottom: spacing.sm }]}>
-            {t('calendar.weekView')}
+            {t("calendar.weekView")}
           </Text>
-          <ScrollView 
+          <ScrollView
             ref={weekScrollRef}
-            horizontal 
+            horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.miniWeekContainer}
           >
-            {currentWeek.map(date => renderCalendarDay(date))}
+            {currentWeek.map((date) => renderCalendarDay(date))}
           </ScrollView>
         </View>
       </ScrollView>
 
+      {/* Create Agenda Dialog */}
       <Dialog
         isVisible={showCreateDialog}
         onBackdropPress={() => setShowCreateDialog(false)}
@@ -1179,46 +1037,46 @@ export default function HomeScreen() {
           <View style={[styles.dialogHeader, { backgroundColor: theme.card }]}>
             <View style={[{ flex: 1 }, { backgroundColor: theme.card }]}>
               <Text style={[styles.dialogHeaderTitle, { color: theme.text }]}>
-                {t('home.createAgendaTitle')}
+                {t("home.createAgendaTitle")}
               </Text>
             </View>
           </View>
-          
+
           <Input
-            placeholder={t('home.agendaName')}
+            placeholder={t("home.agendaName")}
             value={newAgendaData.name}
             onChangeText={handleCreateNameChange}
             inputStyle={[
               { color: theme.text },
               { minHeight: 40 },
               styles.inputField,
-              !isCreateNameValid && newAgendaData.name.trim() && inputErrorStyles.invalidInput
+              !isCreateNameValid && newAgendaData.name.trim() && inputErrorStyles.invalidInput,
             ]}
-            errorMessage={newAgendaData.name.trim() && !isCreateNameValid ? t('home.error.nameTooLong') : ''}
+            errorMessage={
+              newAgendaData.name.trim() && !isCreateNameValid ? t("home.error.nameTooLong") : ""
+            }
             errorStyle={inputErrorStyles.errorText}
             inputContainerStyle={[
               { paddingVertical: spacing.xs },
-              !isCreateNameValid && newAgendaData.name.trim() && inputErrorStyles.errorBorder
+              !isCreateNameValid && newAgendaData.name.trim() && inputErrorStyles.errorBorder,
             ]}
             containerStyle={styles.dialogInput}
           />
           <Input
-            placeholder={t('home.agendaCode')}
+            placeholder={t("home.agendaCode")}
             value={newAgendaData.key}
-            onChangeText={(text) => setNewAgendaData(prev => ({ ...prev, key: text }))}
-            inputStyle={[
-              { color: theme.text },
-              { minHeight: 40 },
-              styles.inputField
-            ]}
+            onChangeText={(text) => setNewAgendaData((prev) => ({ ...prev, key: text }))}
+            inputStyle={[{ color: theme.text }, { minHeight: 40 }, styles.inputField]}
             inputContainerStyle={{ paddingVertical: spacing.xs }}
             containerStyle={styles.dialogInput}
           />
           <View style={[styles.switchContainer, { backgroundColor: theme.card }]}>
-            <Text style={{ color: theme.text }}>{t('home.atype')}</Text>
+            <Text style={{ color: theme.text }}>{t("home.atype")}</Text>
             <Switch
               value={newAgendaData.key_visible}
-              onValueChange={(value) => setNewAgendaData(prev => ({ ...prev, key_visible: value }))}
+              onValueChange={(value) =>
+                setNewAgendaData((prev) => ({ ...prev, key_visible: value }))
+              }
               trackColor={{ false: theme.placeholder, true: theme.button }}
               thumbColor={theme.buttonText}
             />
@@ -1228,18 +1086,19 @@ export default function HomeScreen() {
         <View style={styles.dialogFooter}>
           <View style={styles.dialogMainActions}>
             <DialogButton onPress={() => setShowCreateDialog(false)}>
-              {t('agenda.cancel')}
+              {t("agenda.cancel")}
             </DialogButton>
-            <DialogButton 
+            <DialogButton
               onPress={handleCreateAgenda}
               disabled={!newAgendaData.name.trim()}
             >
-              {t('home.create')}
+              {t("home.create")}
             </DialogButton>
           </View>
         </View>
       </Dialog>
 
+      {/* Join Agenda Dialog */}
       <Dialog
         isVisible={showJoinDialog}
         onBackdropPress={() => setShowJoinDialog(false)}
@@ -1249,38 +1108,36 @@ export default function HomeScreen() {
           <View style={[styles.dialogHeader, { backgroundColor: theme.card }]}>
             <View style={[{ flex: 1 }, { backgroundColor: theme.card }]}>
               <Text style={[styles.dialogHeaderTitle, { color: theme.text }]}>
-                {t('home.joinAgendaTitle')}
+                {t("home.joinAgendaTitle")}
               </Text>
             </View>
           </View>
-          
+
           <Input
-            placeholder={t('home.agendaName')}
+            placeholder={t("home.agendaName")}
             value={joinAgendaData.name}
             onChangeText={handleJoinNameChange}
             inputStyle={[
               { color: theme.text },
               { minHeight: 40 },
               styles.inputField,
-              !isJoinNameValid && joinAgendaData.name.trim() && inputErrorStyles.invalidInput
+              !isJoinNameValid && joinAgendaData.name.trim() && inputErrorStyles.invalidInput,
             ]}
-            errorMessage={joinAgendaData.name.trim() && !isJoinNameValid ? t('home.error.nameTooLong') : ''}
+            errorMessage={
+              joinAgendaData.name.trim() && !isJoinNameValid ? t("home.error.nameTooLong") : ""
+            }
             errorStyle={inputErrorStyles.errorText}
             inputContainerStyle={[
               { paddingVertical: spacing.xs },
-              !isJoinNameValid && joinAgendaData.name.trim() && inputErrorStyles.errorBorder
+              !isJoinNameValid && joinAgendaData.name.trim() && inputErrorStyles.errorBorder,
             ]}
             containerStyle={styles.dialogInput}
           />
           <Input
-            placeholder={t('home.agendaCode')}
+            placeholder={t("home.agendaCode")}
             value={joinAgendaData.key}
-            onChangeText={(text) => setJoinAgendaData(prev => ({ ...prev, key: text }))}
-            inputStyle={[
-              { color: theme.text },
-              { minHeight: 40 },
-              styles.inputField
-            ]}
+            onChangeText={(text) => setJoinAgendaData((prev) => ({ ...prev, key: text }))}
+            inputStyle={[{ color: theme.text }, { minHeight: 40 }, styles.inputField]}
             inputContainerStyle={{ paddingVertical: spacing.xs }}
             containerStyle={styles.dialogInput}
           />
@@ -1289,18 +1146,19 @@ export default function HomeScreen() {
         <View style={styles.dialogFooter}>
           <View style={styles.dialogMainActions}>
             <DialogButton onPress={() => setShowJoinDialog(false)}>
-              {t('agenda.cancel')}
+              {t("agenda.cancel")}
             </DialogButton>
-            <DialogButton 
+            <DialogButton
               onPress={handleJoinAgenda}
               disabled={!joinAgendaData.name.trim() || !joinAgendaData.key.trim()}
             >
-              {t('home.join')}
+              {t("home.join")}
             </DialogButton>
           </View>
         </View>
       </Dialog>
 
+      {/* Day Elements and Element Details Dialogs */}
       <DayElementsDialog
         elements={selectedDayElements}
         isVisible={showDayDialog}
@@ -1328,422 +1186,421 @@ export default function HomeScreen() {
         language={language}
       />
     </View>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  section: {
-    marginBottom: spacing.lg,
-  },
-  listContainer: {
-    minHeight: 180,
-  },
-  listContent: {
-    paddingHorizontal: spacing.sm,
-  },
-  card: {
-    padding: spacing.md,
-    borderRadius: 12,
-    marginRight: spacing.md,
-    marginVertical: spacing.sm,
-    minWidth: 250,
-    maxWidth: 300,
-    flex: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  urgentCardBase: {
-    padding: spacing.md,
-    borderRadius: 12,
-    marginBottom: spacing.md,
-    borderLeftWidth: 4,
-  },
-  actionButtons: {
-    width: "100%",
-    paddingVertical: spacing.sm,
-    gap: spacing.sm,
-  },
-  actionButton: {
-    marginHorizontal: spacing.xs,
-  },
-  joinContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: spacing.md,
-  },
-  input: {
-    flex: 1,
-    marginRight: spacing.sm,
-    marginVertical: 0,
-  },
-  button: {
-    minWidth: 100,
-    flex: 1,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    padding: spacing.md,
-  },
-  bottomActions: {
-    marginTop: 'auto',
-    paddingTop: spacing.lg,
-    gap: spacing.md,
-  },
-  joinSection: {
-    gap: spacing.sm,
-  },
-  keyInputContainer: {
-    flex: 1,
-    marginVertical: 0,
-    paddingHorizontal: 0,
-  },
-  keyInputInner: {
-    borderBottomWidth: 1,
-    height: 40,
-  },
-  joinButton: {
-    minWidth: 80,
-    height: 40,
-  },
-  createButton: {
-    marginTop: spacing.sm,
-  },
-  switchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.sm,
-  },
-  buttonGroup: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-  },
-  dialog: {
-    width: '90%',
-    borderRadius: 12,
-    padding: 0,
-    overflow: 'hidden',
-  },
-  dialogContent: {
-    padding: spacing.lg,  // Changed from spacing.md to spacing.lg to match [id].tsx
-  },
-  dialogTitle: {
-    ...typography.h2,
-    marginBottom: spacing.md,
-  },
-  dialogDetails: {
-    ...typography.body,
-    marginBottom: spacing.md,
-    lineHeight: 20,
-  },
-  dialogDeadline: {
-    ...typography.caption,
-    opacity: 0.7,
-  },
-  dayDialog: {
-    width: '90%',
-    padding: spacing.md,
-    maxHeight: '80%',
-    backgroundColor: 'transparent',
-    shadowColor: 'transparent',
-  },
-  dialogDayContainer: {
-    width: '100%',
-    borderRadius: 12,
-    padding: spacing.md,
-    shadowColor: "transparent",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  dialogElementsContainer: {
-    minHeight: 400,
-    maxHeight: 400, // Make it taller than the calendar version
-    overflow: 'hidden',
-  },
-  elementTextContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    borderRadius: 12,
-    padding: spacing.sm,
-    paddingHorizontal: spacing.md,
-  },
-  urgentListContent: {
-    marginTop: spacing.sm,
-  },
-  modal: {
-    margin: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    width: '90%',
-    padding: spacing.lg,
-    borderRadius: 12,
-    maxHeight: '90%',
-  },
-  bottomSheet: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    margin: 0,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-    paddingTop: spacing.sm,
-    maxHeight: '80%',
-  },
-  bottomSheetContent: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
-  },
-  bottomSheetHandle: {
-    width: 40,
-    height: 4,
-    backgroundColor: '#999',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: spacing.md,
-  },
-  modalContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.lg,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  separator: {
-    marginVertical: 30,
-    height: 1,
-    width: '80%',
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    width: '100%',
-    padding: spacing.lg,
-    paddingBottom: 0,
-    position: 'absolute',
-    zIndex: 1,
-    backgroundColor: 'transparent',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingTop: spacing.xl + spacing.lg,
-    padding: spacing.lg,
-  },
-  bottomSection: {
-    marginBottom: spacing.xl,
-  },
-  miniCalendar: {
-    paddingTop: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: 'transparent',
-    marginTop: 'auto',
-  },
-  miniWeekContainer: {
-    flexDirection: 'row',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
-    height: 204,
-  },
-  dayContainer: {
-    width: 120,
-    height: 170,
-    borderRadius: 12,
-    padding: spacing.sm,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    marginHorizontal: 2,
-  },
-  dayHeader: {
-    ...typography.h4,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-  },
-  elementsContainer: {
-    flex: 1,
-    overflow: 'hidden',
-  },
-  elementItem: {
-    padding: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: 8,
-    marginBottom: spacing.xs,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  elementText: {
-    ...typography.caption,
-    fontSize: 12,
-  },
-  moreContainer: {
-    alignSelf: 'center',
-    marginTop: spacing.xs,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1,
-    elevation: 2,
-  },
-  moreText: {
-    ...typography.caption,
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  welcomeContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingBottom: '20%',
-  },
-  loginButton: {
-    minWidth: 200,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  viewAgendaButton: {
-    marginTop: spacing.md,
-    alignSelf: 'flex-end',
-  },
-  keyContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.xs,
-  },
-  copyIcon: {
-    marginLeft: spacing.xs,
-  },
-  elementDialogScroll: {
-    maxHeight: 300,
-  },
-  elementCard: {
-    marginBottom: spacing.xs,
-    borderRadius: 8,
-    overflow: 'hidden',
-    borderLeftWidth: 3,
-    width: '100%',
-  },
-  elementHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.xs,
-  },
-  elementContent: {
-    flex: 1,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  titleMain: {
-    flex: 1,
-  },
-  elementTitle: {
-    ...typography.h3,
-    fontSize: 13,
-    marginBottom: 4,
-    marginTop: 4,
-    margin: 3
-  },
-  // Urgent items specific styles
-  urgentCard: {
-    marginBottom: spacing.xs,
-    borderRadius: 8,
-    overflow: 'hidden',
-    borderLeftWidth: 3,
-    width: '100%',
-  },
-  urgentHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: spacing.sm,
-  },
-  urgentContent: {
-    flex: 1,
-  },
-  urgentTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  urgentTitleMain: {
-    flex: 1,
-    marginRight: spacing.sm,
-  },
-  urgentTitle: {
-    ...typography.h3,
-    fontSize: 15,
-    marginBottom: 2,
-  },
-  urgentDeadline: {
-    ...typography.caption,
-    fontSize: 12,
-    opacity: 0.7,
-  },
-  dialogFooter: {
-    borderTopWidth: 1,
-    borderTopColor: 'transparent',
-    paddingVertical: spacing.xs,
-  },
-  dialogMainActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: spacing.lg,
-  },
-  dialogHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.md,
-  },
-  dialogHeaderTitle: {
-    ...typography.h3,
-  },
-  dialogFooterActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
-    paddingTop: 0,
-    borderTopWidth: 1,
-    borderTopColor: 'transparent',
-  },
-  elementFlags: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  elementDetailsTitle: {
-    ...typography.h3,
-    fontSize: 20,
-    marginBottom: 0,
-  },
+    container: {
+      flex: 1,
+    },
+    section: {
+      marginBottom: spacing.lg,
+    },
+    listContainer: {
+      minHeight: 180,
+    },
+    listContent: {
+      paddingHorizontal: spacing.sm,
+    },
+    card: {
+      padding: spacing.md,
+      borderRadius: 12,
+      marginRight: spacing.md,
+      marginVertical: spacing.sm,
+      minWidth: 250,
+      maxWidth: 300,
+      flex: 1,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    urgentCardBase: {
+      padding: spacing.md,
+      borderRadius: 12,
+      marginBottom: spacing.md,
+      borderLeftWidth: 4,
+    },
+    actionButtons: {
+      width: "100%",
+      paddingVertical: spacing.sm,
+      gap: spacing.sm,
+    },
+    actionButton: {
+      marginHorizontal: spacing.xs,
+    },
+    joinContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: spacing.md,
+    },
+    input: {
+      flex: 1,
+      marginRight: spacing.sm,
+      marginVertical: 0,
+    },
+    button: {
+      minWidth: 100,
+      flex: 1,
+    },
+    emptyContainer: {
+      alignItems: "center",
+      padding: spacing.md,
+    },
+    bottomActions: {
+      marginTop: "auto",
+      paddingTop: spacing.lg,
+      gap: spacing.md,
+    },
+    joinSection: {
+      gap: spacing.sm,
+    },
+    keyInputContainer: {
+      flex: 1,
+      marginVertical: 0,
+      paddingHorizontal: 0,
+    },
+    keyInputInner: {
+      borderBottomWidth: 1,
+      height: 40,
+    },
+    joinButton: {
+      minWidth: 80,
+      height: 40,
+    },
+    createButton: {
+      marginTop: spacing.sm,
+    },
+    switchContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: spacing.sm,
+    },
+    buttonGroup: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: spacing.md,
+    },
+    dialog: {
+      width: "90%",
+      borderRadius: 12,
+      padding: 0,
+      overflow: "hidden",
+    },
+    dialogContent: {
+      padding: spacing.lg,
+    },
+    dialogTitle: {
+      ...typography.h2,
+      marginBottom: spacing.md,
+    },
+    dialogDetails: {
+      ...typography.body,
+      marginBottom: spacing.md,
+      lineHeight: 20,
+    },
+    dialogDeadline: {
+      ...typography.caption,
+      opacity: 0.7,
+    },
+    dayDialog: {
+      width: "90%",
+      padding: spacing.md,
+      maxHeight: "80%",
+      backgroundColor: "transparent",
+      shadowColor: "transparent",
+    },
+    dialogDayContainer: {
+      width: "100%",
+      borderRadius: 12,
+      padding: spacing.md,
+      shadowColor: "transparent",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    dialogElementsContainer: {
+      minHeight: 400,
+      maxHeight: 400,
+      overflow: "hidden",
+    },
+    elementTextContainer: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.05)",
+      borderRadius: 12,
+      padding: spacing.sm,
+      paddingHorizontal: spacing.md,
+    },
+    urgentListContent: {
+      marginTop: spacing.sm,
+    },
+    modal: {
+      margin: 0,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    modalContent: {
+      width: "90%",
+      padding: spacing.lg,
+      borderRadius: 12,
+      maxHeight: "90%",
+    },
+    bottomSheet: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      margin: 0,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      borderBottomLeftRadius: 0,
+      borderBottomRightRadius: 0,
+      paddingTop: spacing.sm,
+      maxHeight: "80%",
+    },
+    bottomSheetContent: {
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.lg,
+    },
+    bottomSheetHandle: {
+      width: 40,
+      height: 4,
+      backgroundColor: "#999",
+      borderRadius: 2,
+      alignSelf: "center",
+      marginBottom: spacing.md,
+    },
+    modalContainer: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: spacing.lg,
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: "bold",
+    },
+    separator: {
+      marginVertical: 30,
+      height: 1,
+      width: "80%",
+    },
+    headerRow: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      width: "100%",
+      padding: spacing.lg,
+      paddingBottom: 0,
+      position: "absolute",
+      zIndex: 1,
+      backgroundColor: "transparent",
+    },
+    scrollContent: {
+      flexGrow: 1,
+      paddingTop: spacing.xl + spacing.lg,
+      padding: spacing.lg,
+    },
+    bottomSection: {
+      marginBottom: spacing.xl,
+    },
+    miniCalendar: {
+      paddingTop: spacing.lg,
+      borderTopWidth: 1,
+      borderTopColor: "transparent",
+      marginTop: "auto",
+    },
+    miniWeekContainer: {
+      flexDirection: "row",
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.sm,
+      height: 204,
+    },
+    dayContainer: {
+      width: 120,
+      height: 170,
+      borderRadius: 12,
+      padding: spacing.sm,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+      marginHorizontal: 2,
+    },
+    dayHeader: {
+      ...typography.h4,
+      textAlign: "center",
+      marginBottom: spacing.sm,
+    },
+    elementsContainer: {
+      flex: 1,
+      overflow: "hidden",
+    },
+    elementItem: {
+      padding: spacing.sm,
+      paddingHorizontal: spacing.md,
+      borderRadius: 8,
+      marginBottom: spacing.xs,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    elementText: {
+      ...typography.caption,
+      fontSize: 12,
+    },
+    moreContainer: {
+      alignSelf: "center",
+      marginTop: spacing.xs,
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      justifyContent: "center",
+      alignItems: "center",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.2,
+      shadowRadius: 1,
+      elevation: 2,
+    },
+    moreText: {
+      ...typography.caption,
+      fontSize: 10,
+      fontWeight: "600",
+    },
+    welcomeContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingBottom: "20%",
+    },
+    loginButton: {
+      minWidth: 200,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    viewAgendaButton: {
+      marginTop: spacing.md,
+      alignSelf: "flex-end",
+    },
+    keyContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.xs,
+      paddingVertical: spacing.xs,
+    },
+    copyIcon: {
+      marginLeft: spacing.xs,
+    },
+    elementDialogScroll: {
+      maxHeight: 300,
+    },
+    elementCard: {
+      marginBottom: spacing.xs,
+      borderRadius: 8,
+      overflow: "hidden",
+      borderLeftWidth: 3,
+      width: "100%",
+    },
+    elementHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: spacing.xs,
+    },
+    elementContent: {
+      flex: 1,
+    },
+    titleRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    titleMain: {
+      flex: 1,
+    },
+    elementTitle: {
+      ...typography.h3,
+      fontSize: 13,
+      marginBottom: 4,
+      marginTop: 4,
+      margin: 3,
+    },
+    urgentCard: {
+      marginBottom: spacing.xs,
+      borderRadius: 8,
+      overflow: "hidden",
+      borderLeftWidth: 3,
+      width: "100%",
+    },
+    urgentHeader: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      padding: spacing.sm,
+    },
+    urgentContent: {
+      flex: 1,
+    },
+    urgentTitleRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+    },
+    urgentTitleMain: {
+      flex: 1,
+      marginRight: spacing.sm,
+    },
+    urgentTitle: {
+      ...typography.h3,
+      fontSize: 15,
+      marginBottom: 2,
+    },
+    urgentDeadline: {
+      ...typography.caption,
+      fontSize: 12,
+      opacity: 0.7,
+    },
+    dialogFooter: {
+      borderTopWidth: 1,
+      borderTopColor: "transparent",
+      paddingVertical: spacing.xs,
+    },
+    dialogMainActions: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      paddingHorizontal: spacing.lg,
+    },
+    dialogHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: spacing.md,
+    },
+    dialogHeaderTitle: {
+      ...typography.h3,
+    },
+    dialogFooterActions: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: spacing.md,
+      paddingTop: 0,
+      borderTopWidth: 1,
+      borderTopColor: "transparent",
+    },
+    elementFlags: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    elementDetailsTitle: {
+      ...typography.h3,
+      fontSize: 20,
+      marginBottom: 0,
+    },
 });
