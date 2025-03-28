@@ -16,7 +16,6 @@ import OfflineBanner from '@/components/OfflineBanner';
 import { useLanguage } from '@/contexts/LanguageContext';
 import DatePickerInput from '@/components/DatePickerInput';
 import TruncatedText from '@/components/TruncatedText';
-import { LinearGradient } from 'expo-linear-gradient';
 
 const DEFAULT_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg"
 const LONG_PRESS_DURATION = 500; // 500ms = 0.5 seconds
@@ -68,10 +67,8 @@ export default function AgendaScreen() {
   const isOnline = useNetworkState();
   
   const [session, setSession] = useState(null);
-  
   const { id } = useLocalSearchParams();
   const [agenda, setAgenda] = useState<AgendaWithSections | null>(null);
-  const [loading, setLoading] = useState(true);
   const [newSectionName, setNewSectionName] = useState('');
   const [newElementData, setNewElementData] = useState({
     subject: '',
@@ -95,27 +92,22 @@ export default function AgendaScreen() {
   const [isEditingMembers, setIsEditingMembers] = useState(false);
   const [showCompletedButton, setShowCompletedButton] = useState(false);
   const [isEditor, setIsEditor] = useState(false);
-
   const [showEditElementDialog, setShowEditElementDialog] = useState(false);
   const [editingElement, setEditingElement] = useState<AgendaElement | null>(null);
-
   const [refreshing, setRefreshing] = useState(false);
   const [expandedElements, setExpandedElements] = useState<ExpandedElements>({});
   const [editingState, setEditingState] = useState<AgendaEditingState>({ sections: {} });
   const [editingSectionName, setEditingSectionName] = useState<{ [key: string]: string }>({});
-
   const [isNewSectionNameValid, setIsNewSectionNameValid] = useState(true);
   const [isNewElementSubjectValid, setIsNewElementSubjectValid] = useState(true);
   const [isEditingSectionNameValid, setIsEditingSectionNameValid] = useState(true);
   const [isEditingElementSubjectValid, setIsEditingElementSubjectValid] = useState(true);
-
   const [pressedCommentId, setPressedCommentId] = useState<number | null>(null);
 
   useEffect(() => {
     navigation.setOptions({
       title: t('agenda.header'),
       headerBackTitle: t('tabs.home'),
-
       headerLeft: Platform.select({
         ios: undefined,
         android: () => (
@@ -251,9 +243,6 @@ export default function AgendaScreen() {
         completedMap[item.element_id] = true;
       });
 
-      setCompletedElements(completedMap);
-      setShowCompletedButton(Object.keys(completedMap).length > 0);
-
       const filteredSections = sectionsData.map(section => ({
         ...section,
         elements: (section.elements || []).filter(element => 
@@ -296,11 +285,7 @@ export default function AgendaScreen() {
         const completedMap = cachedData.completedElements || {};
         setCompletedElements(completedMap);
         setShowCompletedButton(Object.keys(completedMap).length > 0);
-      } else {
-        Alert.alert('Error', 'Could not load agenda');
       }
-    } finally {
-      setLoading(false);
     }
   }, [id, isOnline, session?.user?.id]);
 
@@ -323,15 +308,29 @@ export default function AgendaScreen() {
   }, [session?.user?.id, id]);
 
   useEffect(() => {
+    // Load cached data immediately
+    const loadCachedData = async () => {
+      const cachedData = await getAgendaData(id as string);
+      if (cachedData) {
+        setAgenda(cachedData.agenda);
+        setComments(cachedData.comments);
+        setMembers(cachedData.members);
+        setEditors(cachedData.editors);
+        const completedMap = cachedData.completedElements || {};
+        setCompletedElements(completedMap);
+        setShowCompletedButton(Object.keys(completedMap).length > 0);
+      }
+    };
+
+    loadCachedData();
+
+    // Then fetch fresh data
     let mounted = true;
-    setLoading(true);
     Promise.all([
       fetchAgenda(),
       checkEditorStatus()
-    ]).finally(() => {
-      if (mounted) {
-        setLoading(false);
-      }
+    ]).catch(error => {
+      console.error('Error in initial fetch:', error);
     });
     return () => { mounted = false };
   }, [fetchAgenda, checkEditorStatus]);
@@ -664,7 +663,7 @@ export default function AgendaScreen() {
     },
     elementHeader: {
       flexDirection: 'row',
-      alignItems: 'center', // Changed from 'flex-start' to 'center'
+      alignItems: 'center',
       padding: spacing.sm,
     },
     elementControls: {
@@ -672,7 +671,7 @@ export default function AgendaScreen() {
       alignItems: 'center',
       gap: spacing.xs,
       marginRight: spacing.sm,
-      alignSelf: 'center', // Added this to ensure vertical centering
+      alignSelf: 'center',
     },
     urgentButton: {
       width: 32,
@@ -850,7 +849,7 @@ export default function AgendaScreen() {
   }, [completedElements]);
 
   const toggleSection = (sectionId: string, elementCount: number) => {
-    if (elementCount === 0) return; // Prevent toggling empty sections
+    if (elementCount === 0) return;
     
     setCollapsedSections(prev => ({
       ...prev,
@@ -860,11 +859,9 @@ export default function AgendaScreen() {
 
   const sortElementsByUrgencyAndDeadline = (elements: AgendaElement[]) => {
     return [...elements].sort((a, b) => {
-      // First sort by urgency
       if (a.isUrgent && !b.isUrgent) return -1;
       if (!a.isUrgent && b.isUrgent) return 1;
       
-      // If both have same urgency status, sort by deadline
       const dateA = new Date(a.deadline).getTime();
       const dateB = new Date(b.deadline).getTime();
       return dateA - dateB;
@@ -981,7 +978,7 @@ export default function AgendaScreen() {
                   styles.sectionTitle, 
                   { 
                     flex: 1,
-                    color: theme.text  // Keep section title color normal
+                    color: theme.text
                   }
                 ]}
                 numberOfLines={1} 
@@ -995,8 +992,8 @@ export default function AgendaScreen() {
                 styles.elementCount,
                 { 
                   color: getSectionElements(section).length === 0 
-                    ? theme.placeholder  // Gray out only when zero
-                    : theme.button       // Use button color for non-zero
+                    ? theme.placeholder
+                    : theme.button
                 }
               ]}>
                 {getSectionElements(section).length}
@@ -1270,7 +1267,7 @@ export default function AgendaScreen() {
           agendaName: item.element.section.agenda.name,
           agendaId: item.element.section.agenda.id,
           sectionId: item.element.section.id,
-          completed_at: item.created_at // Add the completion timestamp
+          completed_at: item.created_at
         })) || [];
 
         await storeAgendaData(id as string, {
@@ -1412,23 +1409,6 @@ export default function AgendaScreen() {
     }
   }, [agenda?.sections, getSectionElements]);
 
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <Text>{t('agenda.loading')}</Text>
-      </View>
-    );
-  }
-
-  if (!agenda) {
-    return (
-      <View style={styles.container}>
-        <Text>{t('agenda.notFound')}</Text>
-      </View>
-    );
-  }
-
-  // Add these style objects near the Dialog components
   const inputErrorStyles = {
     invalidInput: {
       color: theme.error,
@@ -1457,220 +1437,227 @@ export default function AgendaScreen() {
           />
         }
       >
-        <View style={styles.header}>
-          <Text style={styles.title}>{agenda.name}</Text>
-          <RNView style={styles.headerActions}>
-            {(isCreator || isEditor) && (
-              <Button
-                title={t('agenda.addSection')}
-                type="clear"
-                titleStyle={{ color: theme.button }}
-                onPress={() => setShowSectionDialog(true)}
-              />
-            )}
-            {showCompletedButton && (
-              <Icon
-                name="check-circle"
-                type="font-awesome-5"
-                size={20}
-                color={theme.text}
-                onPress={navigateToCompleted}
-                containerStyle={{ marginHorizontal: spacing.sm }}
-              />
-            )}
-            {renderCalendarButton()}
-          </RNView>
-        </View>
-        <View style={styles.sectionsContainer}>
-          <FlatList
-            data={agenda.sections}
-            renderItem={renderSection}
-            keyExtractor={item => `section-${item.id}`}
-            scrollEnabled={false}
-            ListEmptyComponent={() => (
-              <Text style={styles.emptyText}>{t('agenda.noSections')}</Text>
-            )}
-          />
-        </View>
-
-        <View style={[styles.membersSection, { marginTop: spacing.xl }]}>
-          <RNView style={styles.sectionHeader}>
-            <Text style={[typography.h3, { color: theme.text }]}>
-              {t('agenda.members').replace('{count}', members.length.toString())}
-            </Text>
-            {isCreator && (
-              <Icon
-                name="users-cog"
-                type="font-awesome-5"
-                size={20}
-                color={theme.text}
-                onPress={() => router.push({
-                  pathname: "members-management",
-                  params: { 
-                    id: agenda.id, 
-                    creatorId: agenda.creator_id 
-                  }
-                })}
-              />
-            )}
-          </RNView>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false} 
-            contentContainerStyle={styles.membersList}
-          >
-            {members.map((member) => (
-              <Pressable 
-                key={member.id}
-                onPress={() => {
-                  if (isEditingMembers && isCreator && member.id !== agenda?.creator_id) {
-                    setSelectedMember(member);
-                    setShowMemberDialog(true);
-                  } else if (session?.user?.id === member.id) {
-                    router.push('/three');
-                  } else {
-                    router.push(`/user-profile?id=${member.id}`);
-                  }
-                }}
-              >
-                <View style={[
-                  styles.memberCard,
-                  isEditingMembers && isCreator && member.id !== agenda?.creator_id && 
-                    styles.memberCardEditing
-                ]}>
-                  <Avatar
-                    size={60}
-                    rounded
-                    source={{ uri: member.avatar_url || DEFAULT_AVATAR }}
-                    containerStyle={styles.memberAvatar}
+        {agenda ? (
+          <>
+            <View style={styles.header}>
+              <Text style={styles.title}>{agenda.name}</Text>
+              <RNView style={styles.headerActions}>
+                {(isCreator || isEditor) && (
+                  <Button
+                    title={t('agenda.addSection')}
+                    type="clear"
+                    titleStyle={{ color: theme.button }}
+                    onPress={() => setShowSectionDialog(true)}
                   />
-                  <Text style={[typography.caption, { color: theme.text }]} numberOfLines={1}>
-                    {member.username}
-                    {editors.includes(member.id) && ' (Editor)'}
-                    {member.id === agenda?.creator_id && ' (Creator)'}
-                  </Text>
-                </View>
-              </Pressable>
-            ))}
-          </ScrollView>
-
-          <Dialog 
-            isVisible={showMemberDialog && !!selectedMember && selectedMember.id !== agenda?.creator_id}
-            onBackdropPress={() => {
-              setShowMemberDialog(false);
-              setSelectedMember(null);
-            }} 
-            overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
-          >
-          </Dialog>
-        </View>
-
-        <View style={styles.commentsSection}>
-          <View style={styles.commentsSectionHeader}>
-            <Text style={[typography.h3, { color: theme.text }]}>
-              {t('agenda.comments')}
-            </Text>
-            <RNView style={styles.commentHeaderActions}>
-              {isCreator && (
-                <Icon
-                  name={agenda.comments ? "eye" : "eye-slash"}
-                  type="font-awesome-5"
-                  size={20}
-                  color={agenda.comments ? theme.tint : theme.placeholder}
-                  onPress={toggleComments}
-                  containerStyle={{ marginRight: spacing.sm }}
-                />
-              )}
-            </RNView>
-          </View>
-          
-          {agenda.comments ? (
-            <>
-              <RNView style={styles.commentInputContainer}>
-                <Input
-                  placeholder={t('agenda.addComment')}
-                  value={commentText}
-                  onChangeText={setCommentText}
-                  multiline
-                  containerStyle={styles.commentInput}
-                  inputStyle={{ color: theme.text }}
-                  rightIcon={
-                    <Icon
-                      name="send"
-                      type="font-awesome"
-                      color={commentText.trim() ? theme.text : theme.placeholder}
-                      size={20}
-                      onPress={() => {
-                        if (session?.user?.id && commentText.trim()) {
-                          postComment()
-                        }
-                      }}
-                      style={{ opacity: commentText.trim() ? 1 : 0.5 }}
-                    />
-                  }
-                />
-              </RNView>
-              <View style={styles.commentsList}>
-                {comments.length === 0 ? (
-                  <Text style={[typography.body, { color: theme.placeholder }]}>
-                    {t('agenda.noComments')}
-                  </Text>
-                ) : (
-                  comments.map(item => (
-                    <View key={item.id.toString()}>
-                      {renderComment({ item })}
-                    </View>
-                  ))
                 )}
-              </View>
-            </>
-          ) : (
-            <Text style={[styles.disabledMessage, { color: theme.placeholder }]}>
-              {t('agenda.commentsDisabled')}
-            </Text>
-          )}
-        </View>
+                {showCompletedButton && (
+                  <Icon
+                    name="check-circle"
+                    type="font-awesome-5"
+                    size={20}
+                    color={theme.text}
+                    onPress={navigateToCompleted}
+                    containerStyle={{ marginHorizontal: spacing.sm }}
+                  />
+                )}
+                {renderCalendarButton()}
+              </RNView>
+            </View>
+            <View style={styles.sectionsContainer}>
+              <FlatList
+                data={agenda.sections}
+                renderItem={renderSection}
+                keyExtractor={item => `section-${item.id}`}
+                scrollEnabled={false}
+                ListEmptyComponent={() => (
+                  <Text style={styles.emptyText}>{t('agenda.noSections')}</Text>
+                )}
+              />
+            </View>
 
-        {/* Replace the old danger zone with this */}
-        <View style={[styles.dangerActions, { borderTopColor: theme.border }]}>
-          {isCreator ? (
-            <Pressable
-              onPress={() => deleteAgenda(agenda.id, agenda.creator_id)}
-              style={({ pressed }) => [
-                styles.dangerAction,
-                { opacity: pressed ? 0.7 : 1 }
-              ]}
-            >
-              <Icon
-                name="trash"
-                type="font-awesome-5"
-                size={20}
-                color={theme.error}
-              />
-              <Text style={[styles.dangerActionText, { color: theme.error }]}>
-                {t('agenda.deleteAgenda')}
-              </Text>
-            </Pressable>
-          ) : (
-            <Pressable
-              onPress={handleLeaveAgenda}
-              style={({ pressed }) => [
-                styles.dangerAction,
-                { opacity: pressed ? 0.7 : 1 }
-              ]}
-            >
-              <Icon
-                name="sign-out-alt"
-                type="font-awesome-5"
-                size={20}
-                color={theme.error}
-              />
-              <Text style={[styles.dangerActionText, { color: theme.error }]}>
-                {t('agenda.leaveAgenda')}
-              </Text>
-            </Pressable>
-          )}
-        </View>
+            <View style={[styles.membersSection, { marginTop: spacing.xl }]}>
+              <RNView style={styles.sectionHeader}>
+                <Text style={[typography.h3, { color: theme.text }]}>
+                  {t('agenda.members').replace('{count}', members.length.toString())}
+                </Text>
+                {isCreator && (
+                  <Icon
+                    name="users-cog"
+                    type="font-awesome-5"
+                    size={20}
+                    color={theme.text}
+                    onPress={() => router.push({
+                      pathname: "members-management",
+                      params: { 
+                        id: agenda.id, 
+                        creatorId: agenda.creator_id 
+                      }
+                    })}
+                  />
+                )}
+              </RNView>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false} 
+                contentContainerStyle={styles.membersList}
+              >
+                {members.map((member) => (
+                  <Pressable 
+                    key={member.id}
+                    onPress={() => {
+                      if (isEditingMembers && isCreator && member.id !== agenda?.creator_id) {
+                        setSelectedMember(member);
+                        setShowMemberDialog(true);
+                      } else if (session?.user?.id === member.id) {
+                        router.push('/three');
+                      } else {
+                        router.push(`/user-profile?id=${member.id}`);
+                      }
+                    }}
+                  >
+                    <View style={[
+                      styles.memberCard,
+                      isEditingMembers && isCreator && member.id !== agenda?.creator_id && 
+                        styles.memberCardEditing
+                    ]}>
+                      <Avatar
+                        size={60}
+                        rounded
+                        source={{ uri: member.avatar_url || DEFAULT_AVATAR }}
+                        containerStyle={styles.memberAvatar}
+                      />
+                      <Text style={[typography.caption, { color: theme.text }]} numberOfLines={1}>
+                        {member.username}
+                        {editors.includes(member.id) && ' (Editor)'}
+                        {member.id === agenda?.creator_id && ' (Creator)'}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </ScrollView>
+
+              <Dialog 
+                isVisible={showMemberDialog && !!selectedMember && selectedMember.id !== agenda?.creator_id}
+                onBackdropPress={() => {
+                  setShowMemberDialog(false);
+                  setSelectedMember(null);
+                }} 
+                overlayStyle={[styles.dialog, { backgroundColor: theme.card }]}
+              >
+              </Dialog>
+            </View>
+
+            <View style={styles.commentsSection}>
+              <View style={styles.commentsSectionHeader}>
+                <Text style={[typography.h3, { color: theme.text }]}>
+                  {t('agenda.comments')}
+                </Text>
+                <RNView style={styles.commentHeaderActions}>
+                  {isCreator && (
+                    <Icon
+                      name={agenda.comments ? "eye" : "eye-slash"}
+                      type="font-awesome-5"
+                      size={20}
+                      color={agenda.comments ? theme.tint : theme.placeholder}
+                      onPress={toggleComments}
+                      containerStyle={{ marginRight: spacing.sm }}
+                    />
+                  )}
+                </RNView>
+              </View>
+              
+              {agenda.comments ? (
+                <>
+                  <RNView style={styles.commentInputContainer}>
+                    <Input
+                      placeholder={t('agenda.addComment')}
+                      value={commentText}
+                      onChangeText={setCommentText}
+                      multiline
+                      containerStyle={styles.commentInput}
+                      inputStyle={{ color: theme.text }}
+                      rightIcon={
+                        <Icon
+                          name="send"
+                          type="font-awesome"
+                          color={commentText.trim() ? theme.text : theme.placeholder}
+                          size={20}
+                          onPress={() => {
+                            if (session?.user?.id && commentText.trim()) {
+                              postComment()
+                            }
+                          }}
+                          style={{ opacity: commentText.trim() ? 1 : 0.5 }}
+                        />
+                      }
+                    />
+                  </RNView>
+                  <View style={styles.commentsList}>
+                    {comments.length === 0 ? (
+                      <Text style={[typography.body, { color: theme.placeholder }]}>
+                        {t('agenda.noComments')}
+                      </Text>
+                    ) : (
+                      comments.map(item => (
+                        <View key={item.id.toString()}>
+                          {renderComment({ item })}
+                        </View>
+                      ))
+                    )}
+                  </View>
+                </>
+              ) : (
+                <Text style={[styles.disabledMessage, { color: theme.placeholder }]}>
+                  {t('agenda.commentsDisabled')}
+                </Text>
+              )}
+            </View>
+
+            <View style={[styles.dangerActions, { borderTopColor: theme.border }]}>
+              {isCreator ? (
+                <Pressable
+                  onPress={() => deleteAgenda(agenda.id, agenda.creator_id)}
+                  style={({ pressed }) => [
+                    styles.dangerAction,
+                    { opacity: pressed ? 0.7 : 1 }
+                  ]}
+                >
+                  <Icon
+                    name="trash"
+                    type="font-awesome-5"
+                    size={20}
+                    color={theme.error}
+                  />
+                  <Text style={[styles.dangerActionText, { color: theme.error }]}>
+                    {t('agenda.deleteAgenda')}
+                  </Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  onPress={handleLeaveAgenda}
+                  style={({ pressed }) => [
+                    styles.dangerAction,
+                    { opacity: pressed ? 0.7 : 1 }
+                  ]}
+                >
+                  <Icon
+                    name="sign-out-alt"
+                    type="font-awesome-5"
+                    size={20}
+                    color={theme.error}
+                  />
+                  <Text style={[styles.dangerActionText, { color: theme.error }]}>
+                    {t('agenda.leaveAgenda')}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          </>
+        ) : (
+          <View style={styles.container}>
+            <Text>{t('agenda.notFound')}</Text>
+          </View>
+        )}
       </ScrollView>
 
       <Dialog
@@ -1893,6 +1880,16 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: spacing.lg,
   },
+  contentContainer: {
+    flex: 1,
+    flexDirection: 'column',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: spacing.xl,
+  },
+  
+  // Header Styles
   header: {
     marginBottom: spacing.lg,
   },
@@ -1900,11 +1897,20 @@ const styles = StyleSheet.create({
     ...typography.h2,
     marginBottom: spacing.md,
   },
+  titleMain: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
     gap: spacing.xs,
+  },
+
+  // Section Styles
+  sectionsContainer: {
+    width: '100%',
   },
   sectionsList: {
     flex: 1,
@@ -1912,44 +1918,187 @@ const styles = StyleSheet.create({
   sectionContainer: {
     marginBottom: spacing.lg,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.sm,
+  },
   sectionTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
     height: '100%',
-    justifyContent: 'space-between', // Add this
+    justifyContent: 'space-between',
   },
   sectionLeftContent: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
+  sectionActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginLeft: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  sectionEditInput: {
+    flex: 1,
+    marginBottom: -spacing.lg,
+    padding: spacing.xs,
+    marginLeft: -spacing.sm,
+  },
+
+  // Element Styles
   elementsList: {
     marginLeft: spacing.sm,
   },
-  completedText: {
-    textDecorationLine: 'line-through',
-    opacity: 0.5,
+  elementTitle: {
+    ...typography.h3,
+    fontSize: 15,
+    marginBottom: 2,
+  },
+  elementDetails: {
+    ...typography.body,
+    fontSize: 14,
+    marginBottom: spacing.xs,
+    opacity: 0.9,
+  },
+  elementCountContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: spacing.sm,
+  },
+  elementCount: {
+    ...typography.caption,
+    fontSize: 16,
+    fontWeight: '600',
+    marginRight: spacing.sm,
   },
   elementActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
   },
-  actionIcon: {
+  completedText: {
+    textDecorationLine: 'line-through',
+    opacity: 0.5,
+  },
+  expandedContent: {
+    paddingHorizontal: spacing.sm,
+    paddingBottom: spacing.sm,
+  },
+
+  // Comment Styles
+  commentsSection: {
+    width: '100%',
+    borderTopWidth: 1,
+    borderTopColor: 'transparent',
+    paddingTop: spacing.lg,
+    marginTop: spacing.xl,
+  },
+  commentsSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  commentsList: {
+    width: '100%',
+  },
+  commentContainer: {
+    padding: spacing.sm,
+    borderRadius: 8,
+    marginVertical: spacing.xs,
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+  },
+  commentHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  commentActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  commentAuthor: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  commentAvatar: {
+    marginRight: spacing.xs,
+  },
+  commentUsername: {
+    ...typography.caption,
+    fontWeight: '500',
+  },
+  commentTimestamp: {
+    ...typography.caption,
+  },
+  commentText: {
+    ...typography.body,
+    lineHeight: 20,
+  },
+  commentInputContainer: {
+    marginVertical: spacing.md,
+  },
+  commentInput: {
+    marginBottom: -spacing.lg,
+  },
+
+  // Member Styles
+  membersSection: {
+    width: '100%',
+    borderTopWidth: 1,
+    borderTopColor: 'transparent',
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
+  },
+  membersList: {
+    paddingHorizontal: spacing.sm,
+  },
+  memberCard: {
+    alignItems: 'center',
+    marginHorizontal: spacing.xs,
+    width: 70,
+  },
+  memberCardEditing: {
+    opacity: 0.8,
+    borderWidth: 2,
+    borderColor: Colors.light.tint,
+    borderRadius: 8,
     padding: spacing.xs,
   },
-  emptyText: {
-    ...typography.body,
-    textAlign: 'center',
-    opacity: 0.5,
-    padding: spacing.md,
+  memberAvatar: {
+    marginBottom: spacing.xs,
   },
+
+  // Dialog Styles
   dialog: {
     width: '90%',
     borderRadius: 12,
     padding: 0,
     overflow: 'hidden',
+  },
+  dialogHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.md,
+  },
+  dialogHeaderTitle: {
+    ...typography.h3,
+  },
+  dialogHeaderAction: {
+    paddingTop: 5,
   },
   dialogContent: {
     padding: spacing.lg,
@@ -1972,104 +2121,18 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingHorizontal: spacing.lg,
   },
-  commentsSection: {
-    width: '100%',
-    borderTopWidth: 1,
-    borderTopColor: 'transparent',
-    paddingTop: spacing.lg,
-    marginTop: spacing.xl,
-  },
-  commentContainer: {
-    padding: spacing.sm,
-    borderRadius: 8,
-    marginVertical: spacing.xs,
-  },
-  commentHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xs,
-  },
-  commentsList: {
-    width: '100%',
-  },
-  commentAuthor: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  commentAvatar: {
-    marginRight: spacing.xs,
-  },
-  commentInputContainer: {
-    marginVertical: spacing.md,
-  },
-  commentInput: {
-    marginBottom: -spacing.lg,
-  },
-  commentUsername: {
-    ...typography.caption,
-    fontWeight: '500',
-  },
-  commentTimestamp: {
-    ...typography.caption,
-  },
-  commentText: {
-    ...typography.body,
-    lineHeight: 20,
-  },
-  contentContainer: {
-    flex: 1,
-    flexDirection: 'column',
-  },
-  sectionsContainer: {
-    width: '100%',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: spacing.xl,
-  },
-  collapseIcon: {
-    marginRight: spacing.sm,
-  },
-  membersSection: {
-    width: '100%',
-    borderTopWidth: 1,
-    borderTopColor: 'transparent',
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.lg,
-  },
-  membersList: {
-    paddingHorizontal: spacing.sm,
-  },
-  memberCard: {
-    alignItems: 'center',
-    marginHorizontal: spacing.xs,
-    width: 70,
-  },
-  memberAvatar: {
-    marginBottom: spacing.xs,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-    paddingHorizontal: spacing.sm,
-  },
   dialogActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: spacing.sm,
     marginTop: spacing.md,
   },
-  memberCardEditing: {
-    opacity: 0.8,
-    borderWidth: 2,
-    borderColor: Colors.light.tint,
-    borderRadius: 8,
-    padding: spacing.xs,
+  dialogButtonGroup: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
   },
+
+  // Button Styles
   actionButton: {
     borderRadius: 12,
     marginTop: spacing.md,
@@ -2079,7 +2142,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    overflow: 'hidden',  // Important for the gradient
+    overflow: 'hidden',
   },
   gradientButton: {
     flexDirection: 'row',
@@ -2088,38 +2151,23 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     width: '100%',
   },
-  commentsSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
+  deleteButton: {
+    marginTop: spacing.md,
   },
-  disabledMessage: {
-    ...typography.body,
-    textAlign: 'center',
-    paddingVertical: spacing.md,
-    fontStyle: 'italic',
+
+  // Icon Styles
+  actionIcon: {
+    padding: spacing.xs,
   },
-  elementCount: {
-    ...typography.caption,
-    fontSize: 16,
-    fontWeight: '600',
-    marginRight: spacing.sm
+  collapseIcon: {
+    marginRight: spacing.sm,
   },
-  elementCountContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: spacing.sm
+  editIcon: {
+    padding: spacing.xs,
+    marginLeft: spacing.sm,
   },
-  commentHeaderActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  commentActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+
+  // Danger Actions
   dangerActions: {
     marginTop: spacing.xl * 2,
     marginBottom: spacing.xl,
@@ -2138,59 +2186,18 @@ const styles = StyleSheet.create({
     ...typography.body,
     fontWeight: '500',
   },
-  expandedContent: {
-    paddingHorizontal: spacing.sm,
-    paddingBottom: spacing.sm,
-  },
-  titleMain: {
-    flex: 1,
-    marginRight: spacing.sm,
-  },
-  elementTitle: {
-    ...typography.h3,
-    fontSize: 15,
-    marginBottom: 2,
-  },
-  elementDetails: {
+
+  // Miscellaneous
+  emptyText: {
     ...typography.body,
-    fontSize: 14,
-    marginBottom: spacing.xs,
-    opacity: 0.9,
+    textAlign: 'center',
+    opacity: 0.5,
+    padding: spacing.md,
   },
-  dialogButtonGroup: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  deleteButton: {
-    marginTop: spacing.md,
-  },
-  dialogHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.md,
-  },
-  dialogHeaderTitle: {
-    ...typography.h3,
-  },
-  dialogHeaderAction: {
-    paddingTop: 5,
-  },
-  sectionEditInput: {
-    flex: 1,
-    marginBottom: -spacing.lg,
-    padding: spacing.xs,
-    marginLeft: -spacing.sm,
-  },
-  editIcon: {
-    padding: spacing.xs,
-    marginLeft: spacing.sm,
-  },
-  sectionActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginLeft: spacing.sm,
-    paddingVertical: spacing.xs,
+  disabledMessage: {
+    ...typography.body,
+    textAlign: 'center',
+    paddingVertical: spacing.md,
+    fontStyle: 'italic',
   },
 });
