@@ -29,12 +29,11 @@ export default function TabTwoScreen() {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'light'];
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const isOnline = useNetworkState();
   const { credits, setCredits, fetchCredits } = useCredits();
-  const { language, setLanguage, t } = useLanguage();
+  const { language, t } = useLanguage();
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -70,8 +69,6 @@ export default function TabTwoScreen() {
       if (cachedUsers) {
         setUsers(cachedUsers);
       }
-    } finally {
-      setLoading(false);
     }
   }, [isOnline]);
 
@@ -87,14 +84,18 @@ export default function TabTwoScreen() {
   );
 
   useEffect(() => {
-    let mounted = true;
-  
+    const loadCachedData = async () => {
+      const cachedUsers = await getData(KEYS.USER_PROFILES);
+      if (cachedUsers) {
+        setUsers(cachedUsers);
+      }
+    };
+
+    loadCachedData();
+
     const initialize = async () => {
       try {
-        setLoading(true);
         const { data: { user }, error } = await supabase.auth.getUser();
-        
-        if (!mounted) return;
         if (error) {
           console.error('Auth error:', error);
           return;
@@ -107,17 +108,12 @@ export default function TabTwoScreen() {
         }
       } catch (error) {
         console.error('Init error:', error);
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
       }
     };
 
     initialize();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!mounted) return;
       setCurrentUserId(session?.user?.id || null);
       await fetchUsers();
       if (session?.user?.id) {
@@ -126,10 +122,9 @@ export default function TabTwoScreen() {
     });
 
     return () => {
-      mounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [fetchUsers, fetchUserCredits]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -184,14 +179,6 @@ export default function TabTwoScreen() {
       </View>
     </Pressable>
   );
-
-  if (loading && !refreshing) {
-    return (
-      <View style={styles.container}>
-        <Text style={{ color: theme.text }}>{t('userList.loading')}</Text>
-      </View>
-    );
-  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
